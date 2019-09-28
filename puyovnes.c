@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
+
 
 // include NESLIB header
 #include "neslib.h"
@@ -249,12 +249,13 @@ void main(void)
   char oam_id;	// sprite ID
   char i;	// actor index
   char pad;	// controller flags
+  char str[32];
   char previous_pad[2];
   char input_delay_PAD_LEFT[2]; //to avoid multiple input on one press
   char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
   char input_delay_PAD_A[2]; //to avoid multiple input on one press
   char input_delay_PAD_B[2]; //to avoid multiple input on one press
-
+  register word addr;
 
   setup_graphics();
   // draw message  
@@ -264,20 +265,20 @@ void main(void)
   // initialize actors
   //P1
   actor_x[0] = 3*16;
-  actor_y[0] = 3*16;
+  actor_y[0] = 0*16;
   actor_dx[0] = 0;
   actor_dy[0] = 1;
   actor_x[1] = 3*16;
-  actor_y[1] = 4*16;
+  actor_y[1] = 1*16;
   actor_dx[1] = 0;
   actor_dy[1] = 1;
   //P2
   actor_x[2] = 11*16;
-  actor_y[2] = 3*16;
+  actor_y[2] = 0*16;
   actor_dx[2] = 0;
   actor_dy[2] = 1;
   actor_x[3] = 11*16;
-  actor_y[3] = 4*16;
+  actor_y[3] = 1*16;
   actor_dx[3] = 0;
   actor_dy[3] = 1;
   previous_pad[0] = 0;
@@ -454,13 +455,46 @@ void main(void)
       //actor_x[i] += actor_dx[i];
      // actor_dx[i] = 0;
       actor_y[i] += actor_dy[i];
+      if (190 < actor_y[i])
+        actor_dy[i] = 0;
       //actor_dy[i] = 1;//on descend !
       //TODO : problème avec le dy qui descend et le reste, 
       //en fait on ne devrait pas utiliser les dx/dy dans le positionnement des puyos
     }
+    
+    //put_attr_entries(nt2attraddr(addr));
+
+    if (actor_dy[0] == 0 && actor_dy[1] == 0)
+    {
+      //vrambuf_clear();
+      memset(ntbuf1, 0, sizeof(ntbuf1));
+      memset(ntbuf2, 0, sizeof(ntbuf2));
+  
+      set_metatile(0,0xc4);
+      set_metatile(1,0xc4);
+      addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      addr = NTADR_A((actor_x[1]>>3), (actor_y[1]>>3)+1);
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+
+      actor_x[0] = 3*16;
+      actor_y[0] = 0;
+      actor_x[1] = 3*16;
+      actor_y[1] = 16;
+      actor_dy[0] = 1;
+      actor_dy[1] = 1;
+    }
+    
+    sprintf(str,"%d %d %d %d %d %d",actor_x[0],actor_y[1],actor_x[0],actor_y[1], actor_dy[0], actor_dy[1]);
+    vrambuf_put(NTADR_A(6,27),str,18);
+      
+    
     if (oam_id!=0) oam_hide_rest(oam_id);
     // ensure VRAM buffer is cleared
     ppu_wait_nmi();
     vrambuf_clear();
+    //scroll(0,0);
   }
 }
