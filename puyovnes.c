@@ -324,7 +324,7 @@ void main(void)
       if (actor_x[i*2] < actor_x[(i*2)+1])
       {
         //left/right
-        if (pad&PAD_LEFT && actor_x[i*2] > (16+i*128))
+        if (pad&PAD_LEFT && actor_x[i*2] > (16+(i*128)))
         {
           //add a bit of delay before going again to left
           if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
@@ -333,7 +333,7 @@ void main(void)
             actor_x[(i*2)+1] -= 16;
           }
         }
-        else if (pad&PAD_RIGHT && actor_x[(i*2)+1] < (96+i*128))
+        else if (pad&PAD_RIGHT && actor_x[(i*2)+1] < (96+(i*128)))
         {
           if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
           {
@@ -414,27 +414,32 @@ void main(void)
           if (pad&PAD_B && input_delay_PAD_B[i] == 0)
           { 
             //we need to know if puyo[0] is above or below puyo[1]
-            if (actor_y[i*2] > actor_y[(i*2)+1])
+            // the lowest value is higher on the screen !
+            if (actor_y[i*2] < actor_y[(i*2)+1])
             {
+              //going from up to left
               actor_x[i*2] -= 16;
               actor_y[i*2] += 16; 
             }
             else
             {  
-              actor_x[i*2] -= 16;
+              //going down to right
+              actor_x[i*2] += 16;
               actor_y[i*2] -= 16; 
             }
           }
           if (pad&PAD_A && input_delay_PAD_A[i] == 0)
           { 
-            if (actor_y[i*2] > actor_y[(i*2)+1])
+            if (actor_y[i*2] < actor_y[(i*2)+1])
             {
+              // going from up to right
               actor_x[i*2] += 16;
               actor_y[i*2] += 16; 
             }
             else
             {
-              actor_x[i*2] += 16;
+              //going from down to left
+              actor_x[i*2] -= 16;
               actor_y[i*2] -= 16; 
             }   
           } 
