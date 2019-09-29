@@ -255,6 +255,7 @@ void main(void)
   char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
   char input_delay_PAD_A[2]; //to avoid multiple input on one press
   char input_delay_PAD_B[2]; //to avoid multiple input on one press
+  char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy
   register word addr;
 
   setup_graphics();
@@ -291,6 +292,8 @@ void main(void)
   input_delay_PAD_LEFT[1] = 0;
   input_delay_PAD_RIGHT[0] = 0;
   input_delay_PAD_RIGHT[1] = 0;
+  for (i = 0; i < 12 ; i++)
+    column_height[i] = 190;
 
   
   // enable rendering
@@ -455,9 +458,17 @@ void main(void)
       //actor_x[i] += actor_dx[i];
      // actor_dx[i] = 0;
       actor_y[i] += actor_dy[i];
-      if (190 < actor_y[i])
+      /*if (190 < actor_y[i])
+        actor_dy[i] = 0;*/
+      //test relative to column_height
+      if (column_height[(actor_x[i]>>4) - 1] < actor_y[i])
+      {
         actor_dy[i] = 0;
-      //actor_dy[i] = 1;//on descend !
+        actor_y[i] = column_height[(actor_x[i]>>4) - 1];
+        column_height[(actor_x[i]>>4) - 1] -= 16;
+        /*if (column_height[(actor_x[i]>>4) - 1] > 200)
+          build_field();*/
+      }
       //TODO : problème avec le dy qui descend et le reste, 
       //en fait on ne devrait pas utiliser les dx/dy dans le positionnement des puyos
     }
@@ -487,9 +498,10 @@ void main(void)
       actor_dy[1] = 1;
     }
     
-    sprintf(str,"%d %d %d %d %d %d",actor_x[0],actor_y[1],actor_x[0],actor_y[1], actor_dy[0], actor_dy[1]);
-    vrambuf_put(NTADR_A(6,27),str,18);
-      
+    sprintf(str,"actor_x 0 : %d END",actor_x[0]>>4);
+    vrambuf_put(NTADR_A(6,26),str,16);
+    sprintf(str,"%d %d %d %d %d %d",column_height[0],column_height[1],column_height[2],column_height[3], column_height[4], column_height[5]);
+    vrambuf_put(NTADR_A(6,27),str,19);      
     
     if (oam_id!=0) oam_hide_rest(oam_id);
     // ensure VRAM buffer is cleared
