@@ -220,6 +220,16 @@ void generate_rng()
   }
 }
 
+//return the color of the sprite given by the index in parameter
+//OAM is a $200, each sprites uses 4 bytes, but we use metasprites of 4 bytes
+//So metasprite 0 is at 200, 1 at 210,3 at 220 etc
+//The attributes also contains the flip info, so mask it to 0x3 to only have color
+byte return_sprite_color(spr_index)
+{
+  OAMSprite  *spr_ptr = (OAMSprite*)(0x200+16*spr_index);
+  return (spr_ptr->attr & 0x3);
+}
+
 void build_field()
 {
   //register word addr;
@@ -245,7 +255,7 @@ void build_field()
         vram_put(0xc7);
       }
     }
-    else if (x == 14 || x == 15)
+    else if (x == 10 ||x == 11 || x == 12 || x == 13 || x == 14 || x == 15) //14 et 15
     {/* il faudra ici mettre les puyo à venir !*/
       for (y = 0; y < PLAYROWS; y+=2)
       {
@@ -257,7 +267,7 @@ void build_field()
         vram_put(0xc7);
       }
     }
-    else if (x == 16 || x == 17)
+    else if (x == 16 || x == 17 || x == 18 || x == 19 || x == 20) // 16 et 17
     {
       for (y = 0; y < PLAYROWS; y+=2)
       {
@@ -579,17 +589,52 @@ void main(void)
       //vrambuf_clear();
       memset(ntbuf1, 0, sizeof(ntbuf1));
       memset(ntbuf2, 0, sizeof(ntbuf2));
-  
+      memset(attrbuf, 0, sizeof(attrbuf));
+      
       set_metatile(0,0xd8);
-      //set_attr_entry((actor_x[0]>>3),(actor_y[0]>>3)+1);
+      //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
+      attrbuf[0] = return_sprite_color(0);
       set_metatile(1,0xd8);
-      //set_attr_entry((actor_x[1]>>3),(actor_y[1]>>3)+1);
+      //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
+      attrbuf[1] = 0xAA;/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+      
       addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      vrambuf_put(nt2attraddr(addr), attrbuf, 1);
+
+      //put_attr_entries(nt2attraddr(addr));
       addr = NTADR_A((actor_x[1]>>3), (actor_y[1]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      //put_attr_entries(nt2attraddr(addr));
+      vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
+      
+      //test attribute
+      memset(ntbuf1, 0, sizeof(ntbuf1));
+      memset(ntbuf2, 0, sizeof(ntbuf2));
+      memset(attrbuf, 0, sizeof(attrbuf));
+      set_metatile(0, 0xd8);
+      attrbuf[0] = 0x5e; //10101010 soit couleur 2 pour les 4
+      addr = NTADR_A(12, 2);
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+      
+      addr = NTADR_A(14,4);
+      attrbuf[1] = 0x5e;
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      //put_attr_entries(nt2attraddr(addr));=> Non marche pas bien
+      vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
+      
+      addr = NTADR_A(16, 6);
+      attrbuf[2] = 0x5e;
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      //put_attr_entries(nt2attraddr(addr));=> Non marche pas bien
+      vrambuf_put(nt2attraddr(addr), &attrbuf[2], 1);
+  //rbvj
 
       actor_x[0] = 3*16;
       actor_y[0] = 0;
@@ -600,11 +645,14 @@ void main(void)
       p1_puyo_list_index ++;
     }
     
-    //sprintf(str,"actor_x 0 : %d END",actor_x[0]>>4);
-    sprintf(str,"%d %d %d %d %d %d %d %d", puyo_list[0], puyo_list[1],  puyo_list[2],  puyo_list[3],  puyo_list[4], puyo_list[5], puyo_list[6], puyo_list[7]);
-    vrambuf_put(NTADR_A(2,26),str,30);
+    sprintf(str,"actor_x 0 : %d END",actor_x[0]>>4);
+    //sprintf(str,"%d %d %d %d %d %d %d %d", puyo_list[0], puyo_list[1],  puyo_list[2],  puyo_list[3],  puyo_list[4], puyo_list[5], puyo_list[6], puyo_list[7]);
+    //sprintf(str,"%d %d %d %d", return_sprite_color(0),return_sprite_color(1), return_sprite_color(2), return_sprite_color(3));
+    //addr = NTADR_A(2,26);
+    //vrambuf_put(addr,str,7);
     //sprintf(str,"%d %d %d %d %d %d",column_height[0],column_height[1],column_height[2],column_height[3], column_height[4], column_height[5]);
-    //vrambuf_put(NTADR_A(6,27),str,19);      
+    //vrambuf_put(NTADR_A(6,27),str,19);  
+    //put_attr_entries(nt2attraddr(addr));
     
     if (oam_id!=0) oam_hide_rest(oam_id);
     // ensure VRAM buffer is cleared
