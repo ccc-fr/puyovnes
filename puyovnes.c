@@ -170,6 +170,7 @@ void generate_rng()
   // the method used here is probably attrocious in term of optimization
   // but it should works.
   // we will be using rand8(), which is fast but...not very random
+  rand();
   for (i = 0 ; i < PUYOLISTLENGTH ; i++)
   {
     puyo_list[i] = 0; //reinit
@@ -236,25 +237,30 @@ byte return_sprite_color(byte spr_index)
 byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y)
 {
   word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
+  byte attr_x = spr_x&0xfc;
+  byte attr_y = spr_y&0xfc;
   byte attr;
   byte sprite_color = return_sprite_color(spr_index);
   byte mask = 3;
+  char str[32];
   ppu_wait_nmi();//not really found about it (frame lost ?), avoid the screen blinking
   vram_adr(addr);
   vram_read(&attr,1);
   vram_adr(0x0);
+  sprintf(str,"attr: %d %d",sprite_color,attr);
+  vrambuf_put( NTADR_A(2,27),str,10);
   
   //we must not override colors of the tiles around the one we change
   //We must determine were our meta sprite is located in the 4*4 metatile attributes
   //if x is odd it will be on the right, even left
   //if y is odd it will be on the bottom, even top
   //LSB is top left, MSB bottom right
-  if (spr_y&1)
+  if (attr_y < spr_y)
   {
     mask <<= 4;
     sprite_color <<= 4;
   }
-  if (spr_x&1) 
+  if (attr_x< spr_x) 
   {
     mask <<= 2;
     sprite_color <<= 2;
@@ -263,6 +269,8 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y)
   //let's erase the previous attributes for the intended position
   attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
   attr += sprite_color;
+  sprintf(str,"attr: %d",attr);
+  vrambuf_put( NTADR_A(20,27),str,10);
   
   return attr;
 }
@@ -292,7 +300,7 @@ void build_field()
         vram_put(0xc7);
       }
     }
-    else if (/*x == 10 ||x == 11 || x == 12 || x == 13 || */x == 14 || x == 15) //14 et 15
+    else if ( x == 8 ||x == 9 || x == 10 ||x == 11 || x == 12 || x == 13 || x == 14 || x == 15) //14 et 15
     {/* il faudra ici mettre les puyo à venir !*/
       for (y = 0; y < PLAYROWS; y+=2)
       {
@@ -304,7 +312,7 @@ void build_field()
         vram_put(0xc7);
       }
     }
-    else if (x == 16 || x == 17 /*|| x == 18 || x == 19 || x == 20*/) // 16 et 17
+    else if (x == 16 || x == 17 || x == 18 || x == 19 || x == 20) // 16 et 17
     {
       for (y = 0; y < PLAYROWS; y+=2)
       {
@@ -632,7 +640,7 @@ void main(void)
       set_metatile(0,0xd8);
       //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
       //attrbuf should take the color for 4 tiles !
-      attrbuf[0] = return_attribute_color(0, actor_x[0]>>3, (actor_y[0]>>3)+1);
+      attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1);
       set_metatile(1,0xd8);
       //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
       attrbuf[1] = return_attribute_color(1, actor_x[1]>>3, (actor_y[1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
@@ -642,21 +650,19 @@ void main(void)
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
 
-      //put_attr_entries(nt2attraddr(addr));
       addr = NTADR_A((actor_x[1]>>3), (actor_y[1]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      //put_attr_entries(nt2attraddr(addr));
       vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
       
       //test attribute
-      /*
-      memset(ntbuf1, 0, sizeof(ntbuf1));
+      
+      /*memset(ntbuf1, 0, sizeof(ntbuf1));
       memset(ntbuf2, 0, sizeof(ntbuf2));
       memset(attrbuf, 0, sizeof(attrbuf));
       set_metatile(0, 0xd8);
-      attrbuf[0] = 0x5e; //10101010 soit couleur 2 pour les 4
-      addr = NTADR_A(12, 2);
+      attrbuf[0] = 0x7e; //10101010 soit couleur 2 pour les 4
+      addr = NTADR_A(12, 22);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
@@ -677,7 +683,7 @@ void main(void)
   //rbvj
 
       //print state before reinit:
-      sprintf(str,"pos x0:%d y0:%d x1:%d y1:%d",actor_x[0]>>3, (actor_y[0]>>3)+1, actor_y[1]>>3,(actor_y[1]>>3)+1);
+      sprintf(str,"pos x1:%d y1:%d x1:%d y1:%d",actor_x[0], actor_y[0], actor_x[0]>>3,(actor_y[0]>>3)+1);
       addr = NTADR_A(1,26);
       vrambuf_put(addr,str,28);
       actor_x[0] = 3*16;
@@ -689,13 +695,13 @@ void main(void)
       p1_puyo_list_index ++;
     }
     
-    sprintf(str,"actory : %d_%d %d_%dEND",actor_y[0], actor_y[0]>>3, actor_y[1],actor_y[1]>>3);
+   // sprintf(str,"actory : %d_%d %d_%dEND",actor_y[0], actor_y[0]>>3, actor_y[1],actor_y[1]>>3);
     //sprintf(str,"%d %d %d %d %d %d %d %d", puyo_list[0], puyo_list[1],  puyo_list[2],  puyo_list[3],  puyo_list[4], puyo_list[5], puyo_list[6], puyo_list[7]);
     //sprintf(str,"%d %d %d %d", return_sprite_color(0),return_sprite_color(1), return_sprite_color(2), return_sprite_color(3));
     
     //sprintf(str,"actory : %lu END", toto);
-    addr = NTADR_A(2,27);
-    vrambuf_put(addr,str,24);
+    //addr = NTADR_A(2,27);
+    //vrambuf_put(addr,str,24);
     //sprintf(str,"%d %d %d %d %d %d",column_height[0],column_height[1],column_height[2],column_height[3], column_height[4], column_height[5]);
     //vrambuf_put(NTADR_A(6,27),str,19);  
     //put_attr_entries(nt2attraddr(addr));
