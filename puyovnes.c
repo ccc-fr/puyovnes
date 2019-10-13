@@ -224,10 +224,47 @@ void generate_rng()
 //OAM is a $200, each sprites uses 4 bytes, but we use metasprites of 4 bytes
 //So metasprite 0 is at 200, 1 at 210,3 at 220 etc
 //The attributes also contains the flip info, so mask it to 0x3 to only have color
-byte return_sprite_color(spr_index)
+byte return_sprite_color(byte spr_index)
 {
   OAMSprite  *spr_ptr = (OAMSprite*)(0x200+16*spr_index);
   return (spr_ptr->attr & 0x3);
+}
+
+//based on sprite x/y position look for the bg attributes related to it
+//find color value based on sprite index and returned the byte with the 4 tiles
+//updated with sprite color
+byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y)
+{
+  word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
+  byte attr;
+  byte sprite_color = return_sprite_color(spr_index);
+  byte mask = 3;
+  ppu_wait_nmi();//not really found about it (frame lost ?), avoid the screen blinking
+  vram_adr(addr);
+  vram_read(&attr,1);
+  vram_adr(0x0);
+  
+  //we must not override colors of the tiles around the one we change
+  //We must determine were our meta sprite is located in the 4*4 metatile attributes
+  //if x is odd it will be on the right, even left
+  //if y is odd it will be on the bottom, even top
+  //LSB is top left, MSB bottom right
+  if (spr_y&1)
+  {
+    mask <<= 4;
+    sprite_color <<= 4;
+  }
+  if (spr_x&1) 
+  {
+    mask <<= 2;
+    sprite_color <<= 2;
+  }
+  
+  //let's erase the previous attributes for the intended position
+  attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
+  attr += sprite_color;
+  
+  return attr;
 }
 
 void build_field()
@@ -350,6 +387,7 @@ void main(void)
   char input_delay_PAD_B[2]; //to avoid multiple input on one press
   char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy
   register word addr;
+  unsigned long toto = 1127523;
   //byte titi, tata, toto;
 
   setup_graphics();
@@ -594,10 +632,10 @@ void main(void)
       set_metatile(0,0xd8);
       //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
       //attrbuf should take the color for 4 tiles !
-      attrbuf[0] = return_sprite_color(0);
+      attrbuf[0] = return_attribute_color(0, actor_x[0]>>3, (actor_y[0]>>3)+1);
       set_metatile(1,0xd8);
       //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
-      attrbuf[1] = return_sprite_color(1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+      attrbuf[1] = return_attribute_color(1, actor_x[1]>>3, (actor_y[1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
       
       addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -638,6 +676,10 @@ void main(void)
       vrambuf_put(nt2attraddr(addr), &attrbuf[2], 1);*/
   //rbvj
 
+      //print state before reinit:
+      sprintf(str,"pos x0:%d y0:%d x1:%d y1:%d",actor_x[0]>>3, (actor_y[0]>>3)+1, actor_y[1]>>3,(actor_y[1]>>3)+1);
+      addr = NTADR_A(1,26);
+      vrambuf_put(addr,str,28);
       actor_x[0] = 3*16;
       actor_y[0] = 0;
       actor_x[1] = 3*16;
@@ -650,6 +692,8 @@ void main(void)
     sprintf(str,"actory : %d_%d %d_%dEND",actor_y[0], actor_y[0]>>3, actor_y[1],actor_y[1]>>3);
     //sprintf(str,"%d %d %d %d %d %d %d %d", puyo_list[0], puyo_list[1],  puyo_list[2],  puyo_list[3],  puyo_list[4], puyo_list[5], puyo_list[6], puyo_list[7]);
     //sprintf(str,"%d %d %d %d", return_sprite_color(0),return_sprite_color(1), return_sprite_color(2), return_sprite_color(3));
+    
+    //sprintf(str,"actory : %lu END", toto);
     addr = NTADR_A(2,27);
     vrambuf_put(addr,str,24);
     //sprintf(str,"%d %d %d %d %d %d",column_height[0],column_height[1],column_height[2],column_height[3], column_height[4], column_height[5]);
