@@ -140,6 +140,18 @@ void put_attr_entries(word addr) {
   vrambuf_end();
 }
 
+// attribute table in PRG ROM
+char attribute_table[0x40] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 0-3
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 4-7
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 8-11
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 12-15
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 16-19
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 20-23
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 24-27
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  // rows 28-29
+};
+
 /*{pal:"nes",layout:"nes"}*/
 const char PALETTE[32] = { 
   0x0D,			// screen color
@@ -243,12 +255,12 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y)
   byte sprite_color = return_sprite_color(spr_index);
   byte mask = 3;
   char str[32];
-  ppu_wait_nmi();//not really found about it (frame lost ?), avoid the screen blinking
+  /*ppu_wait_nmi();//not really found about it (frame lost ?), avoid the screen blinking
   vram_adr(addr);
   vram_read(&attr,1);
   vram_adr(0x0);
   sprintf(str,"attr: %d %d",sprite_color,attr);
-  vrambuf_put( NTADR_A(2,27),str,10);
+  vrambuf_put( NTADR_A(2,27),str,10);*/
   
   //we must not override colors of the tiles around the one we change
   //We must determine were our meta sprite is located in the 4*4 metatile attributes
@@ -266,9 +278,15 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y)
     sprite_color <<= 2;
   }
   
+  // attribute_table,size 64, rows 0-3 are from 0 to 7, 4-7 ->8 to 15, 8-11->16-23
+  //for column, 0 => 0 to 3, 1 => 4 to 7
+  //Sooo let's say meta-tile at 20,27, so we look for the rows, 27
+  //y/4 + x/4
+  attr = attribute_table[spr_y<<2 + spr_x <<2];
   //let's erase the previous attributes for the intended position
   attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
   attr += sprite_color;
+  attribute_table[spr_y<<2 + spr_x <<2] = attr;
   sprintf(str,"attr: %d",attr);
   vrambuf_put( NTADR_A(20,27),str,10);
   
@@ -365,6 +383,9 @@ void build_field()
   vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, PLAYROWS);
   //vrambuf_put((addr+1)|VRAMBUF_VERT, ntbuf2, PLAYROWS);
   */
+  
+  // copy attribute table from PRG ROM to VRAM
+  vram_write(attribute_table, sizeof(attribute_table));
 }
 
 // setup PPU and tables
