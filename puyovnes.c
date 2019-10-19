@@ -111,7 +111,7 @@ sbyte actor_dy[NUM_ACTORS];
 #define INPUT_DIRECTION_DELAY 4
 #define INPUT_BUTTON_DELAY 4
 
-const unsigned char* const puyoSeq[4] = {
+const unsigned char* puyoSeq[4] = {
   puyo1, puyo2, puyo3, puyo4,
 };
 
@@ -616,7 +616,11 @@ void main(void)
         oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
       }
       else
-        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>(i*2))&3]);
+      {
+        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>((((p2_puyo_list_index%2)*2)+(i-2))*2))&3]);
+        //oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>(i*2))&3]);
+      }
+        
       //actor_x[i] += actor_dx[i];
       // actor_dx[i] = 0;
       actor_y[i] += actor_dy[i];
@@ -709,10 +713,48 @@ void main(void)
       actor_y[1] = 16;
       actor_dy[0] = 1;
       actor_dy[1] = 1;
-      p1_puyo_list_index ++;
+      p1_puyo_list_index++;
     }
+    
+    
+    if (actor_dy[2] == 0 && actor_dy[3] == 0)
+    {
+      //vrambuf_clear();
+      /*memset(ntbuf1, 0, sizeof(ntbuf1));
+      memset(ntbuf2, 0, sizeof(ntbuf2));
+      memset(attrbuf, 0, sizeof(attrbuf));*/
+      
+      set_metatile(2,0xd8);
+      attrbuf[2] = return_attribute_color(2, actor_x[2]>>3,(actor_y[2]>>3)+1, attribute_table);
+
+      set_metatile(3,0xd8);
+      attrbuf[3] = return_attribute_color(3, actor_x[3]>>3, (actor_y[3]>>3)+1, attribute_table);
+
+      addr = NTADR_A((actor_x[2]>>3), (actor_y[2]>>3)+1);
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      vrambuf_put(nt2attraddr(addr), &attrbuf[2], 1);
+
+      addr = NTADR_A((actor_x[3]>>3), (actor_y[3]>>3)+1);
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      vrambuf_put(nt2attraddr(addr), &attrbuf[3], 1);
  
-    if (oam_id!=0) oam_hide_rest(oam_id);
+      actor_x[2] = 11*16;
+      actor_y[2] = 0;
+      actor_x[3] = 11*16;
+      actor_y[3] = 16;
+      actor_dy[2] = 1;
+      actor_dy[3] = 1;
+      p2_puyo_list_index++;
+    }
+    
+    /*sprintf(str,"index p1:%d index p2:%d",p1_puyo_list_index,p2_puyo_list_index);
+    addr = NTADR_A(2,27);
+    vrambuf_put(addr,str,23);*/
+
+    if (oam_id!=0) 
+      oam_hide_rest(oam_id);
     // ensure VRAM buffer is cleared
     ppu_wait_nmi();
     vrambuf_clear();
