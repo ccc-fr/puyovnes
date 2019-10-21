@@ -60,7 +60,9 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 #define PUYOLISTLENGTH 64
 
 /// GLOBAL VARIABLES
-
+//note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
+//(I think I will regret that decision later...)
+typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -77,6 +79,13 @@ byte attribute_table[64];/* = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 24-27
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  // rows 28-29
 };*/
+//both play tables can be stored in a 6*13 array of byte
+//4 LSB are for board one, value car by of type CellType (1 bit unused), so must use &0xf to get correct value 
+//4 MSB are for 2nd board, so must use >>4 to get correct value, or even better (value&240)>>4, probably overkill
+//and still 1 bit unused.
+//[0][0] is top left, [5][12] is bottom right, keeping same axis than display for simplification
+byte boards[6][13];
+
 // buffers that hold vertical slices of nametable data
 char ntbuf1[PLAYROWS];	// left side
 char ntbuf2[PLAYROWS];	// right side
@@ -110,8 +119,8 @@ sbyte actor_dy[NUM_ACTORS];
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
 #define INPUT_BUTTON_DELAY 4
-
-const unsigned char* puyoSeq[4] = {
+//le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
+const unsigned char* const puyoSeq[4] = {
   puyo1, puyo2, puyo3, puyo4,
 };
 
@@ -279,6 +288,59 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_
   return attr;
 }
 
+//Update the boards table, not  optimized :-S
+//board_index must take 0 or 2
+void update_boards(byte board_index)
+{
+  byte x,y;
+  if (board_index == 0)
+  { 
+    //we must be careful not to erase the data for p2 table
+    //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
+    //get the column number right
+    x = ((actor_x[board_index]>>3) - 2) >> 1;
+    y = ((actor_y[board_index]>>3)+1)>>1;
+    boards[x][y] = (boards[x][y]&240) + attrbuf[board_index];
+    x = ((actor_x[board_index+1]>>3) - 2) >> 1;
+    y = ((actor_y[board_index+1]>>3)+1)>>1;
+    boards[x][y] = (boards[x][y]&240) + attrbuf[board_index+1];
+  }
+  else
+  {
+    //we must be careful to not erase the ddata for p1 table
+    //column 0 is at 18 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
+    //get the column number  right
+    x = ((actor_x[board_index]>>3) - 18) >> 1;
+    y = ((actor_y[board_index]>>3)+1)>>1;
+    boards[x][y] = (boards[x][y]&15) + (attrbuf[board_index] << 4);
+    x = ((actor_x[board_index+1]>>3) - 18) >> 1;
+    y = ((actor_y[board_index+1]>>3)+1)>>1;
+    boards[x][y] = (boards[x][y]&15) + (attrbuf[board_index+1] << 4);
+  }
+}
+
+//looking for something to break
+//if yes then flag it, and fill a table of things to break ???
+byte check_board(byte board_index)
+{
+  byte i, j, current_color;
+  byte counter = 0;
+  byte mask;
+  mask = board_index == 0 ? 15 : 240;
+  //Start from bottom left
+  for (i = 0 ; i < 6 ; i++)
+  {
+    //look dumb but byte is unsigned char (faster than signed !)
+    //j>=0 can't work here as it will never be negative
+    //but go to 255 instead
+    for (j = 12 ; j <= 12 ; j--)
+    {
+      current_color = boards[i][j] & mask;
+    }
+  }
+  return 0;
+}
+
 void build_field()
 {
   //register word addr;
@@ -290,6 +352,15 @@ void build_field()
   vram_adr(NTADR_A(10,11));
   vram_put(0xc5);
   vram_put(0xc7);*/
+  //Filling up boards with EMPTY
+  for (x = 0; x < 6; x++)
+  {
+    for (y = 0; y < 6; y++)
+    {
+      boards[x][y] = EMPTY + (EMPTY << 4);
+    }
+  }
+  
   //initialize attribute table to 0;
   memset(attribute_table,0,sizeof(attribute_table));
   for (x = 0; x < PLAYCOLUMNS; x+=2)
@@ -396,7 +467,7 @@ void main(void)
   char oam_id;	// sprite ID
   char i;	// actor index
   char pad;	// controller flags
-  //char str[32];
+  char str[32];
   char previous_pad[2];
   char input_delay_PAD_LEFT[2]; //to avoid multiple input on one press
   char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
@@ -662,9 +733,9 @@ void main(void)
       
       //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
       attrbuf[1] = return_attribute_color(1, actor_x[1]>>3, (actor_y[1]>>3)+1, attribute_table);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
-      /*sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
+      sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
       addr = NTADR_A(1,27);
-      vrambuf_put(addr,str,20);*/
+      vrambuf_put(addr,str,20);
       
       addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -676,33 +747,12 @@ void main(void)
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
       
-      //test attribute
-      
-      /*memset(ntbuf1, 0, sizeof(ntbuf1));
-      memset(ntbuf2, 0, sizeof(ntbuf2));
-      memset(attrbuf, 0, sizeof(attrbuf));
-      set_metatile(0, 0xd8);
-      attrbuf[0] = 0x7e; //10101010 soit couleur 2 pour les 4
-      addr = NTADR_A(12, 22);
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
-      
-      addr = NTADR_A(14,4);
-      attrbuf[1] = 0x5e;
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      //put_attr_entries(nt2attraddr(addr));=> Non marche pas bien
-      vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
-      
-      addr = NTADR_A(16, 6);
-      attrbuf[2] = 0x5e;
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      //put_attr_entries(nt2attraddr(addr));=> Non marche pas bien
-      vrambuf_put(nt2attraddr(addr), &attrbuf[2], 1);*/
-  //rbvj
-
+      //updating the board, if things are done correctly attrbuf contains the color to be used
+      //Still need to convert coordinates ! And not overwrite the value for the opponent board !
+      update_boards(0);
+      /*boards[(actor_x[0]>>3) - 4][((actor_y[0]>>3)+1)>>1] = attrbuf[0];
+      boards[(actor_x[1]>>3) - 4][((actor_y[1]>>3)+1)>>1] = attrbuf[1];*/
+   
       //print state before reinit:
       /*sprintf(str,"pos x1:%d y1:%d x1:%d y1:%d",actor_x[0], actor_y[0], actor_x[0]>>3,(actor_y[0]>>3)+1);
       addr = NTADR_A(1,26);
@@ -729,6 +779,9 @@ void main(void)
 
       set_metatile(3,0xd8);
       attrbuf[3] = return_attribute_color(3, actor_x[3]>>3, (actor_y[3]>>3)+1, attribute_table);
+      /*sprintf(str,"table:%d %d %d %d",attrbuf[3],actor_x[3]>>3,(actor_y[3]>>3)+1,(((actor_y[3]>>3)+1)<<1) + ((actor_x[3]>>3)>>2));
+      addr = NTADR_A(1,26);
+      vrambuf_put(addr,str,20);*/
 
       addr = NTADR_A((actor_x[2]>>3), (actor_y[2]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -739,6 +792,8 @@ void main(void)
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       vrambuf_put(nt2attraddr(addr), &attrbuf[3], 1);
+      
+      update_boards(2); //see the function to know why "2" in parameter
  
       actor_x[2] = 11*16;
       actor_y[2] = 0;
