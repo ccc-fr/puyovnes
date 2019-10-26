@@ -85,6 +85,9 @@ byte attribute_table[64];/* = {
 //and still 1 bit unused.
 //[0][0] is top left, [5][12] is bottom right, keeping same axis than display for simplification
 byte boards[6][13];
+//for sake of simplicity keeping the same table type for tmp
+//but we may look for something less huge in size later.
+byte tmp_boards[6][13];
 
 // buffers that hold vertical slices of nametable data
 char ntbuf1[PLAYROWS];	// left side
@@ -293,6 +296,7 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_
 void update_boards(byte board_index)
 {
   byte x,y;
+  //char str[32];
   if (board_index == 0)
   { 
     //we must be careful not to erase the data for p2 table
@@ -300,10 +304,19 @@ void update_boards(byte board_index)
     //get the column number right
     x = ((actor_x[board_index]>>3) - 2) >> 1;
     y = ((actor_y[board_index]>>3)+1)>>1;
-    boards[x][y] = (boards[x][y]&240) + attrbuf[board_index];
+    //sprintf(str,"%d",(boards[x][y]&240));
+    //vrambuf_put(NTADR_A(20,13),str,3);
+    boards[x][y] = (boards[x][y]&240) + return_sprite_color(0);
+   /* sprintf(str,"x:%d y:%d val:%d buf:%da",x , y, boards[x][y], return_sprite_color(0));
+    vrambuf_put(NTADR_A(1,26),str,24);*/
     x = ((actor_x[board_index+1]>>3) - 2) >> 1;
     y = ((actor_y[board_index+1]>>3)+1)>>1;
-    boards[x][y] = (boards[x][y]&240) + attrbuf[board_index+1];
+   // sprintf(str,"%d",(boards[x][y]&240));
+    //vrambuf_put(NTADR_A(20,14),str,3);
+    boards[x][y] = (boards[x][y]&240) + return_sprite_color(1);
+    /*sprintf(str,"x:%d y:%d val:%d buf:%da", x, y, boards[x][y], return_sprite_color(1));
+    vrambuf_put(NTADR_A(1,27),str,24);*/
+
   }
   else
   {
@@ -312,10 +325,10 @@ void update_boards(byte board_index)
     //get the column number  right
     x = ((actor_x[board_index]>>3) - 18) >> 1;
     y = ((actor_y[board_index]>>3)+1)>>1;
-    boards[x][y] = (boards[x][y]&15) + (attrbuf[board_index] << 4);
+    boards[x][y] = (boards[x][y]&15) + (return_sprite_color(2) << 4);
     x = ((actor_x[board_index+1]>>3) - 18) >> 1;
     y = ((actor_y[board_index+1]>>3)+1)>>1;
-    boards[x][y] = (boards[x][y]&15) + (attrbuf[board_index+1] << 4);
+    boards[x][y] = (boards[x][y]&15) + (return_sprite_color(3) << 4);
   }
 }
 
@@ -323,10 +336,18 @@ void update_boards(byte board_index)
 //if yes then flag it, and fill a table of things to break ???
 byte check_board(byte board_index)
 {
-  byte i, j, current_color;
+  byte i, j, k, l, current_color;
   byte counter = 0;
-  byte mask;
-  mask = board_index == 0 ? 15 : 240;
+  byte mask = 15, flag = 8, shift = 0;
+  byte destruction = 0;
+  //return 0;
+  if (board_index != 0)
+  {
+    shift = 4;
+    mask <<= shift;
+    flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
+  }
+
   //Start from bottom left
   for (i = 0 ; i < 6 ; i++)
   {
@@ -334,11 +355,72 @@ byte check_board(byte board_index)
     //j>=0 can't work here as it will never be negative
     //but go to 255 instead
     for (j = 12 ; j <= 12 ; j--)
-    {
-      current_color = boards[i][j] & mask;
+    {   
+      //already flagged ? next !
+      if (boards[i][j] & flag > 0)
+        continue;
+
+      current_color = (boards[i][j] & mask) >> shift;
+      if (current_color != EMPTY && current_color != OJAMA)
+      {
+        //flaging our current color 
+        tmp_boards[i][j] += flag; //tmp_boards is initialized at 0 everywhere
+        //Can we do it without recursiveness ? aha !
+        counter++;
+        //as we go from bottom to top and left to right
+        for (k = 0; k < 6; k++)
+        {
+          for (l = 12 ; l <= 12 ; l--)
+          {
+            //if it already has the flag it's useless to test it, let's go quick !
+            if ( (tmp_boards[k][l] != flag) && (boards[k][l] & flag == 0) && (current_color == ((boards[k][l] & mask) >> shift)) )
+            {
+              //looking for a puyo at x+-1 or y+-1 to have the flag
+              if (((k+1) < 6) && (tmp_boards[k+1][l] == flag))
+              {
+                tmp_boards[k][l] = flag;
+                counter++;
+              }
+              if (((k-1) < 6) && (tmp_boards[k-1][l] == flag))
+              {
+                tmp_boards[k][l] = flag;
+                counter++;
+              }
+              if (((l+1) <= 12) && (tmp_boards[k][l+1] == flag))
+              {
+                tmp_boards[k][l] = flag;
+                counter++;
+              }
+              if (((l-1) <= 12) && (tmp_boards[k][l-1] == flag))
+              {
+                tmp_boards[k][l] = flag;
+                counter++;
+              }
+            }
+          }
+        }
+        //We have parse all the table, if counter >= 4 then we can update the main boards table
+        //and reset the tmp_board at the same time.
+        if (counter >= 4)
+        {
+          for (k = 0; k < 6; k++)
+          {
+            for (l = 12 ; l <= 12 ; l--)
+            {
+              if ( (tmp_boards[k][l] & flag) == 1)
+              {
+                boards[k][l] += flag;
+                tmp_boards[k][l] = 0;
+              }
+            }
+          }
+          destruction++;          
+        }
+        counter = 0;
+      }
     }
   }
-  return 0;
+  return destruction;
 }
 
 void build_field()
@@ -355,9 +437,10 @@ void build_field()
   //Filling up boards with EMPTY
   for (x = 0; x < 6; x++)
   {
-    for (y = 0; y < 6; y++)
+    for (y = 0; y < 13; y++)
     {
       boards[x][y] = EMPTY + (EMPTY << 4);
+      tmp_boards[x][y] = 0;
     }
   }
   
@@ -733,9 +816,9 @@ void main(void)
       
       //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
       attrbuf[1] = return_attribute_color(1, actor_x[1]>>3, (actor_y[1]>>3)+1, attribute_table);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
-      sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
+      /*sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
       addr = NTADR_A(1,27);
-      vrambuf_put(addr,str,20);
+      vrambuf_put(addr,str,20);*/
       
       addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -750,8 +833,23 @@ void main(void)
       //updating the board, if things are done correctly attrbuf contains the color to be used
       //Still need to convert coordinates ! And not overwrite the value for the opponent board !
       update_boards(0);
+      /*sprintf(str,"%d %d %d %d", boards[0][12], boards[1][12], boards[2][12], boards[3][12] );
+      addr = NTADR_A(20,27);
+      vrambuf_put(addr,str,12);
+      sprintf(str,"%d %d %d %d", boards[0][11], boards[1][11], boards[2][11], boards[3][11] );
+      addr = NTADR_A(20,26);
+      vrambuf_put(addr,str,12);*/
       /*boards[(actor_x[0]>>3) - 4][((actor_y[0]>>3)+1)>>1] = attrbuf[0];
       boards[(actor_x[1]>>3) - 4][((actor_y[1]>>3)+1)>>1] = attrbuf[1];*/
+      /*sprintf(str," ");
+      addr = NTADR_A(0,0);
+      vrambuf_put(addr,str,1);*/
+      if (check_board(0) > 0)
+      {
+        sprintf(str,"BOOM");
+        addr = NTADR_A(20,15);
+        vrambuf_put(addr,str,4);
+      }
    
       //print state before reinit:
       /*sprintf(str,"pos x1:%d y1:%d x1:%d y1:%d",actor_x[0], actor_y[0], actor_x[0]>>3,(actor_y[0]>>3)+1);
@@ -767,21 +865,13 @@ void main(void)
     }
     
     
-    if (actor_dy[2] == 0 && actor_dy[3] == 0)
-    {
-      //vrambuf_clear();
-      /*memset(ntbuf1, 0, sizeof(ntbuf1));
-      memset(ntbuf2, 0, sizeof(ntbuf2));
-      memset(attrbuf, 0, sizeof(attrbuf));*/
-      
+    if (false && actor_dy[2] == 0 && actor_dy[3] == 0)
+    {/*
       set_metatile(2,0xd8);
       attrbuf[2] = return_attribute_color(2, actor_x[2]>>3,(actor_y[2]>>3)+1, attribute_table);
 
       set_metatile(3,0xd8);
       attrbuf[3] = return_attribute_color(3, actor_x[3]>>3, (actor_y[3]>>3)+1, attribute_table);
-      /*sprintf(str,"table:%d %d %d %d",attrbuf[3],actor_x[3]>>3,(actor_y[3]>>3)+1,(((actor_y[3]>>3)+1)<<1) + ((actor_x[3]>>3)>>2));
-      addr = NTADR_A(1,26);
-      vrambuf_put(addr,str,20);*/
 
       addr = NTADR_A((actor_x[2]>>3), (actor_y[2]>>3)+1);
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -793,7 +883,7 @@ void main(void)
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       vrambuf_put(nt2attraddr(addr), &attrbuf[3], 1);
       
-      update_boards(2); //see the function to know why "2" in parameter
+      //update_boards(2); //see the function to know why "2" in parameter
  
       actor_x[2] = 11*16;
       actor_y[2] = 0;
@@ -801,7 +891,7 @@ void main(void)
       actor_y[3] = 16;
       actor_dy[2] = 1;
       actor_dy[3] = 1;
-      p2_puyo_list_index++;
+      p2_puyo_list_index++;*/
     }
     
     /*sprintf(str,"index p1:%d index p2:%d",p1_puyo_list_index,p2_puyo_list_index);
