@@ -63,11 +63,13 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY};
+typedef enum Step {PLAY, CHECK, DESTROY};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
 byte seg_char;		// character to draw
 byte seg_palette;	// attribute table value
+byte step_p1, step_p2;
 // attribute table in PRG ROM
 byte attribute_table[64];/* = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 0-3
@@ -122,6 +124,16 @@ sbyte actor_dy[NUM_ACTORS];
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
 #define INPUT_BUTTON_DELAY 4
+//previously declared in main()
+char oam_id;	// sprite ID
+char pad;	// controller flags
+char previous_pad[2];
+char input_delay_PAD_LEFT[2]; //to avoid multiple input on one press
+char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
+char input_delay_PAD_A[2]; //to avoid multiple input on one press
+char input_delay_PAD_B[2]; //to avoid multiple input on one press
+char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy
+
 //le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
 const unsigned char* const puyoSeq[4] = {
   puyo1, puyo2, puyo3, puyo4,
@@ -569,18 +581,160 @@ void setup_graphics() {
   seg_char = 0xe0;
 }
 
+void handle_controler_and_sprites(char i)
+{
+  pad = pad_poll(i);
+  //update status of controller memory
+  if (previous_pad[i]&PAD_LEFT && pad&PAD_LEFT)
+    input_delay_PAD_LEFT[i]++;
+  else
+    input_delay_PAD_LEFT[i] = 0;
+  if (previous_pad[i]&PAD_RIGHT && pad&PAD_RIGHT)
+    input_delay_PAD_RIGHT[i]++;
+  else
+    input_delay_PAD_RIGHT[i] = 0;
+  if (previous_pad[i]&PAD_A && pad&PAD_A)
+    input_delay_PAD_A[i]++;
+  else
+    input_delay_PAD_A[i] = 0;
+  if (previous_pad[i]&PAD_B && pad&PAD_B)
+    input_delay_PAD_B[i]++;
+  else
+    input_delay_PAD_B[i] = 0;
+
+  //you have to look at the leftmost or rightmost puyo
+  //p1 puyo 0 & 1, p2 puyo 2 & 3
+  if (actor_x[i*2] < actor_x[(i*2)+1])
+  {
+    //left/right
+    if (pad&PAD_LEFT && actor_x[i*2] > (16+(i*128)))
+    {
+      //add a bit of delay before going again to left
+      if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+      {
+        actor_x[i*2] -= 16;
+        actor_x[(i*2)+1] -= 16;
+      }
+    }
+    else if (pad&PAD_RIGHT && actor_x[(i*2)+1] < (96+(i*128)))
+    {
+      if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+      {
+        actor_x[i*2] += 16;
+        actor_x[(i*2)+1] += 16;
+      }
+    }
+    else
+    { //doing nothing
+      /*actor_x[i*2] = 0;
+          actor_x[(i*2)+1] = 0;*/
+    }
+    //buttons, the puyo rotating is always the one at the top
+    //so with index at 0 (0 p1, 2 p2)
+    if (pad&PAD_B && input_delay_PAD_B[i] == 0)
+    { 
+      //here as puyo[0] < puyo[1] we are at the left, if we press
+      //B the puyo will go under the 2nd puyo
+      //the delay has to be at 0, because we don't want it to turn automatically
+      //you have to press each time        
+      actor_y[i*2] += 16;
+      actor_x[i*2] += 16;
+    }
+    if (pad&PAD_A && input_delay_PAD_A[i] == 0)
+    { 
+      //here as puyo[0] < puyo[1] we are at the left, if we press
+      //A the puyo will go over the 2nd puyo
+      actor_y[i*2] -= 16;
+      actor_x[i*2] += 16;
+    }   
+  }
+  else
+  {
+    if (pad&PAD_LEFT && actor_x[(i*2)+1] > (16+i*128))
+    {
+      if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+      {
+        actor_x[i*2] -= 16;
+        actor_x[(i*2)+1] -= 16;
+      }
+    }
+    else if (pad&PAD_RIGHT && actor_x[i*2] < (96+i*128))
+    {
+      if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+      {
+        actor_x[i*2] += 16;
+        actor_x[(i*2)+1] += 16;
+      }
+    }
+    else
+    {//doing nothing
+      /*actor_dx[i*2] = 0;
+          actor_dx[(i*2)+1] = 0;*/
+    }
+
+    if (actor_x[i*2] != actor_x[(i*2)+1])
+    {
+      //puyo[0] > puyo[1], it's on its right
+      if (pad&PAD_B && input_delay_PAD_B[i] == 0)
+      { 
+        //here as puyo[0] > puyo[1] we are at the right, if we press
+        //A the puyo will go over the 2nd puyo
+        actor_y[i*2] -= 16;
+        actor_x[i*2] -= 16;
+      }
+      if (pad&PAD_A && input_delay_PAD_A[i] == 0)
+      { 
+        //here as puyo[0] > puyo[1] we are at the right, if we press
+        //A the puyo will go under the 2nd puyo
+        actor_y[i*2] += 16;
+        actor_x[i*2] -= 16;    
+      }   
+    }
+    else
+    {
+      //same x for both puyo
+      //B we go on the left, A we go on the right
+      if (pad&PAD_B && input_delay_PAD_B[i] == 0)
+      { 
+        //we need to know if puyo[0] is above or below puyo[1]
+        // the lowest value is higher on the screen !
+        if (actor_y[i*2] < actor_y[(i*2)+1])
+        {
+          //going from up to left
+          actor_x[i*2] -= 16;
+          actor_y[i*2] += 16; 
+        }
+        else
+        {  
+          //going down to right
+          actor_x[i*2] += 16;
+          actor_y[i*2] -= 16; 
+        }
+      }
+      if (pad&PAD_A && input_delay_PAD_A[i] == 0)
+      { 
+        if (actor_y[i*2] < actor_y[(i*2)+1])
+        {
+          // going from up to right
+          actor_x[i*2] += 16;
+          actor_y[i*2] += 16; 
+        }
+        else
+        {
+          //going from down to left
+          actor_x[i*2] -= 16;
+          actor_y[i*2] -= 16; 
+        }   
+      } 
+    }
+  }  
+  previous_pad[i] = pad;
+}
+
 void main(void)
 {
-  char oam_id;	// sprite ID
   char i;	// actor index
-  char pad;	// controller flags
   char str[32];
-  char previous_pad[2];
-  char input_delay_PAD_LEFT[2]; //to avoid multiple input on one press
-  char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
-  char input_delay_PAD_A[2]; //to avoid multiple input on one press
-  char input_delay_PAD_B[2]; //to avoid multiple input on one press
-  char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy
   register word addr;
 
   setup_graphics();
@@ -624,6 +778,8 @@ void main(void)
   for (i = 0; i < 12 ; i++)
     column_height[i] = 190;
 
+  step_p1 = PLAY;
+  step_p2 = PLAY;
   
   // enable rendering
   ppu_on_all();
@@ -631,195 +787,88 @@ void main(void)
   // infinite loop
   while(1) {
     //get input
-    for (i = 0; i < 2; i++)
-    {
-      pad = pad_poll(i);
-      //update status of controller memory
-      if (previous_pad[i]&PAD_LEFT && pad&PAD_LEFT)
-        input_delay_PAD_LEFT[i]++;
-      else
-        input_delay_PAD_LEFT[i] = 0;
-      if (previous_pad[i]&PAD_RIGHT && pad&PAD_RIGHT)
-        input_delay_PAD_RIGHT[i]++;
-      else
-        input_delay_PAD_RIGHT[i] = 0;
-      if (previous_pad[i]&PAD_A && pad&PAD_A)
-        input_delay_PAD_A[i]++;
-      else
-        input_delay_PAD_A[i] = 0;
-      if (previous_pad[i]&PAD_B && pad&PAD_B)
-        input_delay_PAD_B[i]++;
-      else
-        input_delay_PAD_B[i] = 0;
-
-      //you have to look at the leftmost or rightmost puyo
-      //p1 puyo 0 & 1, p2 puyo 2 & 3
-      if (actor_x[i*2] < actor_x[(i*2)+1])
-      {
-        //left/right
-        if (pad&PAD_LEFT && actor_x[i*2] > (16+(i*128)))
-        {
-          //add a bit of delay before going again to left
-          if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
-          {
-            actor_x[i*2] -= 16;
-            actor_x[(i*2)+1] -= 16;
-          }
-        }
-        else if (pad&PAD_RIGHT && actor_x[(i*2)+1] < (96+(i*128)))
-        {
-          if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
-          {
-            actor_x[i*2] += 16;
-            actor_x[(i*2)+1] += 16;
-          }
-        }
-        else
-        { //doing nothing
-          /*actor_x[i*2] = 0;
-          actor_x[(i*2)+1] = 0;*/
-        }
-        //buttons, the puyo rotating is always the one at the top
-        //so with index at 0 (0 p1, 2 p2)
-        if (pad&PAD_B && input_delay_PAD_B[i] == 0)
-        { 
-          //here as puyo[0] < puyo[1] we are at the left, if we press
-          //B the puyo will go under the 2nd puyo
-          //the delay has to be at 0, because we don't want it to turn automatically
-          //you have to press each time        
-          actor_y[i*2] += 16;
-          actor_x[i*2] += 16;
-        }
-        if (pad&PAD_A && input_delay_PAD_A[i] == 0)
-        { 
-          //here as puyo[0] < puyo[1] we are at the left, if we press
-          //A the puyo will go over the 2nd puyo
-          actor_y[i*2] -= 16;
-          actor_x[i*2] += 16;
-        }   
-      }
-      else
-      {
-        if (pad&PAD_LEFT && actor_x[(i*2)+1] > (16+i*128))
-        {
-          if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
-          {
-            actor_x[i*2] -= 16;
-            actor_x[(i*2)+1] -= 16;
-          }
-        }
-        else if (pad&PAD_RIGHT && actor_x[i*2] < (96+i*128))
-        {
-          if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
-          {
-            actor_x[i*2] += 16;
-            actor_x[(i*2)+1] += 16;
-          }
-        }
-        else
-        {//doing nothing
-          /*actor_dx[i*2] = 0;
-          actor_dx[(i*2)+1] = 0;*/
-        }
-        
-        if (actor_x[i*2] != actor_x[(i*2)+1])
-        {
-          //puyo[0] > puyo[1], it's on its right
-          if (pad&PAD_B && input_delay_PAD_B[i] == 0)
-          { 
-            //here as puyo[0] > puyo[1] we are at the right, if we press
-            //A the puyo will go over the 2nd puyo
-            actor_y[i*2] -= 16;
-            actor_x[i*2] -= 16;
-          }
-          if (pad&PAD_A && input_delay_PAD_A[i] == 0)
-          { 
-            //here as puyo[0] > puyo[1] we are at the right, if we press
-            //A the puyo will go under the 2nd puyo
-              actor_y[i*2] += 16;
-              actor_x[i*2] -= 16;    
-          }   
-        }
-        else
-        {
-          //same x for both puyo
-          //B we go on the left, A we go on the right
-          if (pad&PAD_B && input_delay_PAD_B[i] == 0)
-          { 
-            //we need to know if puyo[0] is above or below puyo[1]
-            // the lowest value is higher on the screen !
-            if (actor_y[i*2] < actor_y[(i*2)+1])
-            {
-              //going from up to left
-              actor_x[i*2] -= 16;
-              actor_y[i*2] += 16; 
-            }
-            else
-            {  
-              //going down to right
-              actor_x[i*2] += 16;
-              actor_y[i*2] -= 16; 
-            }
-          }
-          if (pad&PAD_A && input_delay_PAD_A[i] == 0)
-          { 
-            if (actor_y[i*2] < actor_y[(i*2)+1])
-            {
-              // going from up to right
-              actor_x[i*2] += 16;
-              actor_y[i*2] += 16; 
-            }
-            else
-            {
-              //going from down to left
-              actor_x[i*2] -= 16;
-              actor_y[i*2] -= 16; 
-            }   
-          } 
-        }
-      }  
-      previous_pad[i] = pad;
-    }
     oam_id = 0;
-    for (i = 0 ; i < 4 ; i++)
+    if (step_p1 == PLAY)
     {
-      // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
-      // puyo_list       p1_puyo_list_index
-      // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
-      // ensuite on décale sur le bon élément de l'index 
-      // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
-      // et on fait & 3 pour ne garder que les 2 premiers bits
-      if (i<2)
+      handle_controler_and_sprites(0);
+      for (i = 0 ; i < 2 ; i++)
       {
+        // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
+        // puyo_list       p1_puyo_list_index
+        // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
+        // ensuite on décale sur le bon élément de l'index 
+        // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
+        // et on fait & 3 pour ne garder que les 2 premiers bits    
         oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
+
+        actor_y[i] += actor_dy[i];
+
+        //test relative to column_height
+        if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
+        {
+          actor_dy[i] = 0;
+          actor_y[i] = column_height[(actor_x[i]>>4) - 1];
+          column_height[(actor_x[i]>>4) - 1] -= 16;
+        }
       }
-      else
-      {
-        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>((((p2_puyo_list_index%2)*2)+(i-2))*2))&3]);
-        //oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>(i*2))&3]);
-      }
-        
-      //actor_x[i] += actor_dx[i];
-      // actor_dx[i] = 0;
-      actor_y[i] += actor_dy[i];
-      /*if (190 < actor_y[i])
-        actor_dy[i] = 0;*/
-      //test relative to column_height
-      if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
-      {
-        actor_dy[i] = 0;
-        actor_y[i] = column_height[(actor_x[i]>>4) - 1];
-        column_height[(actor_x[i]>>4) - 1] -= 16;
-        /*if (column_height[(actor_x[i]>>4) - 1] > 200)
-          build_field();*/
-      }
-      //TODO : problème avec le dy qui descend et le reste, 
-      //en fait on ne devrait pas utiliser les dx/dy dans le positionnement des puyos
+    }
+    else
+    {
+      //we need to move oam_id to not have an offset, should be a better way though...
+      oam_id = oam_meta_spr(actor_x[0], actor_y[0], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+0)*2))&3]);
+      oam_id = oam_meta_spr(actor_x[1], actor_y[1], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+1)*2))&3]);
     }
     
+    if (step_p1 == CHECK)
+    {
+      if (check_board(0) > 0)
+      {
+        sprintf(str,"BOOM");
+        addr = NTADR_A(20,15);
+        vrambuf_put(addr,str,4);
+        step_p1 = PLAY;
+      }
+      else
+      {
+        actor_x[0] = 3*16;
+        actor_y[0] = 0;
+        actor_x[1] = 3*16;
+        actor_y[1] = 16;
+        actor_dy[0] = 1;
+        actor_dy[1] = 1;
+        p1_puyo_list_index++;
+        step_p1 = DESTROY;
+      }
+    }
+      
+    if (step_p2 == PLAY)
+    {
+      handle_controler_and_sprites(1);
+      for (i = 2 ; i < 4 ; i++)
+      {
+        // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
+        // puyo_list       p1_puyo_list_index
+        // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
+        // ensuite on décale sur le bon élément de l'index 
+        // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
+        // et on fait & 3 pour ne garder que les 2 premiers bits
+        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>((((p2_puyo_list_index%2)*2)+(i-2))*2))&3]);
+ 
+        actor_y[i] += actor_dy[i];
+
+        //test relative to column_height
+        if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
+        {
+          actor_dy[i] = 0;
+          actor_y[i] = column_height[(actor_x[i]>>4) - 1];
+          column_height[(actor_x[i]>>4) - 1] -= 16;
+        }
+      }
+    }
+
     //put_attr_entries(nt2attraddr(addr));
 
-    if (actor_dy[0] == 0 && actor_dy[1] == 0)
+    if ( step_p1 == PLAY && actor_dy[0] == 0 && actor_dy[1] == 0)
     {
       //vrambuf_clear();
       memset(ntbuf1, 0, sizeof(ntbuf1));
@@ -868,28 +917,27 @@ void main(void)
       /*sprintf(str," ");
       addr = NTADR_A(0,0);
       vrambuf_put(addr,str,1);*/
+      step_p1 = CHECK;
+      //all commented below is now for another state
+      /*
       if (check_board(0) > 0)
       {
         sprintf(str,"BOOM");
         addr = NTADR_A(20,15);
         vrambuf_put(addr,str,4);
       }
-   
-      //print state before reinit:
-      /*sprintf(str,"pos x1:%d y1:%d x1:%d y1:%d",actor_x[0], actor_y[0], actor_x[0]>>3,(actor_y[0]>>3)+1);
-      addr = NTADR_A(1,26);
-      vrambuf_put(addr,str,28);*/
+  
       actor_x[0] = 3*16;
       actor_y[0] = 0;
       actor_x[1] = 3*16;
       actor_y[1] = 16;
       actor_dy[0] = 1;
       actor_dy[1] = 1;
-      p1_puyo_list_index++;
+      p1_puyo_list_index++;*/
     }
     
     
-    if (false && actor_dy[2] == 0 && actor_dy[3] == 0)
+    if (false && step_p2 == PLAY && actor_dy[2] == 0 && actor_dy[3] == 0)
     {/*
       set_metatile(2,0xd8);
       attrbuf[2] = return_attribute_color(2, actor_x[2]>>3,(actor_y[2]>>3)+1, attribute_table);
@@ -917,10 +965,6 @@ void main(void)
       actor_dy[3] = 1;
       p2_puyo_list_index++;*/
     }
-    
-    /*sprintf(str,"index p1:%d index p2:%d",p1_puyo_list_index,p2_puyo_list_index);
-    addr = NTADR_A(2,27);
-    vrambuf_put(addr,str,23);*/
 
     if (oam_id!=0) 
       oam_hide_rest(oam_id);
