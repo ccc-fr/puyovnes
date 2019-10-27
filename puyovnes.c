@@ -357,16 +357,9 @@ byte check_board(byte board_index)
     //but go to 255 instead
     for (j = 12 ; j <= 12 ; j--)
     {   
-      if (i == 0 && j == 12)
-      { sprintf(str,"a:%d", current_color);
-      vrambuf_put(NTADR_A(20,3),str,4);}
-      
       //already flagged ? next !
       if ((boards[i][j] & flag) > 0)
       {  
-        if (i == 0 && j == 12)
-        {sprintf(str,"b:%d", boards[i][j] & flag);
-        vrambuf_put(NTADR_A(20,4),str,4);}
         continue;
       }
 
@@ -384,7 +377,7 @@ byte check_board(byte board_index)
           for (l = 12 ; l <= 12 ; l--)
           {
             //if it already has the flag it's useless to test it, let's go quick !
-            if ( (tmp_boards[k][l] != flag) /*&& (boards[k][l] & flag == 0)*/ && (current_color == ((boards[k][l] & mask) >> shift)) )
+            if ( (tmp_boards[k][l] != flag) && ((boards[k][l] & flag) == 0) && (current_color == ((boards[k][l] & mask) >> shift)) )
             {
               //looking for a puyo at x+-1 or y+-1 to have the flag
               if (((k+1) < 6) && (tmp_boards[k+1][l] == flag))
@@ -412,11 +405,7 @@ byte check_board(byte board_index)
             {
               /*sprintf(str,"c:%d %d", counter, tmp_boards[k][l]);
               vrambuf_put(NTADR_A(20,4),str,9);*/
-              sprintf(str,"%d %d %d %d %d", current_color, ((boards[0][12] & mask) >> shift),
-                      ((boards[1][12] & mask) >> shift),
-                     ((boards[2][12] & mask) >> shift),
-                     ((boards[3][12] & mask) >> shift));
-              vrambuf_put(NTADR_A(20,5),str,10);
+              
             }
           }         
         }
@@ -428,14 +417,28 @@ byte check_board(byte board_index)
           {
             for (l = 12 ; l <= 12 ; l--)
             {
-              if ( (tmp_boards[k][l] & flag) == 1)
+              if ( tmp_boards[k][l] == flag)
               {
                 boards[k][l] += flag;
                 tmp_boards[k][l] = 0;
+                sprintf(str,"%d %d",k,l);
+                vrambuf_put(NTADR_A(18,2+destruction),str,5);
+                destruction++;
               }
             }
           }
-          destruction++;          
+          //destruction++;          
+        }
+        else
+        {
+          for (k = 0; k < 6; k++)
+          {
+            for (l = 12 ; l <= 12 ; l--)
+            {
+              //quicker than a loop ?
+              memset(tmp_boards,0,sizeof(tmp_boards));
+            }
+          }
         }
         counter = 0;
       }
