@@ -346,6 +346,7 @@ void update_boards(byte board_index)
 
 //looking for something to break
 //if yes then flag it, and fill a table of things to break ???
+/*
 byte check_board(byte board_index)
 {
   byte i, j, k, l, current_color;
@@ -415,8 +416,8 @@ byte check_board(byte board_index)
             }
             if (k == 0 && l == 12)
             {
-              /*sprintf(str,"c:%d %d", counter, tmp_boards[k][l]);
-              vrambuf_put(NTADR_A(20,4),str,9);*/
+             // sprintf(str,"c:%d %d", counter, tmp_boards[k][l]);
+             // vrambuf_put(NTADR_A(20,4),str,9);
               
             }
           }         
@@ -455,6 +456,256 @@ byte check_board(byte board_index)
         counter = 0;
       }
     }
+  }
+  return destruction;
+}
+*/
+
+byte check_board(byte board_index, byte x, byte y)
+{
+  byte i, j, current_color;
+  byte counter = 0;
+  byte mask = 15, flag = 8, shift = 0;
+  byte destruction = 0;
+  char str[32];
+  //reset tmp_boards
+  
+  memset(tmp_boards,0,sizeof(tmp_boards));
+  if (board_index != 0)
+  {
+    shift = 4;
+    mask <<= shift;
+    flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
+  }
+  
+  //to gain time we start from position of the last placed puyos
+  //actor_x[board_index], actor_y[board_index],actor_x[board_index+1], actor_y[board_index+1],
+  //x,y for each last puyo should be save somehere to gain time
+  /*x = ((actor_x[board_index]>>3) - 2) >> 1;
+  y = ((actor_y[board_index]>>3)+1)>>1;*/
+  // First find puyo of the same color up, down, left, right to the current one.=, if no found exit
+  // then move to the line above and below and check for a puyo of same color nearby
+  // raise counter
+  // until no more puyo left.
+  // redo for next puyo
+  // that way contrary to previous method we should not miss some boom.
+  // Note : how to do when after destruction ?
+  //k == current line above, k == current line below
+  
+  //if already flagged move on as it has already been treated elsewhere
+  if ((boards[i][j] & flag) == 1)
+    return 0;
+  
+  current_color = ((boards[x][y] & mask) >> shift);
+  sprintf(str,"color:%d",current_color);
+  vrambuf_put(NTADR_A(18,10),str,10);
+  //tmp_boards contains flag of the currently looked color 
+  tmp_boards[x][y] = flag;
+  i = (x - 1);
+  while ( i < 6 )
+  {
+    if (current_color == ((boards[i][y] & mask) >> shift))
+    {     
+      tmp_boards[i][y] = flag;
+      counter++;
+    }
+    else
+    {  
+      i = 7; //no need to continue if not found
+    }
+    i--;
+  }
+  
+  i = (x + 1);
+  while ( i < 6 )
+  {
+    if (current_color == ((boards[i][y] & mask) >> shift))
+    {     
+      tmp_boards[i][y] = flag;
+      counter++;
+    }
+    else
+    {
+      i = 7; //no need to continue if not found
+    }
+    i++;
+  }
+  
+  i = (y - 1);
+  while ( i < 13 )
+  {
+    if (current_color == ((boards[x][i] & mask) >> shift))
+    {     
+      tmp_boards[x][i] = flag;
+      counter++;
+    } 
+    else
+    {
+      i = 14; //no need to continue if not found
+    }
+    i--;
+  }
+  
+  i = (y + 1);
+  while ( i < 13 )
+  {
+    if (current_color == ((boards[x][i] & mask) >> shift))
+    {     
+      tmp_boards[x][i] = flag;
+      counter++;
+    } 
+    else
+    {
+      i = 14; //no need to continue if not found
+    }
+    i++;
+  }
+  //nothing found ? exit !
+  if (counter == 0)
+    return counter;
+  
+  //ok so we got something, now looking for more
+  j = y-1;
+  //we go above, so we look below, left and right
+  //we must do the line in both way (0 to 6 and 6 to 0) to avoid missing something
+  while (j < 13)
+  {
+    for (i = 0; i < 6 ; i++)
+    {
+      if (tmp_boards[i][j] != flag)
+      {
+        if ((current_color == ((boards[i][j] & mask) >> shift)))
+        {
+          if ((tmp_boards[i][j-1] == flag))
+          {
+            tmp_boards[i][j] = flag;
+            counter++;
+            continue;
+          }
+          else if (i > 0)
+          {
+            //look left
+            tmp_boards[i-1][j] = flag;
+            counter++;
+            continue;
+          }
+          else if (i < 5)
+          {
+            //look right
+            tmp_boards[i+1][j] = flag;
+            counter++;
+            continue;
+          }
+        }
+      }
+    }
+    for (i = 5; i < 6 ; i--)
+    {
+      //no need to look below as it has already been done in the previous loop
+      if (tmp_boards[i][j] != flag)
+      {
+        if ((current_color == ((boards[i][j] & mask) >> shift)))
+        {
+          if (i > 0)
+          {
+            //look left
+            tmp_boards[i-1][j] = flag;
+            counter++;
+            continue;
+          }
+          else if (i < 5)
+          {
+            //look right
+            tmp_boards[i+1][j] = flag;
+            counter++;
+            continue;
+          }
+        }
+      }
+    }
+    j--; //going above is getting lower j
+  }
+  
+  j = y+1;
+  //we go below so we look above
+  while (j < 13)
+  {
+    for (i = 0; i < 6 ; i++)
+    {
+      if (tmp_boards[i][j] != flag)
+      {
+        if ((current_color == ((boards[i][j] & mask) >> shift)))
+        {
+          if ((tmp_boards[i][j-1] == flag))
+          {
+            tmp_boards[i][j] = flag;
+            counter++;
+            continue;
+          }
+          else if (i > 0)
+          {
+            //look left
+            tmp_boards[i-1][j] = flag;
+            counter++;
+            continue;
+          }
+          else if (i < 5)
+          {
+            //look right
+            tmp_boards[i+1][j] = flag;
+            counter++;
+            continue;
+          }
+        }
+      }
+    }
+    for (i = 5; i < 6 ; i--)
+    {
+      //no need to look below as it has already been done in the previous loop
+      if (tmp_boards[i][j] != flag)
+      {
+        if ((current_color == ((boards[i][j] & mask) >> shift)))
+        {
+          if (i > 0)
+          {
+            //look left
+            tmp_boards[i-1][j] = flag;
+            counter++;
+            continue;
+          }
+          else if (i < 5)
+          {
+            //look right
+            tmp_boards[i+1][j] = flag;
+            counter++;
+            continue;
+          }
+        }
+      }
+    }
+    j++; //going below is getting higher j
+  }
+  
+  //we started from 0, so at 3 we have 4 to erase
+  if (counter >= 3)
+  {
+    //copy flag to boards
+    for (i = 0; i < 6; i++)
+    {
+      for (j = 12 ; j <= 12 ; j--)
+      {
+        if ( tmp_boards[i][j] == flag)
+        {
+          boards[i][j] += flag;
+          //tmp_boards[i][j] = 0;
+          sprintf(str,"%d %d",i,j);
+          vrambuf_put(NTADR_A(18,2+destruction),str,5);
+          destruction++;
+        }
+      }
+    }
+    //reset tmp_boards
+    memset(tmp_boards,0,sizeof(tmp_boards));
   }
   return destruction;
 }
@@ -821,12 +1072,15 @@ void main(void)
     
     if (step_p1 == CHECK)
     {
-      if (check_board(0) > 0)
+      /*x = ((actor_x[board_index]>>3) - 2) >> 1;
+       y = ((actor_y[board_index]>>3)+1)>>1;*/
+      if ( (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0)
+          || (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) )
       {
         sprintf(str,"BOOM");
         addr = NTADR_A(20,15);
         vrambuf_put(addr,str,4);
-        step_p1 = PLAY;
+        step_p1 = DESTROY;
       }
       else
       {
@@ -837,7 +1091,9 @@ void main(void)
         actor_dy[0] = 1;
         actor_dy[1] = 1;
         p1_puyo_list_index++;
-        step_p1 = DESTROY;
+        step_p1 = PLAY;
+        // step_p1 = DESTROY;
+        // Need to reset the boards flag to 0 after destroy!
       }
     }
       
