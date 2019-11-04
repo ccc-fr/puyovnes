@@ -595,7 +595,7 @@ byte check_board(byte board_index, byte x, byte y)
   
   
   //ok so we got something, now looking for more
-  j = y - 1;
+  j = (y-1);
   //we go above, so we look below, left and right
   //we must do the line in both way (0 to 6 and 6 to 0) to avoid missing something
   while (j < 13)
@@ -606,7 +606,7 @@ byte check_board(byte board_index, byte x, byte y)
       {
         if ((current_color == ((boards[i][j] & mask) >> shift)))
         {
-          if ((tmp_boards[i][j-1] == flag))
+          if ((tmp_boards[i][j+1] == flag))
           {
             tmp_boards[i][j] = flag;
             counter++;
@@ -1127,7 +1127,7 @@ void main(void)
       /*x = ((actor_x[board_index]>>3) - 2) >> 1;
        y = ((actor_y[board_index]>>3)+1)>>1;*/
       if ( (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0)
-          /*|| (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) */)
+          || (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) )
       {
         sprintf(str,"BOOM");
         addr = NTADR_A(20,15);
