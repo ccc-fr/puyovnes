@@ -684,7 +684,8 @@ byte destroy_board(byte board_index)
       {
         if ((boards[i][j] & flag) > 0)
         {
-          addr = NTADR_A(i+5, 14-j);//?????
+          //(i+1)<<1 à l'air ok, y on y est pas encore
+          addr = NTADR_A((i+1)<<1, ((j+1)<<1)+1);//?????
           vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
           vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
           /*addr = NTADR_A(i, (j)+2);
