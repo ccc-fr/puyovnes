@@ -680,12 +680,13 @@ byte destroy_board(byte board_index)
     //set_metatile(1,0xe0);
     for (i = 0; i < 6 ; i++)
     {
-      for (j = 12; j < 16 ; j--)
+      for (j = 0; j < 13 ; j++)
       {
         if ((boards[i][j] & flag) > 0)
         {
           //(i+1)<<1 à l'air ok, y on y est pas encore
-          addr = NTADR_A((i+1)<<1, ((j+1)<<1)+1);//?????
+          //addr = NTADR_A((i+1)<<1, j *2 );//?????
+          addr = NTADR_A(((i)*2)+2, j *2 );//?????
           vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
           vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
           /*addr = NTADR_A(i, (j)+2);
@@ -697,7 +698,9 @@ byte destroy_board(byte board_index)
           //PUYO_POP
           //(boards[x][y]&15) + (return_sprite_color(3) << 4);
           boards[i][j] = (boards[i][j] & invmask) + (PUYO_POP << shift);
-          tmp_line++;
+          tmp_line=j;
+          sprintf(str,"%d", j);
+          vrambuf_put(NTADR_A(18,j*2),str,2);
         }
       }
     }
@@ -720,13 +723,16 @@ byte destroy_board(byte board_index)
   }
   if (tmp_line > 0)
   { 
-    sprintf(str,"OUI");
+    sprintf(str,"OUI %d", tmp_line);
     vrambuf_put(NTADR_A(18,12),str,5);
   }
   else
   { 
-    sprintf(str,"NON");
-    vrambuf_put(NTADR_A(18,12),str,5);
+    sprintf(str,"NON %d", tmp_line);
+    vrambuf_put(NTADR_A(18,12),str,8);
+    addr = NTADR_A(18, 16 );//?????
+    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
   }
   step_p1_counter++;
   return 0;
