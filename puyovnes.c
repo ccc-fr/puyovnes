@@ -63,7 +63,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, DESTROY};
+typedef enum Step {PLAY, CHECK, DESTROY, FALL};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -156,6 +156,14 @@ void set_metatile(byte y, byte ch) {
   ntbuf1[y*2+1] = ch+1;
   ntbuf2[y*2] = ch+2;
   ntbuf2[y*2+1] = ch+3;
+}
+
+void clear_metatile(byte y)
+{
+  ntbuf1[y*2] = 0;
+  ntbuf1[y*2+1] = 0;
+  ntbuf2[y*2] = 0;
+  ntbuf2[y*2+1] = 0;
 }
 
 // set attribute table entry in attrbuf
@@ -677,7 +685,6 @@ byte destroy_board(byte board_index)
     memset(attrbuf, 0, sizeof(attrbuf));
 
     set_metatile(0,0xe0);
-    //set_metatile(1,0xe0);
     for (i = 0; i < 6 ; i++)
     {
       for (j = 0; j < 13 ; j++)
@@ -698,29 +705,44 @@ byte destroy_board(byte board_index)
           //PUYO_POP
           //(boards[x][y]&15) + (return_sprite_color(3) << 4);
           boards[i][j] = (boards[i][j] & invmask) + (PUYO_POP << shift);
+          //we will reuse the flag for destruction
+          boards[i][j] += flag;
           tmp_line=j;
           sprintf(str,"%d", j);
           vrambuf_put(NTADR_A(18,j*2),str,2);
         }
       }
     }
-
-    //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
-
-    //set_metatile(1,0xe0);
-
-    //attrbuf[1] = return_attribute_color(1, actor_x[1]>>3, (actor_y[1]>>3)+1, attribute_table);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
-
-   /* addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
-    //vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
-/*
-    addr = NTADR_A((actor_x[1]>>3), (actor_y[1]>>3)+1);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
-    //vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
+    
   }
+  //step 1 we change the puyo_pop to nothing
+  if (step_p1_counter == 15)
+  {
+    memset(ntbuf1, 0, sizeof(ntbuf1));
+    memset(ntbuf2, 0, sizeof(ntbuf2));
+    memset(attrbuf, 0, sizeof(attrbuf));
+
+    clear_metatile(0);
+    for (i = 0; i < 6 ; i++)
+    {
+      for (j = 0; j < 13 ; j++)
+      {
+        if ((boards[i][j] & flag) > 0)
+        {
+          addr = NTADR_A(((i)*2)+2, j *2 );
+          vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+          vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+          //sujet traité, on zappe le flag
+          boards[i][j] -= flag;
+          //on change le board pour EMPTY
+          boards[i][j] = (boards[i][j] & invmask) + (EMPTY << shift);
+        }
+      }
+    }
+    step_p1 = FALL;
+    step_p1_counter = 0;
+  }
+  
   if (tmp_line > 0)
   { 
     sprintf(str,"OUI %d", tmp_line);
@@ -737,6 +759,13 @@ byte destroy_board(byte board_index)
   step_p1_counter++;
   return 0;
 }
+
+byte fall_board(byte board_index)
+{
+  //TODO !
+  return board_index;
+}
+
 
 void build_field()
 {
@@ -1119,6 +1148,11 @@ void main(void)
         vrambuf_put(addr,str,4);
         step_p1_counter = 0;
         step_p1 = DESTROY;
+        //let's move sprites to not have them on screen when things explode
+        actor_x[0] = 230;
+        actor_y[0] = 230;
+        actor_x[1] = 230;
+        actor_y[1] = 230;
       }
       else
       {
