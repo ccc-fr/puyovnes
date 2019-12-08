@@ -752,9 +752,9 @@ byte destroy_board(byte board_index)
   { 
     sprintf(str,"NON %d", tmp_line);
     vrambuf_put(NTADR_A(18,12),str,8);
-    addr = NTADR_A(18, 16 );//?????
+    /*addr = NTADR_A(18, 16 );//?????
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
   }
   step_p1_counter++;
   return 0;
@@ -763,6 +763,68 @@ byte destroy_board(byte board_index)
 byte fall_board(byte board_index)
 {
   //TODO !
+  //column_height doit être baissé de 16 (-=16) à chaque fois qu'on descend un truc
+  //on part d'en haut, de la première colonne, et on descend
+  //step_p1_counter donne la colonne
+  //on reconstruit d'abord la colonne sans trou dans boards[x][y]
+  //ensuite on  redessine toute la colonne dans le buffer.
+  //si pas de changement on ne fait rien pour gagner en temps de calcul !
+  byte j, j2;
+  byte can_fall = 0, previous_empty = 0;
+  byte mask = 15, invmask = 240, flag = 8, shift = 0;
+  byte fall = 0;
+  byte tmp_counter;
+  //register word addr;
+  //char str[32];
+  
+  //memset(tmp_boards,0,sizeof(tmp_boards));
+  if (board_index != 0)
+  {
+    shift = 4;
+    mask <<= shift;
+    invmask >>= shift;
+    flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
+    tmp_counter = step_p2_counter;
+  }
+  else
+    tmp_counter = step_p1_counter;
+  
+  for (j = 0 ; j < 13 ; j++)
+  {
+    if (can_fall != 1 && boards[step_p1_counter][j] != EMPTY)
+    {
+      //as long as no puyo is found, there is nothing to get down
+      can_fall = 1;
+      previous_empty = 0;
+    }
+    if (can_fall = 1 && boards[step_p1_counter][j] == EMPTY)
+    {
+      //this is where things get interesting, lets move everything done.
+      //we start from j and get up to avoid overwriting values
+      if (previous_empty != 1)
+      {
+        for (j2 = j ; j2 < 16 ; j2--)
+        {
+          boards[step_p1_counter][j2] = boards[step_p1_counter][j2-1];
+          fall = 1;
+        }
+        //carefoul we wan't to only fall of 1 puyo per cycle !
+        //if next is empty again then we don't fall
+        previous_empty = 1;
+      }
+    }
+    else
+    {
+      previous_empty = 0;
+    }
+  }
+  
+  if (fall == 1)
+  {
+    //redraw the column through buffer
+  }
+  
+  step_p1_counter++;
   return board_index;
 }
 
@@ -772,12 +834,6 @@ void build_field()
   //register word addr;
   //byte i, x, y;
   byte x, y;
-  /*vram_adr(NTADR_A(10,10));
-  vram_put(0xc4);
-  vram_put(0xc6);
-  vram_adr(NTADR_A(10,11));
-  vram_put(0xc5);
-  vram_put(0xc7);*/
   //Filling up boards with EMPTY
   for (x = 0; x < 6; x++)
   {
@@ -1127,6 +1183,12 @@ void main(void)
       //we need to move oam_id to not have an offset, should be a better way though...
       oam_id = oam_meta_spr(actor_x[0], actor_y[0], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+0)*2))&3]);
       oam_id = oam_meta_spr(actor_x[1], actor_y[1], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+1)*2))&3]);
+    }
+    
+    if (step_p1 == FALL)
+    {
+      //execute before destroy to avoid doing destroy and fall consecutively
+      fall_board(0);
     }
     
     if (step_p1 == DESTROY)
