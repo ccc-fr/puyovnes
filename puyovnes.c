@@ -655,6 +655,7 @@ byte check_board(byte board_index, byte x, byte y)
   return destruction;
 }
 
+/*puyo visual destroying after check_board*/
 byte destroy_board(byte board_index)
 {
   byte i, j/*, current_color*/;
@@ -663,7 +664,7 @@ byte destroy_board(byte board_index)
   byte destruction = 0;
   byte tmp_counter;
   register word addr;
-  char str[32];
+  //char str[32];
   
   //memset(tmp_boards,0,sizeof(tmp_boards));
   if (board_index != 0)
@@ -708,8 +709,8 @@ byte destroy_board(byte board_index)
           //we will reuse the flag for destruction
           boards[i][j] += flag;
           tmp_line=j;
-          sprintf(str,"%d", j);
-          vrambuf_put(NTADR_A(18,j*2),str,2);
+          /*sprintf(str,"%d", j);
+          vrambuf_put(NTADR_A(18,j*2),str,2);*/
         }
       }
     }
@@ -743,7 +744,7 @@ byte destroy_board(byte board_index)
     step_p1_counter = 0;
   }
   
-  if (tmp_line > 0)
+  /*if (tmp_line > 0)
   { 
     sprintf(str,"OUI %d", tmp_line);
     vrambuf_put(NTADR_A(18,12),str,5);
@@ -752,14 +753,12 @@ byte destroy_board(byte board_index)
   { 
     sprintf(str,"NON %d", tmp_line);
     vrambuf_put(NTADR_A(18,12),str,8);
-    /*addr = NTADR_A(18, 16 );//?????
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
-  }
+  }*/
   step_p1_counter++;
   return 0;
 }
 
+/*puyo falling*/
 byte fall_board(byte board_index)
 {
   //TODO !
@@ -774,8 +773,8 @@ byte fall_board(byte board_index)
   byte mask = 15, invmask = 240, flag = 8, shift = 0;
   byte fall = 0;
   byte tmp_counter;
-  //register word addr;
-  //char str[32];
+  register word addr;
+  char str[32];
   
   //memset(tmp_boards,0,sizeof(tmp_boards));
   if (board_index != 0)
@@ -785,46 +784,87 @@ byte fall_board(byte board_index)
     invmask >>= shift;
     flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
     tmp_counter = step_p2_counter;
+    if (tmp_counter > 5)
+      return 0;
   }
   else
+  { 
     tmp_counter = step_p1_counter;
+    if (tmp_counter > 5)
+      return 0;
+  }
   
   for (j = 0 ; j < 13 ; j++)
   {
-    if (can_fall != 1 && boards[step_p1_counter][j] != EMPTY)
+    if (can_fall != 1 && (boards[tmp_counter][j] & mask) != EMPTY)
     {
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
       previous_empty = 0;
+      if (j+1 < 13)
+        j++;
     }
-    if (can_fall = 1 && boards[step_p1_counter][j] == EMPTY)
+    if (can_fall = 1 && (boards[tmp_counter][j] & mask) == EMPTY)
     {
-      //this is where things get interesting, lets move everything done.
+      //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
       if (previous_empty != 1)
       {
         for (j2 = j ; j2 < 16 ; j2--)
         {
-          boards[step_p1_counter][j2] = boards[step_p1_counter][j2-1];
+          //boards[tmp_counter][j2] = boards[tmp_counter][j2-1];
+          if (j2 == 0)
+            boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
+          else
+            boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);
           fall = 1;
         }
-        //carefoul we wan't to only fall of 1 puyo per cycle !
-        //if next is empty again then we don't fall
-        previous_empty = 1;
       }
+      //carefoul we wan't to only fall of 1 puyo height per cycle !
+      //if next is empty again then we don't fall
+      previous_empty = 1;
     }
     else
     {
       previous_empty = 0;
     }
   }
-  
+  sprintf(str,"FALL ? %d", fall);
+  vrambuf_put(NTADR_A(18,11),str,10);
   if (fall == 1)
   {
     //redraw the column through buffer
+    memset(ntbuf1, 0, sizeof(ntbuf1));
+    memset(ntbuf2, 0, sizeof(ntbuf2));
+    memset(attrbuf, 0, sizeof(attrbuf));
+    for (j = 0; j < 13 ; j++)
+    {
+      switch (boards[tmp_counter][j])
+      {
+        case EMPTY:
+          clear_metatile(0);
+          break;
+        case OJAMA:
+          set_metatile(0,0xe0);
+          break;
+        default:
+          set_metatile(0,0xd8);
+          //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
+      }
+      addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//?????
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      //attributes 
+      vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+    } 
+    sprintf(str,"FALL %d", tmp_counter);
+    vrambuf_put(NTADR_A(18,12),str,8);
   }
-  
-  step_p1_counter++;
+  if (board_index != 0)
+    step_p2_counter++;
+  else
+    step_p1_counter++;
+
   return board_index;
 }
 
