@@ -741,7 +741,7 @@ byte destroy_board(byte board_index)
       }
     }
     step_p1 = FALL;
-    step_p1_counter = 0;
+    step_p1_counter = 255;
   }
   
   /*if (tmp_line > 0)
@@ -770,7 +770,7 @@ byte fall_board(byte board_index)
   //si pas de changement on ne fait rien pour gagner en temps de calcul !
   byte j, j2;
   byte can_fall = 0, previous_empty = 0;
-  byte mask = 15, invmask = 240, flag = 8, shift = 0;
+  byte smask = 7, sinvmask = 112, mask = 15, invmask=240, flag = 8, shift = 0; /*on ne veut pas du flag pour les masques*/
   byte fall = 0;
   byte tmp_counter;
   register word addr;
@@ -804,7 +804,8 @@ byte fall_board(byte board_index)
       if (j+1 < 13)
         j++;
     }
-    if (can_fall = 1 && (boards[tmp_counter][j] & mask) == EMPTY)
+
+    if (can_fall == 1 && (boards[tmp_counter][j] & smask) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
@@ -816,9 +817,11 @@ byte fall_board(byte board_index)
           if (j2 == 0)
             boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
           else
-            boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);
-          fall = 1;
+            boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);  
         }
+        fall = 1;
+        /*sprintf(str,"F %d", tmp_counter);
+        vrambuf_put(NTADR_A(16,15+tmp_counter),str,8);*/
       }
       //carefoul we wan't to only fall of 1 puyo height per cycle !
       //if next is empty again then we don't fall
@@ -829,17 +832,17 @@ byte fall_board(byte board_index)
       previous_empty = 0;
     }
   }
-  sprintf(str,"FALL ? %d", fall);
-  vrambuf_put(NTADR_A(18,11),str,10);
+ 
   if (fall == 1)
   {
     //redraw the column through buffer
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
     memset(attrbuf, 0, sizeof(attrbuf));
-    for (j = 0; j < 13 ; j++)
+    //we start at 1 as we don't want to modify the ceiling
+    for (j = 1; j < 13 ; j++)
     {
-      switch (boards[tmp_counter][j])
+      switch (boards[tmp_counter][j] & mask)
       {
         case EMPTY:
           clear_metatile(0);
@@ -849,16 +852,17 @@ byte fall_board(byte board_index)
           break;
         default:
           set_metatile(0,0xd8);
+          break;
           //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
       }
       addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//?????
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       //attributes 
-      vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+      //vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
     } 
     sprintf(str,"FALL %d", tmp_counter);
-    vrambuf_put(NTADR_A(18,12),str,8);
+    vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);
   }
   if (board_index != 0)
     step_p2_counter++;
