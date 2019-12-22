@@ -314,6 +314,41 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_
   return attr;
 }
 
+/* same as return_attribute_color but the color is in parameter, not get from sprite*/
+byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y, byte * attr_table)
+{
+ //word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
+  byte attr_x = spr_x&0xfc;
+  byte attr_y = spr_y&0xfc;
+  byte attr;
+  byte index;
+  byte mask = 3;
+  //we must not override colors of the tiles around the one we change
+  //We must determine were our meta sprite is located in the 4*4 metatile attributes
+  //if x is odd it will be on the right, even left
+  //if y is odd it will be on the bottom, even top
+  //LSB is top left, MSB bottom right
+  if (attr_y < spr_y)
+  {
+    mask <<= 4;
+    color <<= 4;
+  }
+  if (attr_x < spr_x) 
+  {
+    mask <<= 2;
+    color <<= 2;
+  }
+  // attribute position is y/2 + x/4 where y 2 LSB are 0
+  index = (attr_y<<1) + (spr_x>>2);
+
+  attr = attr_table[index];
+  //let's erase the previous attributes for the intended position
+  attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
+  attr += color;
+  attr_table[index] = attr;
+  return attr;
+}
+
 //Update the boards table, not  optimized :-S
 //board_index must take 0 or 2
 void update_boards(byte board_index)
@@ -766,15 +801,16 @@ byte fall_board(byte board_index)
   //on part d'en haut, de la première colonne, et on descend
   //step_p1_counter donne la colonne
   //on reconstruit d'abord la colonne sans trou dans boards[x][y]
-  //ensuite on  redessine toute la colonne dans le buffer.
+  //ensuite on redessine toute la colonne dans le buffer.
   //si pas de changement on ne fait rien pour gagner en temps de calcul !
   byte j, j2;
   byte can_fall = 0, previous_empty = 0;
   byte smask = 7, sinvmask = 112, mask = 15, invmask=240, flag = 8, shift = 0; /*on ne veut pas du flag pour les masques*/
+  byte attr_x_shift = 1;
   byte fall = 0;
   byte tmp_counter;
   register word addr;
-  char str[32];
+  //char str[32];
   
   //memset(tmp_boards,0,sizeof(tmp_boards));
   if (board_index != 0)
@@ -783,6 +819,7 @@ byte fall_board(byte board_index)
     mask <<= shift;
     invmask >>= shift;
     flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
+    attr_x_shift = 9;
     tmp_counter = step_p2_counter;
     if (tmp_counter > 5)
       return 0;
@@ -850,19 +887,31 @@ byte fall_board(byte board_index)
         case OJAMA:
           set_metatile(0,0xe0);
           break;
-        default:
+        case PUYO_RED:
           set_metatile(0,0xd8);
+          attrbuf[0] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2,attribute_table);
+          break;
+        case PUYO_BLUE:
+          set_metatile(0,0xd8);
+          attrbuf[0] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2,attribute_table);
+          break;
+        case PUYO_GREEN:
+          set_metatile(0,0xd8);
+          attrbuf[0] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2,attribute_table);
+          break;
+        case PUYO_YELLOW:
+          set_metatile(0,0xd8);
+          attrbuf[0] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2,attribute_table);
           break;
           //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
       }
       addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//?????
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      //attributes 
-      //vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+      vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
     } 
-    sprintf(str,"FALL %d", tmp_counter);
-    vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);
+    /*sprintf(str,"FALL %d", tmp_counter);
+    vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);*/
   }
   if (board_index != 0)
     step_p2_counter++;
