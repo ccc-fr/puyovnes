@@ -100,10 +100,10 @@ char ntbuf2[PLAYROWS];	// right side
 char attrbuf[PLAYROWS/4];
 
 // nos sprites de puyo
-DEF_METASPRITE_2x2(puyo1, 0xd8, 0);
-DEF_METASPRITE_2x2(puyo2, 0xd8, 1);
-DEF_METASPRITE_2x2(puyo3, 0xd8, 2);
-DEF_METASPRITE_2x2(puyo4, 0xd8, 3);
+DEF_METASPRITE_2x2(puyo_red, 0xd8, 0);//red
+DEF_METASPRITE_2x2(puyo_blue, 0xd8, 1);//blue
+DEF_METASPRITE_2x2(puyo_green, 0xd8, 2);//green
+DEF_METASPRITE_2x2(puyo_yellow, 0xd8, 3);//yellow
 DEF_METASPRITE_2x2(ojama, 0xdc, 0);
 DEF_METASPRITE_2x2(puyo_pop, 0xe0, 0);
 
@@ -139,7 +139,7 @@ char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not b
 
 //le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
 const unsigned char* const puyoSeq[6] = {
-  puyo1, puyo2, puyo3, puyo4, ojama, puyo_pop
+  puyo_red, puyo_blue, puyo_green, puyo_yellow, ojama, puyo_pop
 };
 
 // convert from nametable address to attribute table address
@@ -315,7 +315,7 @@ byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_
 }
 
 /* same as return_attribute_color but the color is in parameter, not get from sprite*/
-byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y, byte * attr_table)
+byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 {
  //word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
   byte attr_x = spr_x&0xfc;
@@ -341,11 +341,11 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y, byte * attr
   // attribute position is y/2 + x/4 where y 2 LSB are 0
   index = (attr_y<<1) + (spr_x>>2);
 
-  attr = attr_table[index];
+  attr = attribute_table[index];
   //let's erase the previous attributes for the intended position
   attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
   attr += color;
-  attr_table[index] = attr;
+  attribute_table[index] = attr;
   return attr;
 }
 
@@ -429,7 +429,7 @@ byte check_board(byte board_index, byte x, byte y)
   vrambuf_put(NTADR_A(18,10),str,10);*/
   //tmp_boards contains flag of the currently looked color 
   tmp_boards[x][y] = flag;
-  i = (x - 1);
+  i = (x - 1); //byte are unsigned, so -1 = 255, we will not enter in the while if i < 0
   while ( i < 6 )
   {
     if ( tmp_boards[i][y] != flag)
@@ -720,7 +720,7 @@ byte destroy_board(byte board_index)
     memset(ntbuf2, 0, sizeof(ntbuf2));
     memset(attrbuf, 0, sizeof(attrbuf));
 
-    set_metatile(0,0xe0);
+    set_metatile(0,0xe0); //0xe0 == puyo_pop
     for (i = 0; i < 6 ; i++)
     {
       for (j = 0; j < 13 ; j++)
@@ -837,7 +837,6 @@ byte fall_board(byte board_index)
     {
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
-      previous_empty = 0;
       if (j+1 < 13)
         j++;
     }
@@ -846,27 +845,20 @@ byte fall_board(byte board_index)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
-      if (previous_empty != 1)
+      for (j2 = j ; j2 >= previous_empty && j2 < 255 ; j2--)
       {
-        for (j2 = j ; j2 < 16 ; j2--)
-        {
-          //boards[tmp_counter][j2] = boards[tmp_counter][j2-1];
-          if (j2 == 0)
-            boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
-          else
-            boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);  
-        }
-        fall = 1;
-        /*sprintf(str,"F %d", tmp_counter);
-        vrambuf_put(NTADR_A(16,15+tmp_counter),str,8);*/
+        if (j2 == 0)
+          boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
+        else
+          boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);  
       }
+      fall = 1;
+      /*sprintf(str,"F %d", tmp_counter);
+        vrambuf_put(NTADR_A(16,15+tmp_counter),str,8);*/
+
       //carefoul we wan't to only fall of 1 puyo height per cycle !
-      //if next is empty again then we don't fall
-      previous_empty = 1;
-    }
-    else
-    {
-      previous_empty = 0;
+      //So we keep the position of the last element that has falled so top there
+      previous_empty = j2;
     }
   }
  
@@ -889,19 +881,19 @@ byte fall_board(byte board_index)
           break;
         case PUYO_RED:
           set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2,attribute_table);
+          attrbuf[0] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_BLUE:
           set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2,attribute_table);
+          attrbuf[0] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_GREEN:
           set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2,attribute_table);
+          attrbuf[0] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_YELLOW:
           set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2,attribute_table);
+          attrbuf[0] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2);
           break;
           //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
       }
