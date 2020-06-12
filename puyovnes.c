@@ -874,34 +874,42 @@ byte fall_board(byte board_index)
       switch (boards[tmp_counter][j] & mask)
       {
         case EMPTY:
-          clear_metatile(0);
+          clear_metatile(j-1);
           break;
         case OJAMA:
-          set_metatile(0,0xe0);
+          set_metatile(j-1,0xe0);
           break;
         case PUYO_RED:
-          set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
+          set_metatile(j-1,0xd8);
+          attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_BLUE:
-          set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2);
+          set_metatile(j-1,0xd8);
+          attrbuf[j>>1] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_GREEN:
-          set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2);
+          set_metatile(j-1,0xd8);
+          attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_YELLOW:
-          set_metatile(0,0xd8);
-          attrbuf[0] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2);
+          set_metatile(j-1,0xd8);
+          attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2);
           break;
           //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
       }
-      addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//?????
+      /*
+      addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//Ok cf hello word, tmp_counter 0 j0 =>(2,2)
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+      vrambuf_put(nt2attraddr(addr), &attrbuf[j>>1], 1);
+      */
     } 
+    //remplir les buffers nt et attr et ensuite faire le put !
+    addr = NTADR_A(((tmp_counter)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
+    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
+    vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+    
     /*sprintf(str,"FALL %d", tmp_counter);
     vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);*/
   }
