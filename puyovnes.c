@@ -871,6 +871,7 @@ byte fall_board(byte board_index)
     //we start at 1 as we don't want to modify the ceiling
     for (j = 1; j < 13 ; j++)
     {
+      /*
       switch (boards[tmp_counter][j] & mask)
       {
         case EMPTY:
@@ -880,23 +881,27 @@ byte fall_board(byte board_index)
           set_metatile(j-1,0xe0);
           break;
         case PUYO_RED:
-          set_metatile(j-1,0xd8);
+          set_metatile(j-1,0xdc);//d8
           attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_BLUE:
-          set_metatile(j-1,0xd8);
+          set_metatile(j-1,0xdc);
           attrbuf[j>>1] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_GREEN:
-          set_metatile(j-1,0xd8);
+          set_metatile(j-1,0xdc);
           attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_YELLOW:
-          set_metatile(j-1,0xd8);
+          set_metatile(j-1,0xdc);
           attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2);
           break;
           //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
-      }
+          
+        
+      }*/
+      set_metatile(j-1,0xd8);
+      attrbuf[j-1] = 0xff;
       /*
       addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//Ok cf hello word, tmp_counter 0 j0 =>(2,2)
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -908,7 +913,8 @@ byte fall_board(byte board_index)
     addr = NTADR_A(((tmp_counter)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
-    vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+    //vrambuf_put(nt2attraddr(addr)|VRAMBUF_VERT, /*&attrbuf[0]*/attrbuf, 6);
+    put_attr_entries((nt2attraddr(addr)));
     
     /*sprintf(str,"FALL %d", tmp_counter);
     vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);*/
