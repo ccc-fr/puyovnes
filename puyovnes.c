@@ -176,9 +176,18 @@ void set_attr_entry(byte x, byte y, byte pal) {
 }
 
 // write attribute table buffer to vram buffer
-void put_attr_entries(word addr) {
+/*void put_attr_entries(word addr) {
   byte i;
   for (i=0; i<PLAYROWS/4; i++) {
+    VRAMBUF_PUT(addr, attrbuf[i], 0);
+    addr += 8;
+  }
+  vrambuf_end();
+}*/
+
+void put_attr_entries(word addr, byte length) {
+  byte i;
+  for (i=0; i<length; i++) {
     VRAMBUF_PUT(addr, attrbuf[i], 0);
     addr += 8;
   }
@@ -858,7 +867,8 @@ byte fall_board(byte board_index)
 
       //carefoul we wan't to only fall of 1 puyo height per cycle !
       //So we keep the position of the last element that has falled so top there
-      previous_empty = j2;
+      previous_empty = j+1;
+      can_fall = 0;
     }
   }
  
@@ -871,37 +881,38 @@ byte fall_board(byte board_index)
     //we start at 1 as we don't want to modify the ceiling
     for (j = 1; j < 13 ; j++)
     {
-      /*
+      
       switch (boards[tmp_counter][j] & mask)
       {
         case EMPTY:
           clear_metatile(j-1);
+          attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
           break;
         case OJAMA:
-          set_metatile(j-1,0xe0);
+          set_metatile(j-1,0xc5);
+          attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_RED:
-          set_metatile(j-1,0xdc);//d8
+          set_metatile(j-1,0xd8);//d8//c8
           attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_BLUE:
-          set_metatile(j-1,0xdc);
+          set_metatile(j-1,0xd8);//cc
           attrbuf[j>>1] = return_tile_attribute_color(1,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_GREEN:
-          set_metatile(j-1,0xdc);
+          set_metatile(j-1,0xd8);//d0
           attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter+attr_x_shift,j*2);
           break;
         case PUYO_YELLOW:
-          set_metatile(j-1,0xdc);
+          set_metatile(j-1,0xd8);//d4
           attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter+attr_x_shift,j*2);
           break;
           //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
-          
-        
-      }*/
-      set_metatile(j-1,0xd8);
-      attrbuf[j-1] = 0xff;
+  
+      }
+      /*set_metatile(j-1,0xd8);
+      attrbuf[j-1] = 0xff;*/
       /*
       addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//Ok cf hello word, tmp_counter 0 j0 =>(2,2)
       vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -914,7 +925,7 @@ byte fall_board(byte board_index)
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
     //vrambuf_put(nt2attraddr(addr)|VRAMBUF_VERT, /*&attrbuf[0]*/attrbuf, 6);
-    put_attr_entries((nt2attraddr(addr)));
+    put_attr_entries((nt2attraddr(addr)), 6);
     
     /*sprintf(str,"FALL %d", tmp_counter);
     vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);*/
