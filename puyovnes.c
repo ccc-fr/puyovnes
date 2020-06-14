@@ -63,7 +63,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, DESTROY, FALL};
+typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -515,18 +515,18 @@ byte check_board(byte board_index, byte x, byte y)
   
   /*sprintf(str,"ca:%d",counter);
   vrambuf_put(NTADR_A(4,2),str,4);*/
-  for (i = 0; i < 6; i++)
+  /*for (i = 0; i < 6; i++)
   {
     for (j = 12 ; j <= 12 ; j--)
     {
       if ( tmp_boards[i][j] == flag)
       { 
-        /*sprintf(str,"%d %d",i,j);
-        vrambuf_put(NTADR_A(2,9+tmp_line),str,5);*/
+        //sprintf(str,"%d %d",i,j);
+        //vrambuf_put(NTADR_A(2,9+tmp_line),str,5);
         tmp_line++;
       }
     }
-  }
+  }*/
   /*sprintf(str,"STOP");
   vrambuf_put(NTADR_A(2,9+tmp_line),str,5);*/
   
@@ -673,26 +673,26 @@ byte check_board(byte board_index, byte x, byte y)
         }
       }
     }
-    //reset tmp_boards
-    memset(tmp_boards,0,sizeof(tmp_boards));
+    //reset tmp_boards //useless already done at the beginning of the function
+    //memset(tmp_boards,0,sizeof(tmp_boards));
   }
   else
   {
     tmp_line = 0;
     /*sprintf(str,"x:%d y:%d cb:%d",x,y,counter);
     vrambuf_put(NTADR_A(2,7),str,14);*/
-    for (i = 0; i < 6; i++)
+    /*for (i = 0; i < 6; i++)
     {
       for (j = 12 ; j <= 12 ; j--)
       {
         if ( tmp_boards[i][j] == flag)
         {   
-         /* sprintf(str,"%d %d", i, j);
-          vrambuf_put(NTADR_A(8,9+tmp_line),str,5);*/
+          // sprintf(str,"%d %d", i, j);
+          // vrambuf_put(NTADR_A(8,9+tmp_line),str,5);
           tmp_line++;
         }
       }
-    }
+    }*/
     /*sprintf(str,"STOP");
     vrambuf_put(NTADR_A(8,9+tmp_line),str,5);*/
   }
@@ -806,7 +806,7 @@ byte destroy_board(byte board_index)
 byte fall_board(byte board_index)
 {
   //TODO !
-  //column_height doit être baissé de 16 (-=16) à chaque fois qu'on descend un truc
+  //column_height doit être baissé (enfin montée, 0 est en haut) de 16 (+=16) à chaque fois qu'on descend un truc
   //on part d'en haut, de la première colonne, et on descend
   //step_p1_counter donne la colonne
   //on reconstruit d'abord la colonne sans trou dans boards[x][y]
@@ -829,15 +829,15 @@ byte fall_board(byte board_index)
     invmask >>= shift;
     flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
     attr_x_shift = 9;
-    tmp_counter = step_p2_counter;
-    if (tmp_counter > 5)
-      return 0;
+    tmp_counter = step_p2_counter%6;
+    /*if (tmp_counter > 5)
+      return 0;*/
   }
   else
   { 
-    tmp_counter = step_p1_counter;
-    if (tmp_counter > 5)
-      return 0;
+    tmp_counter = step_p1_counter%6;
+    /*if (tmp_counter > 5)
+      return 0;*/
   }
   
   for (j = 0 ; j < 13 ; j++)
@@ -874,6 +874,18 @@ byte fall_board(byte board_index)
  
   if (fall == 1)
   {
+    //If we got a fall we reset the counter, then 
+    if (board_index != 0)
+    {
+      step_p2_counter = tmp_counter;
+      //As it fall the height of the column must be lowered:
+      column_height[tmp_counter+6] +=16;
+    }
+    else
+    {
+      step_p1_counter = tmp_counter;
+      column_height[tmp_counter] +=16;
+    }
     //redraw the column through buffer
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
@@ -885,66 +897,50 @@ byte fall_board(byte board_index)
       switch (boards[tmp_counter][j] & mask)
       {
         case EMPTY:
-          //set_metatile(j-1,0xc8);
           clear_metatile(j-1);
           attrbuf[j>>1] = return_tile_attribute_color(2,(tmp_counter+1)*2,j*2);
-          //set_attr_entry(tmp_counter+1, j*2, 0);
           break;
         case OJAMA:
           set_metatile(j-1,0xc5);
           attrbuf[j>>1] = return_tile_attribute_color(0,(tmp_counter+1)*2,j*2);
-          //set_attr_entry(tmp_counter+1, j*2, 0);
           break;
         case PUYO_RED:
-          set_metatile(j-1,0xd8);//d8//c8
+          set_metatile(j-1,0xd8);
           attrbuf[j>>1] = return_tile_attribute_color(0,(tmp_counter+1)*2,j*2);
-          //set_attr_entry(tmp_counter+1, j*2, 0);
           break;
         case PUYO_BLUE:
-          set_metatile(j-1,0xd8);//cc
+          set_metatile(j-1,0xd8);
           attrbuf[j>>1] = return_tile_attribute_color(1,(tmp_counter+1)*2,j*2);
-          //set_attr_entry(tmp_counter+1, j*2, 1);
           break;
         case PUYO_GREEN:
-          set_metatile(j-1,0xd8);//d0
+          set_metatile(j-1,0xd8);
           attrbuf[j>>1] = return_tile_attribute_color(2,(tmp_counter+1)*2,j*2);
-         // set_attr_entry(tmp_counter+1, j*2, 2);
           break;
         case PUYO_YELLOW:
-          set_metatile(j-1,0xd8);//d4
+          set_metatile(j-1,0xd8);
           attrbuf[j>>1] = return_tile_attribute_color(3,(tmp_counter+1)*2,j*2);
-          //set_attr_entry(tmp_counter+1, j*2, 3);
           break;
-          //attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
-  
       }
-      /*set_metatile(j-1,0xd8);
-      attrbuf[j>>1] = 0xff;*/
-      /*
-      addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//Ok cf hello word, tmp_counter 0 j0 =>(2,2)
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-      vrambuf_put(nt2attraddr(addr), &attrbuf[j>>1], 1);
-      */
     } 
-    //test attributs
-    /*attrbuf[0] = 0x00;
-    attrbuf[1] = 0xaa;
-    attrbuf[2] = 0x55;
-    attrbuf[3] = 0xff;
-    attrbuf[4] = 0x00;
-    attrbuf[5] = 0xaa;
-    attrbuf[6] = 0xff;*/
+   
     //remplir les buffers nt et attr et ensuite faire le put !
     addr = NTADR_A(((tmp_counter)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
-    //vrambuf_put(nt2attraddr(addr)|VRAMBUF_VERT, /*&attrbuf[0]*/attrbuf, 6);
     put_attr_entries((nt2attraddr(addr)), 7);
     
-    /*sprintf(str,"FALL %d", tmp_counter);
-    vrambuf_put(NTADR_A(24,5+tmp_counter),str,8);*/
   }
+  else
+  {
+    //if something "fall" the counter is always reset to its 0 to 5 equivalent
+    //so if nothing fall and we reach 11 (5th column) then a full "loop" as been done and we can continue
+    if (step_p1_counter == 11)
+    {
+      step_p1 = CHECK_ALL;
+      step_p1_counter = 255;
+    }
+  }
+  
   if (board_index != 0)
     step_p2_counter++;
   else
@@ -1223,8 +1219,9 @@ void handle_controler_and_sprites(char i)
 void main(void)
 {
   char i;	// actor index
-  char str[32];
+  //char str[32];
   register word addr;
+  byte should_destroy = 0;
 
   setup_graphics();
   // draw message  
@@ -1325,14 +1322,13 @@ void main(void)
     
     if (step_p1 == CHECK && step_p1_counter == 0)
     {
-      /*x = ((actor_x[board_index]>>3) - 2) >> 1;
-       y = ((actor_y[board_index]>>3)+1)>>1;*/
-      if ( (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0)
-          || (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) )
+      should_destroy = (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
+      should_destroy = should_destroy || (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0);
+      if (should_destroy)
       {
-        sprintf(str,"BOOM");
+        /*sprintf(str,"BOOM");
         addr = NTADR_A(20,15);
-        vrambuf_put(addr,str,4);
+        vrambuf_put(addr,str,4);*/
         step_p1_counter = 0;
         step_p1 = DESTROY;
         //let's move sprites to not have them on screen when things explode
@@ -1340,6 +1336,7 @@ void main(void)
         actor_y[0] = 230;
         actor_x[1] = 230;
         actor_y[1] = 230;
+        should_destroy = 0;
       }
       else
       {
@@ -1360,8 +1357,47 @@ void main(void)
       step_p1_counter = 0;
     }
     
-    
-      
+    //after fall (and so destroy) we need to recheck all the board
+    //Everything is fallen at that point, so we can go from bottom
+    //to top and stop searching as soon empty is found
+    if (step_p1 == CHECK_ALL)
+    {
+      if (step_p1_counter < 6)
+      { //Start from the left column and go right, do bottom
+        //1 column per step to keep some CPU (hopefully)
+        i = 12;
+        while ( ((boards[step_p1_counter][i] & 7) != EMPTY) && i <= 12 )
+        {
+          should_destroy = should_destroy || (check_board(0,step_p1_counter,i) > 0);
+          i--;
+        }
+        step_p1_counter++;
+      }
+      else
+      {
+        //test is over, let's destroy is necessary
+        if (should_destroy)
+        {
+          step_p1_counter = 0;
+          step_p1 = DESTROY;
+          should_destroy = 0;
+        }
+        else
+        {
+          actor_x[0] = 3*16;
+          actor_y[0] = 0;
+          actor_x[1] = 3*16;
+          actor_y[1] = 16;
+          actor_dy[0] = 1;
+          actor_dy[1] = 1;
+          p1_puyo_list_index++;
+          step_p1 = PLAY;
+          step_p1_counter = 0;
+        }
+      }    
+    }
+   
+ 
     if (step_p2 == PLAY)
     {
       handle_controler_and_sprites(1);
