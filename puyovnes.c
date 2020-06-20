@@ -63,7 +63,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL};
+typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -115,7 +115,7 @@ char p2_puyo_list_index;
 // number of actors (4 h/w sprites each)
 // 12 : 2 active on each players screen
 // and 4 for preview on each side
-#define NUM_ACTORS 12
+#define NUM_ACTORS 4
 
 // actor x/y positions
 byte actor_x[NUM_ACTORS];
@@ -123,6 +123,15 @@ byte actor_y[NUM_ACTORS];
 // actor x/y deltas per frame (signed)
 sbyte actor_dx[NUM_ACTORS];
 sbyte actor_dy[NUM_ACTORS];
+
+//Variables for damages 
+//cf https://www.bayoen.fr/wiki/Tableau_des_dommages for how to compute damages.
+byte nb_puyos_destroyed[2]; //how many puyos are destroyed on that hit
+byte nb_hit[2];// hit combo counter
+byte mask_color_destroyed; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
+byte nb_group[2];//if the group is over 4 puyos add the part over in this variable.
+unsigned long int score[2];
+unsigned long int ojamas[4];// 2 pockets of ojama per player, but what is displayed is always the sum of both. Warikomi rule.
 
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
@@ -656,8 +665,12 @@ byte check_board(byte board_index, byte x, byte y)
   //we started from 0, so at 3 we have 4 to erase
   if (counter >= 3)
   {
-   /* sprintf(str,"%d",counter);
-    vrambuf_put(NTADR_A(4,4+destruction),str,2);*/
+    //update the variable for point counting
+    nb_puyos_destroyed[board_index] += (counter + 1); //how many puyos are destroyed on that hit
+    // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow
+    mask_color_destroyed |= (1 << shift) << current_color;  
+    nb_group[board_index] += (counter + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
+
     //copy flag to boards
     for (i = 0; i < 6; i++)
     {
@@ -673,8 +686,6 @@ byte check_board(byte board_index, byte x, byte y)
         }
       }
     }
-    //reset tmp_boards //useless already done at the beginning of the function
-    //memset(tmp_boards,0,sizeof(tmp_boards));
   }
   else
   {
@@ -784,20 +795,10 @@ byte destroy_board(byte board_index)
         }
       }
     }
-    step_p1 = FALL;
+    step_p1 = POINT;
     step_p1_counter = 255;
   }
   
-  /*if (tmp_line > 0)
-  { 
-    sprintf(str,"OUI %d", tmp_line);
-    vrambuf_put(NTADR_A(18,12),str,5);
-  }
-  else
-  { 
-    sprintf(str,"NON %d", tmp_line);
-    vrambuf_put(NTADR_A(18,12),str,8);
-  }*/
   step_p1_counter++;
   return 0;
 }
@@ -949,6 +950,110 @@ byte fall_board(byte board_index)
   return board_index;
 }
 
+// Calcuate the point and update the score plus the ojama on top of opponent board
+void manage_point(byte index_player)
+{
+  //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
+  //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
+  char str[6];
+  byte tmp_mask = 0;
+  byte tmp_tmp_mask = 0;
+  unsigned long int tmp_score = 0;
+  register word addr;
+  //hit power
+  tmp_score = (nb_hit[index_player] <= 5) ? ((nb_hit[index_player]-1) << 3) : (nb_hit[index_player]-3 << 5);
+  
+  sprintf(str,"P:%d", nb_puyos_destroyed[index_player]);
+  addr = NTADR_A(20,15);
+  vrambuf_put(addr,str,6);
+  sprintf(str,"H:%d", nb_hit[index_player]);
+  addr = NTADR_A(20,16);
+  vrambuf_put(addr,str,6);
+  sprintf(str,"C:%d", mask_color_destroyed);
+  addr = NTADR_A(20,17);
+  vrambuf_put(addr,str,6);
+  sprintf(str,"G:%d",nb_group[index_player]);
+  addr = NTADR_A(20,18);
+  vrambuf_put(addr,str,6);
+  
+  sprintf(str,"A:%d",tmp_score);
+  addr = NTADR_A(20,10);
+  vrambuf_put(addr,str,6);
+  //color_bonus
+  //first get colors for current player
+  tmp_mask = mask_color_destroyed & ((index_player == 0) ? 0xf : 0xf0);
+ 
+  //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
+  // /!\ PB here !
+  tmp_tmp_mask = (tmp_mask & 1);
+  tmp_tmp_mask += ((tmp_mask & 2) >> 1); 
+  tmp_tmp_mask += ((tmp_mask & 4) >> 2);
+  tmp_tmp_mask += ((tmp_mask & 8) >> 3);
+  sprintf(str,"D:%x %d",&tmp_score,tmp_score);
+  addr = NTADR_A(20,13);
+  vrambuf_put(addr,str,12);
+  tmp_tmp_mask--;
+  tmp_tmp_mask *=3;
+  
+  //tmp_tmp_mask = (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
+  tmp_score += tmp_tmp_mask;
+  sprintf(str,"B:%d",tmp_score);
+  addr = NTADR_A(20,11);
+  vrambuf_put(addr,str,6);
+  
+  // group_bonus
+  if ( nb_group[index_player] > 0 )
+  {
+    tmp_score += (nb_group[index_player] < 7) ? (nb_group[index_player] + 1) : 10;
+  }
+  sprintf(str,"C:%d",tmp_score);
+  addr = NTADR_A(20,12);
+  vrambuf_put(addr,str,6);
+  
+  //you need to raise the score if bonus are null, to avoid multiply by 0
+  if (tmp_score == 0)
+    tmp_score = 1;
+  //Now the disappearing puyo
+  
+  tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[index_player] * 10);
+  /*sprintf(str,"D:%lu", tmp_score);
+  addr = NTADR_A(20,13);
+  vrambuf_put(addr,str,10);*/
+  
+  score[index_player] += tmp_score;
+  //score[index_player]= 256128;
+  sprintf(str,"E:%x %lu",&score[index_player],score[index_player]);
+  addr = NTADR_A(20,14);
+  vrambuf_put(addr,str,12);
+  
+  //WIP add the opponent ojama removal from current player stack !
+  if (index_player == 1)
+  {
+    ojamas[2] += tmp_score;
+    if (ojamas[0] > 0)
+    {  
+      ojamas[0] = (ojamas[0] - tmp_score > ojamas[0] ) ? 0 : ojamas[0] - tmp_score ;
+    }
+  }
+  else
+  {
+    ojamas[0] += tmp_score;
+    if (ojamas[1] > 0)
+    {  
+      ojamas[1] = (ojamas[1] - tmp_score > ojamas[1] ) ? 0 : ojamas[1] - tmp_score ;
+    }
+  }
+  
+  //TODO print score
+  //TODO update ojama on top of opponent //warikomi not handled yet
+  sprintf(str,"%lu", score[index_player]);
+  addr = NTADR_A(7,27);
+  vrambuf_put(addr,str,6);
+  //reinit value for next compute
+  nb_puyos_destroyed[index_player] = 0;
+  mask_color_destroyed = mask_color_destroyed & 0xF0;
+  nb_group[index_player] = 0;
+}
 
 void build_field()
 {
@@ -985,24 +1090,48 @@ void build_field()
     {/* il faudra ici mettre les puyo à venir !*/
       for (y = 0; y < PLAYROWS; y+=2)
       {
-        vram_adr(NTADR_A(x,y));
-        vram_put(0xc4);
-        vram_put(0xc6);
-        vram_adr(NTADR_A(x,y+1));
-        vram_put(0xc5);
-        vram_put(0xc7);
+        if ( y >= 4 && y <= 8 )
+        {
+          vram_adr(NTADR_A(x,y));
+          vram_put(0xc8);
+          vram_put(0xca);
+          vram_adr(NTADR_A(x,y+1));
+          vram_put(0xc9);
+          vram_put(0xcb);
+        }
+        else
+        {
+          vram_adr(NTADR_A(x,y));
+          vram_put(0xc4);
+          vram_put(0xc6);
+          vram_adr(NTADR_A(x,y+1));
+          vram_put(0xc5);
+          vram_put(0xc7);
+        }
       }
     }
     else if (x == 16 || x == 17/* || x == 18 || x == 19 || x == 20*/) // 16 et 17
     {
       for (y = 0; y < PLAYROWS; y+=2)
       {
-        vram_adr(NTADR_A(x,y));
-        vram_put(0xc4);
-        vram_put(0xc6);
-        vram_adr(NTADR_A(x,y+1));
-        vram_put(0xc5);
-        vram_put(0xc7);
+       if ( y >= 4 && y <= 8 )
+        {
+          vram_adr(NTADR_A(x,y));
+          vram_put(0xc8);
+          vram_put(0xca);
+          vram_adr(NTADR_A(x,y+1));
+          vram_put(0xc9);
+          vram_put(0xcb);
+        }
+        else
+        {
+          vram_adr(NTADR_A(x,y));
+          vram_put(0xc4);
+          vram_put(0xc6);
+          vram_adr(NTADR_A(x,y+1));
+          vram_put(0xc5);
+          vram_put(0xc7);
+        }
       }
     }
     else
@@ -1269,6 +1398,9 @@ void main(void)
   step_p1_counter = 0;
   step_p2_counter = 0;
   
+  //init score at 0
+  memset(score,0,sizeof(score));
+  
   // enable rendering
   ppu_on_all();
   //scroll(0,240);
@@ -1307,12 +1439,20 @@ void main(void)
       oam_id = oam_meta_spr(actor_x[1], actor_y[1], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+1)*2))&3]);
     }
     
-    if (step_p1 == FALL)
+   if (step_p1 == FALL)
     {
       //execute before destroy to avoid doing destroy and fall consecutively
       fall_board(0);
     }
     
+    if (step_p1 == POINT)
+    {
+      //execute before destroy to avoid doing destroy and fall consecutively
+      nb_hit[0] += 1;
+      manage_point(0);
+      step_p1 = FALL;
+    }
+
     if (step_p1 == DESTROY)
     {
       //need to avoid to start check in the same loop
@@ -1322,6 +1462,12 @@ void main(void)
     
     if (step_p1 == CHECK && step_p1_counter == 0)
     {
+      //reinit variables for counting point
+      nb_puyos_destroyed[1] = 0; //how many puyos are destroyed on that hit      
+      //we keep only p2 maskcolor
+      mask_color_destroyed =  mask_color_destroyed & 0xF0; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
+      nb_group[0] = 0;//if the group is over 4 puyos add the part over in this variable.
+      
       should_destroy = (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
       should_destroy = should_destroy || (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0);
       if (should_destroy)
@@ -1368,14 +1514,14 @@ void main(void)
         i = 12;
         while ( ((boards[step_p1_counter][i] & 7) != EMPTY) && i <= 12 )
         {
-          should_destroy = should_destroy || (check_board(0,step_p1_counter,i) > 0);
+          should_destroy = should_destroy || (check_board(0, step_p1_counter, i) > 0);
           i--;
         }
         step_p1_counter++;
       }
       else
       {
-        //test is over, let's destroy is necessary
+        //test is over, let's destroy if necessary
         if (should_destroy)
         {
           step_p1_counter = 0;
@@ -1393,6 +1539,7 @@ void main(void)
           p1_puyo_list_index++;
           step_p1 = PLAY;
           step_p1_counter = 0;
+          nb_hit[0] = 0;// hit combo counter
         }
       }    
     }
@@ -1522,7 +1669,7 @@ void main(void)
       actor_dy[3] = 1;
       p2_puyo_list_index++;*/
     }
-
+    
     if (oam_id!=0) 
       oam_hide_rest(oam_id);
     // ensure VRAM buffer is cleared
