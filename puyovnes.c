@@ -814,7 +814,7 @@ byte fall_board(byte board_index)
   //ensuite on redessine toute la colonne dans le buffer.
   //si pas de changement on ne fait rien pour gagner en temps de calcul !
   byte j, j2;
-  byte can_fall = 0, previous_empty = 0;
+  byte can_fall = 0, previous_empty = 0, puyo_found = 0;
   byte smask = 7, sinvmask = 112, mask = 15, invmask=240, flag = 8, shift = 0; /*on ne veut pas du flag pour les masques*/
   byte attr_x_shift = 1;
   byte fall = 0;
@@ -843,12 +843,13 @@ byte fall_board(byte board_index)
   
   for (j = 0 ; j < 13 ; j++)
   {
-    if (can_fall != 1 && (boards[tmp_counter][j] & mask) != EMPTY)
+    if (can_fall != 1 && (boards[tmp_counter][j] & smask) != EMPTY)
     {
+      puyo_found = j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
       if (j+1 < 13)
-        j++;
+        j++;  
     }
 
     if (can_fall == 1 && (boards[tmp_counter][j] & smask) == EMPTY)
@@ -866,7 +867,7 @@ byte fall_board(byte board_index)
       /*sprintf(str,"F %d", tmp_counter);
         vrambuf_put(NTADR_A(16,15+tmp_counter),str,8);*/
 
-      //carefoul we wan't to only fall of 1 puyo height per cycle !
+      //careful we wan't to only fall of 1 puyo height per cycle !
       //So we keep the position of the last element that has falled so top there
       previous_empty = j+1;
       can_fall = 0;
@@ -935,6 +936,17 @@ byte fall_board(byte board_index)
   {
     //if something "fall" the counter is always reset to its 0 to 5 equivalent
     //so if nothing fall and we reach 11 (5th column) then a full "loop" as been done and we can continue
+    if (puyo_found == 0)
+    {  
+      column_height[tmp_counter] = 190;
+    }
+    else
+    {
+      //if puyo_found kept the height of the first puyo found, with no fall
+      //this is the heighest in the stack.
+      column_height[tmp_counter] = ((puyo_found-1)*16) -2;
+    }
+    
     if (step_p1_counter == 11)
     {
       step_p1 = CHECK_ALL;
@@ -957,9 +969,9 @@ void manage_point(byte index_player)
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
   char str[6];
   byte tmp_mask = 0;
-  byte tmp_tmp_mask = 0;
   unsigned long int tmp_score = 0;
   register word addr;
+  
   //hit power
   tmp_score = (nb_hit[index_player] <= 3) ? ((nb_hit[index_player]-1) << 3) : (nb_hit[index_player]-3 << 5);
   
@@ -968,23 +980,13 @@ void manage_point(byte index_player)
   tmp_mask = mask_color_destroyed & ((index_player == 0) ? 0xf : 0xf0);
  
   //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
-  /*tmp_tmp_mask = (tmp_mask & 1);
-  tmp_tmp_mask += ((tmp_mask & 2) >> 1); 
-  tmp_tmp_mask += ((tmp_mask & 4) >> 2);
-  tmp_tmp_mask += ((tmp_mask & 8) >> 3);
-
-  tmp_tmp_mask--;
-  tmp_tmp_mask *=3;*/
-  tmp_tmp_mask = (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
-
-  tmp_score += tmp_tmp_mask;
+  tmp_score += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
  
   
   // group_bonus
   if ( nb_group[index_player] > 0 )
   {
-    tmp_tmp_mask = ( (nb_group[index_player] < 7) ? (nb_group[index_player] + 1) : 10 );
-    tmp_score += tmp_tmp_mask;
+    tmp_score += ( (nb_group[index_player] < 7) ? (nb_group[index_player] + 1) : 10 );
   }
   
   //you need to raise the score if bonus are null, to avoid multiply by 0
