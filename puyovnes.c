@@ -961,7 +961,7 @@ void manage_point(byte index_player)
   unsigned long int tmp_score = 0;
   register word addr;
   //hit power
-  tmp_score = (nb_hit[index_player] <= 5) ? ((nb_hit[index_player]-1) << 3) : (nb_hit[index_player]-3 << 5);
+  tmp_score = (nb_hit[index_player] <= 3) ? ((nb_hit[index_player]-1) << 3) : (nb_hit[index_player]-3 << 5);
   
   //color_bonus
   //first get colors for current player
