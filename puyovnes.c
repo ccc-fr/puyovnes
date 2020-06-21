@@ -1187,6 +1187,7 @@ void handle_controler_and_sprites(char i)
     input_delay_PAD_RIGHT[i]++;
   else
     input_delay_PAD_RIGHT[i] = 0;
+  
   if (previous_pad[i]&PAD_A && pad&PAD_A)
     input_delay_PAD_A[i]++;
   else
@@ -1401,7 +1402,8 @@ void main(void)
         // et on fait & 3 pour ne garder que les 2 premiers bits    
         oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
 
-        actor_y[i] += actor_dy[i];
+        if ( actor_dy[i] != 0)        
+         actor_y[i] += (actor_dy[i] + ((previous_pad[0]&PAD_DOWN)? 2 : 0));
 
         //test relative to column_height
         if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
@@ -1538,7 +1540,7 @@ void main(void)
         // et on fait & 3 pour ne garder que les 2 premiers bits
         oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>((((p2_puyo_list_index%2)*2)+(i-2))*2))&3]);
  
-        actor_y[i] += actor_dy[i];
+        actor_y[i] += (actor_dy[i] + ((previous_pad[1]&PAD_DOWN)? 2 : 0));
 
         //test relative to column_height
         if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
