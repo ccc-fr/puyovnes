@@ -963,71 +963,48 @@ void manage_point(byte index_player)
   //hit power
   tmp_score = (nb_hit[index_player] <= 5) ? ((nb_hit[index_player]-1) << 3) : (nb_hit[index_player]-3 << 5);
   
-  sprintf(str,"P:%d", nb_puyos_destroyed[index_player]);
-  addr = NTADR_A(20,15);
-  vrambuf_put(addr,str,6);
-  sprintf(str,"H:%d", nb_hit[index_player]);
-  addr = NTADR_A(20,16);
-  vrambuf_put(addr,str,6);
-  sprintf(str,"C:%d", mask_color_destroyed);
-  addr = NTADR_A(20,17);
-  vrambuf_put(addr,str,6);
-  sprintf(str,"G:%d",nb_group[index_player]);
-  addr = NTADR_A(20,18);
-  vrambuf_put(addr,str,6);
-  
-  sprintf(str,"A:%d",tmp_score);
-  addr = NTADR_A(20,10);
-  vrambuf_put(addr,str,6);
   //color_bonus
   //first get colors for current player
   tmp_mask = mask_color_destroyed & ((index_player == 0) ? 0xf : 0xf0);
  
   //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
-  // /!\ PB here !
-  tmp_tmp_mask = (tmp_mask & 1);
+  /*tmp_tmp_mask = (tmp_mask & 1);
   tmp_tmp_mask += ((tmp_mask & 2) >> 1); 
   tmp_tmp_mask += ((tmp_mask & 4) >> 2);
   tmp_tmp_mask += ((tmp_mask & 8) >> 3);
-  sprintf(str,"D:%x %d",&tmp_score,tmp_score);
-  addr = NTADR_A(20,13);
-  vrambuf_put(addr,str,12);
+
   tmp_tmp_mask--;
-  tmp_tmp_mask *=3;
-  
-  //tmp_tmp_mask = (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
+  tmp_tmp_mask *=3;*/
+  tmp_tmp_mask = (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
+
   tmp_score += tmp_tmp_mask;
-  sprintf(str,"B:%d",tmp_score);
-  addr = NTADR_A(20,11);
-  vrambuf_put(addr,str,6);
+ 
   
   // group_bonus
   if ( nb_group[index_player] > 0 )
   {
-    tmp_score += (nb_group[index_player] < 7) ? (nb_group[index_player] + 1) : 10;
+    tmp_tmp_mask = ( (nb_group[index_player] < 7) ? (nb_group[index_player] + 1) : 10 );
+    tmp_score += tmp_tmp_mask;
   }
-  sprintf(str,"C:%d",tmp_score);
-  addr = NTADR_A(20,12);
-  vrambuf_put(addr,str,6);
   
   //you need to raise the score if bonus are null, to avoid multiply by 0
   if (tmp_score == 0)
     tmp_score = 1;
-  //Now the disappearing puyo
   
+  //Now the disappearing puyos
   tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[index_player] * 10);
-  /*sprintf(str,"D:%lu", tmp_score);
-  addr = NTADR_A(20,13);
-  vrambuf_put(addr,str,10);*/
+ /* sprintf(str,"5:%x %d",&tmp_score,tmp_score);
+  addr = NTADR_A(20,15);
+  vrambuf_put(addr,str,12);*/
   
   score[index_player] += tmp_score;
   //score[index_player]= 256128;
-  sprintf(str,"E:%x %lu",&score[index_player],score[index_player]);
+  /*sprintf(str,"E:%x %lu",&score[index_player],score[index_player]);
   addr = NTADR_A(20,14);
-  vrambuf_put(addr,str,12);
+  vrambuf_put(addr,str,12);*/
   
   //WIP add the opponent ojama removal from current player stack !
-  if (index_player == 1)
+  if (index_player == 0)
   {
     ojamas[2] += tmp_score;
     if (ojamas[0] > 0)
@@ -1046,8 +1023,11 @@ void manage_point(byte index_player)
   
   //TODO print score
   //TODO update ojama on top of opponent //warikomi not handled yet
-  sprintf(str,"%lu", score[index_player]);
-  addr = NTADR_A(7,27);
+  sprintf(str,"%6lu", score[index_player]);
+  addr = NTADR_A(6,27);
+  vrambuf_put(addr,str,6);
+  sprintf(str,"%6lu", ojamas[2]);
+  addr = NTADR_A(20,1);
   vrambuf_put(addr,str,6);
   //reinit value for next compute
   nb_puyos_destroyed[index_player] = 0;
