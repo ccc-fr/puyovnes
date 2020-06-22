@@ -678,7 +678,7 @@ byte check_board(byte board_index, byte x, byte y)
       {
         if ( tmp_boards[i][j] == flag)
         {
-          boards[i][j] += flag;
+          boards[i][j] |= flag;
           //tmp_boards[i][j] = 0;
           /*sprintf(str,"%d %d",i,j);
           vrambuf_put(NTADR_A(18,4+destruction),str,5);*/
@@ -734,7 +734,7 @@ byte destroy_board(byte board_index)
     tmp_counter = step_p1_counter;
   
   //step 0 we change the puyo to puyo_pop => e0
-  if (step_p1_counter == 0)
+  if (tmp_counter == 0)
   {
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
@@ -772,7 +772,7 @@ byte destroy_board(byte board_index)
     
   }
   //step 1 we change the puyo_pop to nothing
-  if (step_p1_counter == 15)
+  if (tmp_counter == 15)
   {
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
@@ -795,6 +795,7 @@ byte destroy_board(byte board_index)
         }
       }
     }
+    //TODO à corriger pour P2 !
     step_p1 = POINT;
     step_p1_counter = 255;
   }
@@ -995,15 +996,8 @@ void manage_point(byte index_player)
   
   //Now the disappearing puyos
   tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[index_player] * 10);
- /* sprintf(str,"5:%x %d",&tmp_score,tmp_score);
-  addr = NTADR_A(20,15);
-  vrambuf_put(addr,str,12);*/
   
   score[index_player] += tmp_score;
-  //score[index_player]= 256128;
-  /*sprintf(str,"E:%x %lu",&score[index_player],score[index_player]);
-  addr = NTADR_A(20,14);
-  vrambuf_put(addr,str,12);*/
   
   //WIP add the opponent ojama removal from current player stack !
   if (index_player == 0)
@@ -1331,7 +1325,7 @@ void handle_controler_and_sprites(char i)
 void main(void)
 {
   char i;	// actor index
-  //char str[32];
+  char str[32];
   register word addr;
   byte should_destroy = 0;
 
@@ -1453,19 +1447,16 @@ void main(void)
       nb_group[0] = 0;//if the group is over 4 puyos add the part over in this variable.
       
       should_destroy = (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
-      should_destroy = should_destroy || (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0);
+      should_destroy = (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
       if (should_destroy)
       {
-        /*sprintf(str,"BOOM");
-        addr = NTADR_A(20,15);
-        vrambuf_put(addr,str,4);*/
         step_p1_counter = 0;
         step_p1 = DESTROY;
         //let's move sprites to not have them on screen when things explode
-        actor_x[0] = 230;
-        actor_y[0] = 230;
-        actor_x[1] = 230;
-        actor_y[1] = 230;
+        actor_x[0] = 255;
+        actor_y[0] = 255;
+        actor_x[1] = 255;
+        actor_y[1] = 255;
         should_destroy = 0;
       }
       else
@@ -1498,7 +1489,10 @@ void main(void)
         i = 12;
         while ( ((boards[step_p1_counter][i] & 7) != EMPTY) && i <= 12 )
         {
-          should_destroy = should_destroy || (check_board(0, step_p1_counter, i) > 0);
+          //ce sens là fonctionne, mais tout ne pète pas, normal le || n'évalue pas ce qui est après...
+          //should_destroy = should_destroy || (check_board(0, step_p1_counter, i) > 0);
+          //Là ça boucle et je ne sais pas pourquoi...
+          should_destroy = (check_board(0, step_p1_counter, i) > 0) || should_destroy ;
           i--;
         }
         step_p1_counter++;
@@ -1653,6 +1647,10 @@ void main(void)
       actor_dy[3] = 1;
       p2_puyo_list_index++;*/
     }
+    
+      sprintf(str,"S1:%d, %d", step_p1, step_p1_counter);
+      addr = NTADR_A(20,15);
+      vrambuf_put(addr,str,12);
     
     if (oam_id!=0) 
       oam_hide_rest(oam_id);
