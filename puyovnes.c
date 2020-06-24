@@ -367,7 +367,7 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
   return attr;
 }
 
-//Update the boards table, not  optimized :-S
+//Update the boards table, once the puyos have stop moveing, not  optimized :-S
 //board_index must take 0 or 2
 void update_boards(byte board_index)
 {
@@ -408,6 +408,7 @@ void update_boards(byte board_index)
   }
 }
 
+// Look for puyo to destroy and flag them as such
 byte check_board(byte board_index, byte x, byte y)
 {
   byte i, j, current_color;
@@ -416,7 +417,6 @@ byte check_board(byte board_index, byte x, byte y)
   byte destruction = 0;
   //char str[32];
   
-  memset(tmp_boards,0,sizeof(tmp_boards));
   if (board_index != 0)
   {
     shift = 4;
@@ -439,9 +439,12 @@ byte check_board(byte board_index, byte x, byte y)
   //k == current line above, k == current line below
   
   //if already flagged move on as it has already been treated elsewhere
-  if ((boards[x][y] & flag) == 1)
-    return 0;
+  //test moved outside of the function to avoid too much function call that slow down things
+  /*if ((boards[x][y] & flag) == 1)
+    return 0;*/
   
+  memset(tmp_boards,0,sizeof(tmp_boards));
+
   current_color = ((boards[x][y] & mask) >> shift);
   /*sprintf(str,"color:%d",current_color);
   vrambuf_put(NTADR_A(18,10),str,10);*/
@@ -459,7 +462,9 @@ byte check_board(byte board_index, byte x, byte y)
       }
       else
       {  
-        i = 7; //no need to continue if not found
+       /* i = 7; //no need to continue if not found
+        continue;*/
+        break;
       }
     }
     i--;
@@ -477,7 +482,9 @@ byte check_board(byte board_index, byte x, byte y)
       }
       else
       {
-        i = 7; //no need to continue if not found
+        /*i = 7; //no need to continue if not found
+        continue;*/
+        break;
       }
     }
     i++;
@@ -495,7 +502,8 @@ byte check_board(byte board_index, byte x, byte y)
       } 
       else
       {
-        i = 14; //no need to continue if not found
+        //i = 14; //no need to continue if not found
+        break;
       }
     }
     i--;
@@ -513,7 +521,8 @@ byte check_board(byte board_index, byte x, byte y)
       } 
       else
       {
-        i = 14; //no need to continue if not found
+        //i = 14; //no need to continue if not found
+        break;
       }
     }
     i++;
@@ -521,24 +530,6 @@ byte check_board(byte board_index, byte x, byte y)
   //nothing found ? exit !
   if (counter == 0)
     return 0;
-  
-  /*sprintf(str,"ca:%d",counter);
-  vrambuf_put(NTADR_A(4,2),str,4);*/
-  /*for (i = 0; i < 6; i++)
-  {
-    for (j = 12 ; j <= 12 ; j--)
-    {
-      if ( tmp_boards[i][j] == flag)
-      { 
-        //sprintf(str,"%d %d",i,j);
-        //vrambuf_put(NTADR_A(2,9+tmp_line),str,5);
-        tmp_line++;
-      }
-    }
-  }*/
-  /*sprintf(str,"STOP");
-  vrambuf_put(NTADR_A(2,9+tmp_line),str,5);*/
-  
   
   //ok so we got something, now looking for more
   j = (y-1);
@@ -1447,7 +1438,10 @@ void main(void)
       nb_group[0] = 0;//if the group is over 4 puyos add the part over in this variable.
       
       should_destroy = (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
-      should_destroy = (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
+      //if both puyo had the same color it's unless to perform the second check
+      if ( (boards[((actor_x[1]>>3) - 2) >> 1][((actor_y[1]>>3)+1)>>1] & 8) != 8)
+        should_destroy = (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
+      
       if (should_destroy)
       {
         step_p1_counter = 0;
@@ -1487,11 +1481,11 @@ void main(void)
       { //Start from the left column and go right, do bottom
         //1 column per step to keep some CPU (hopefully)
         i = 12;
-        while ( ((boards[step_p1_counter][i] & 7) != EMPTY) && i <= 12 )
+        //must not be empty (5) and must not have the flag (8) set !
+        while ( ((boards[step_p1_counter][i] & 7) != EMPTY) &&
+                ((boards[step_p1_counter][i] & 8) != 8) &&
+               i <= 12 )
         {
-          //ce sens là fonctionne, mais tout ne pète pas, normal le || n'évalue pas ce qui est après...
-          //should_destroy = should_destroy || (check_board(0, step_p1_counter, i) > 0);
-          //Là ça boucle et je ne sais pas pourquoi...
           should_destroy = (check_board(0, step_p1_counter, i) > 0) || should_destroy ;
           i--;
         }
@@ -1539,12 +1533,12 @@ void main(void)
         actor_y[i] += (actor_dy[i] + ((previous_pad[1]&PAD_DOWN)? 2 : 0));
 
         //test relative to column_height
-        if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
+        /*if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
         {
           actor_dy[i] = 0;
           actor_y[i] = column_height[(actor_x[i]>>4) - 1];
           column_height[(actor_x[i]>>4) - 1] -= 16;
-        }
+        }*/
       }
     }
 
@@ -1650,7 +1644,7 @@ void main(void)
     
       sprintf(str,"S1:%d, %d", step_p1, step_p1_counter);
       addr = NTADR_A(20,15);
-      vrambuf_put(addr,str,12);
+      vrambuf_put(addr,str,10);
     
     if (oam_id!=0) 
       oam_hide_rest(oam_id);
