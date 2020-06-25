@@ -1294,14 +1294,32 @@ void handle_controler_and_sprites(char i)
         if (actor_y[i*2] < actor_y[(i*2)+1])
         {
           //going from up to left
-          actor_x[i*2] -= 16;
-          actor_y[i*2] += 16; 
+          ///are we on the side left side?
+          if (actor_x[i*2] == (16+i*128))
+          {
+            //wall kick
+            actor_x[(i*2)+1] += 16;
+            actor_y[i*2] += 16;
+          }
+          else
+          {
+            actor_x[i*2] -= 16;
+            actor_y[i*2] += 16;
+          }
         }
         else
-        {  
-          //going down to right
-          actor_x[i*2] += 16;
-          actor_y[i*2] -= 16; 
+        {  //going down to right
+          if (actor_x[i*2] == (96+i*128))
+          {
+            //wall kick
+            actor_x[(i*2)+1] -= 16;
+            actor_y[i*2] -= 16; 
+          }
+          else
+          {
+            actor_x[i*2] += 16;
+            actor_y[i*2] -= 16; 
+          }
         }
       }
       if (pad&PAD_A && input_delay_PAD_A[i] == 0)
