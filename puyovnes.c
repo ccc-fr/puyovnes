@@ -151,6 +151,27 @@ const unsigned char* const puyoSeq[6] = {
   puyo_red, puyo_blue, puyo_green, puyo_yellow, ojama, puyo_pop
 };
 
+
+//declaration des fonctions, il parait que ça aide
+word nt2attraddr(word a);
+void set_metatile(byte y, byte ch);
+void clear_metatile(byte y);
+void set_attr_entry(byte x, byte y, byte pal);
+void put_attr_entries(word addr, byte length);
+void generate_rng(void);
+byte return_sprite_color(byte spr_index);
+byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_table);
+byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
+void update_boards(byte board_index);
+byte check_board(byte board_index, byte x, byte y);
+byte destroy_board(byte board_index);
+byte fall_board(byte board_index);
+void manage_point(byte index_player);
+void build_field(void);
+void setup_graphics(void);
+void handle_controler_and_sprites(char i);
+
+
 // convert from nametable address to attribute table address
 word nt2attraddr(word a) {
   return (a & 0x2c00) | 0x3c0 |
@@ -196,7 +217,7 @@ void set_attr_entry(byte x, byte y, byte pal) {
 
 void put_attr_entries(word addr, byte length) {
   byte i;
-  for (i=0; i<length; i++) {
+  for (i=0; i<length; ++i) {
     VRAMBUF_PUT(addr, attrbuf[i], 0);
     addr += 8;
   }
@@ -234,12 +255,12 @@ void generate_rng()
   // but it should works.
   // we will be using rand8(), which is fast but...not very random
   rand();
-  for (i = 0 ; i < PUYOLISTLENGTH ; i++)
+  for (i = 0 ; i < PUYOLISTLENGTH ; ++i)
   {
     puyo_list[i] = 0; //reinit
     redo = 1; // loop until we get what we want;
     //get a number between 0 and 3
-    for (j = 0 ; j < 4; j++)
+    for (j = 0 ; j < 4; ++j)
     {
       do
       {
@@ -249,7 +270,7 @@ void generate_rng()
           case 0:
             if (nb_red > 0)
             {
-              nb_red--;
+              --nb_red;
               redo = 0;
               puyo_list[i] += (tmp);
             }
@@ -257,7 +278,7 @@ void generate_rng()
           case 1:
             if (nb_blue > 0)
             {
-              nb_blue--;
+              --nb_blue;
               redo = 0;
               puyo_list[i] += (tmp << j*2);
             }
@@ -265,7 +286,7 @@ void generate_rng()
           case 2:
             if (nb_green > 0)
             {
-              nb_green--;
+              --nb_green;
               redo = 0;
               puyo_list[i] += (tmp << j*2);
             }
@@ -273,7 +294,7 @@ void generate_rng()
           case 3:
             if (nb_yellow > 0)
             {
-              nb_yellow--;
+              --nb_yellow;
               redo = 0;
               puyo_list[i] += (tmp << j*2);
             }
@@ -691,7 +712,7 @@ byte check_board(byte board_index, byte x, byte y)
   return destruction;
 }
 
-/*puyo visual destroying after check_board*/
+//puyo visual destroying after check_board
 byte destroy_board(byte board_index)
 {
   byte i, j/*, current_color*/;
@@ -722,9 +743,9 @@ byte destroy_board(byte board_index)
     memset(attrbuf, 0, sizeof(attrbuf));
 
     set_metatile(0,0xe0); //0xe0 == puyo_pop
-    for (i = 0; i < 6 ; i++)
+    for (i = 0; i < 6 ; ++i)
     {
-      for (j = 0; j < 13 ; j++)
+      for (j = 0; j < 13 ; ++j)
       {
         if ((boards[i][j] & flag) > 0)
         {
@@ -760,9 +781,9 @@ byte destroy_board(byte board_index)
     memset(attrbuf, 0, sizeof(attrbuf));
 
     clear_metatile(0);
-    for (i = 0; i < 6 ; i++)
+    for (i = 0; i < 6 ; ++i)
     {
-      for (j = 0; j < 13 ; j++)
+      for (j = 0; j < 13 ; ++j)
       {
         if ((boards[i][j] & flag) > 0)
         {
@@ -781,7 +802,7 @@ byte destroy_board(byte board_index)
     step_p1_counter = 255;
   }
   
-  step_p1_counter++;
+  ++step_p1_counter;
   return 0;
 }
 
@@ -823,7 +844,7 @@ byte fall_board(byte board_index)
       return 0;*/
   }
   
-  for (j = 0 ; j < 13 ; j++)
+  for (j = 0 ; j < 13 ; ++j)
   {
     if (can_fall != 1 && (boards[tmp_counter][j] & smask) != EMPTY)
     {
@@ -831,14 +852,14 @@ byte fall_board(byte board_index)
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
       if (j+1 < 13)
-        j++;  
+        ++j;  
     }
 
     if (can_fall == 1 && (boards[tmp_counter][j] & smask) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
-      for (j2 = j ; j2 >= previous_empty && j2 < 255 ; j2--)
+      for (j2 = j ; j2 >= previous_empty && j2 < 255 ; --j2)
       {
         if (j2 == 0)
           boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
@@ -875,7 +896,7 @@ byte fall_board(byte board_index)
     memset(ntbuf2, 0, sizeof(ntbuf2));
     memset(attrbuf, 0, sizeof(attrbuf));
     //we start at 1 as we don't want to modify the ceiling
-    for (j = 1; j < 13 ; j++)
+    for (j = 1; j < 13 ; ++j)
     {
       
       switch (boards[tmp_counter][j] & mask)
@@ -937,9 +958,9 @@ byte fall_board(byte board_index)
   }
   
   if (board_index != 0)
-    step_p2_counter++;
+    ++step_p2_counter;
   else
-    step_p1_counter++;
+    ++step_p1_counter;
 
   return board_index;
 }
@@ -1018,9 +1039,9 @@ void build_field()
   //byte i, x, y;
   byte x, y;
   //Filling up boards with EMPTY
-  for (x = 0; x < 6; x++)
+  for (x = 0; x < 6; ++x)
   {
-    for (y = 0; y < 13; y++)
+    for (y = 0; y < 13; ++y)
     {
       boards[x][y] = EMPTY + (EMPTY << 4);
       tmp_boards[x][y] = 0;
@@ -1157,20 +1178,20 @@ void handle_controler_and_sprites(char i)
   pad = pad_poll(i);
   //update status of controller memory
   if (previous_pad[i]&PAD_LEFT && pad&PAD_LEFT)
-    input_delay_PAD_LEFT[i]++;
+    ++input_delay_PAD_LEFT[i];
   else
     input_delay_PAD_LEFT[i] = 0;
   if (previous_pad[i]&PAD_RIGHT && pad&PAD_RIGHT)
-    input_delay_PAD_RIGHT[i]++;
+    ++input_delay_PAD_RIGHT[i];
   else
     input_delay_PAD_RIGHT[i] = 0;
   
   if (previous_pad[i]&PAD_A && pad&PAD_A)
-    input_delay_PAD_A[i]++;
+    ++input_delay_PAD_A[i];
   else
     input_delay_PAD_A[i] = 0;
   if (previous_pad[i]&PAD_B && pad&PAD_B)
-    input_delay_PAD_B[i]++;
+    ++input_delay_PAD_B[i];
   else
     input_delay_PAD_B[i] = 0;
 
@@ -1348,7 +1369,7 @@ void main(void)
   input_delay_PAD_LEFT[1] = 0;
   input_delay_PAD_RIGHT[0] = 0;
   input_delay_PAD_RIGHT[1] = 0;
-  for (i = 0; i < 12 ; i++)
+  for (i = 0; i < 12 ; ++i)
     column_height[i] = 190;
 
   step_p1 = PLAY;
@@ -1369,7 +1390,7 @@ void main(void)
     if (step_p1 == PLAY)
     {
       handle_controler_and_sprites(0);
-      for (i = 0 ; i < 2 ; i++)
+      for (i = 0 ; i < 2 ; ++i)
       {
         // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
         // puyo_list       p1_puyo_list_index
@@ -1451,7 +1472,7 @@ void main(void)
         actor_y[1] = 16;
         actor_dy[0] = 1;
         actor_dy[1] = 1;
-        p1_puyo_list_index++;
+        ++p1_puyo_list_index;
         step_p1 = PLAY;
         step_p1_counter = 0;
         // step_p1 = DESTROY;
@@ -1498,7 +1519,7 @@ void main(void)
           actor_y[1] = 16;
           actor_dy[0] = 1;
           actor_dy[1] = 1;
-          p1_puyo_list_index++;
+          ++p1_puyo_list_index;
           step_p1 = PLAY;
           step_p1_counter = 0;
           nb_hit[0] = 0;// hit combo counter
@@ -1510,7 +1531,7 @@ void main(void)
     if (step_p2 == PLAY)
     {
       handle_controler_and_sprites(1);
-      for (i = 2 ; i < 4 ; i++)
+      for (i = 2 ; i < 4 ; ++i)
       {
         // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
         // puyo_list       p1_puyo_list_index
