@@ -63,7 +63,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT};
+typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -170,6 +170,7 @@ void manage_point(byte index_player);
 void build_field(void);
 void setup_graphics(void);
 void handle_controler_and_sprites(char i);
+void update_next(byte i);
 
 
 // convert from nametable address to attribute table address
@@ -1033,6 +1034,38 @@ void manage_point(byte index_player)
   nb_group[index_player] = 0;
 }
 
+//update the color of the next pair to come between fields
+void update_next(byte i)
+{
+  // current position is p1_puyo_list_index, 
+  //We have to remember that one byte contains 4 colors/puyo (2 bits per color)
+  //we move only by 2 however
+  
+  // puyo_list       p1_puyo_list_index
+  // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
+  // ensuite on décale sur le bon élément de l'index 
+  // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
+  // et on fait & 3 pour ne garder que les 2 premiers bits
+  
+  //puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
+
+  //I still quite don't get how this tile buffering fuctions works
+  //So I do it like..that, and it's ugly.
+  memset(attrbuf, 0, sizeof(attrbuf));
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+1)>>1)]>>(((((p1_puyo_list_index+1)%2)*2)+0)*2))&3,14+(i<<1),4); 
+  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 4 ))), 1);
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+1)>>1)]>>(((((p1_puyo_list_index+1)%2)*2)+1)*2))&3,14+(i<<1),6); 
+  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 6 ))), 1);
+  //attrbuf[0] = return_tile_attribute_color(0,14+(i<<1),8); 
+  //put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 8 ))), 1);
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+2)>>1)]>>(((((p1_puyo_list_index+2)%2)*2)+0)*2))&3,14+(i<<1),10);
+  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 10 ))), 1);
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+2)>>1)]>>(((((p1_puyo_list_index+2)%2)*2)+1)*2))&3,14+(i<<1),12);
+  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 12 ))), 1);; 
+  return;
+}
+
+
 void build_field()
 {
   //register word addr;
@@ -1068,7 +1101,7 @@ void build_field()
     {/* il faudra ici mettre les puyo à venir !*/
       for (y = 0; y < PLAYROWS; y+=2)
       {
-        if ( y >= 4 && y <= 8 )
+        if ( (y >= 4 && y <= 6) || (y >= 10 && y <= 12) )
         {
           vram_adr(NTADR_A(x,y));
           vram_put(0xc8);
@@ -1092,7 +1125,7 @@ void build_field()
     {
       for (y = 0; y < PLAYROWS; y+=2)
       {
-       if ( y >= 4 && y <= 8 )
+       if ( (y >= 4 && y <= 6) || (y >= 10 && y <= 12) )
         {
           vram_adr(NTADR_A(x,y));
           vram_put(0xc8);
@@ -1394,6 +1427,9 @@ void main(void)
   step_p2 = PLAY;
   step_p1_counter = 0;
   step_p2_counter = 0;
+  //update pairs to come
+  update_next(0);
+  update_next(1);
   
   //init score at 0
   memset(score,0,sizeof(score));
@@ -1443,12 +1479,26 @@ void main(void)
       fall_board(0);
     }
     
+    //update the next pair to come in the middle of the field
+    if (step_p1 == SHOW_NEXT)
+    {
+      update_next(0);
+      step_p1 = PLAY;
+    }
+    
+    if (step_p2 == SHOW_NEXT)
+    {
+      update_next(1);
+      step_p1 = PLAY;
+    }
+    
     if (step_p1 == POINT)
     {
-      //execute before destroy to avoid doing destroy and fall consecutively
+      //executed before destroy to avoid doing destroy and fall consecutively
       nb_hit[0] += 1;
       manage_point(0);
       step_p1 = FALL;
+     
     }
 
     if (step_p1 == DESTROY)
@@ -1491,7 +1541,7 @@ void main(void)
         actor_dy[0] = 1;
         actor_dy[1] = 1;
         ++p1_puyo_list_index;
-        step_p1 = PLAY;
+        step_p1 = SHOW_NEXT;
         step_p1_counter = 0;
         // step_p1 = DESTROY;
         // Need to reset the boards flag to 0 after destroy!
@@ -1538,7 +1588,7 @@ void main(void)
           actor_dy[0] = 1;
           actor_dy[1] = 1;
           ++p1_puyo_list_index;
-          step_p1 = PLAY;
+          step_p1 = SHOW_NEXT;
           step_p1_counter = 0;
           nb_hit[0] = 0;// hit combo counter
         }
