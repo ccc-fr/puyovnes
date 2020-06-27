@@ -998,7 +998,7 @@ void manage_point(byte index_player)
   if ((index_player == 0)  ? (step_p1_counter == 0):(step_p2_counter == 0))
   {
     //hit power
-    tmp_score = (nb_hit[index_player] <= 3) ? ((nb_hit[index_player]-1) << 3) : (nb_hit[index_player]-3 << 5);
+    tmp_score = (nb_hit[index_player] <= 3) ? ((nb_hit[index_player]-1) << 3) : ((nb_hit[index_player]-3) << 5);
 
     //color_bonus
     //first get colors for current player
@@ -1042,9 +1042,17 @@ void manage_point(byte index_player)
     }
 
     //TODO warikomi not handled yet
-    sprintf(str,"%6lu", score[index_player]);
-    addr = NTADR_A(5,27);
+     sprintf(str,"Hit:%2d", nb_hit[index_player]);
+    addr = NTADR_A(2,26);
     vrambuf_put(addr,str,6);
+    sprintf(str,"%6lu", score[index_player]);
+    addr = NTADR_A(8,27);
+    vrambuf_put(addr,str,6);
+    
+    //reinit value for next compute
+    nb_puyos_destroyed[index_player] = 0;
+    mask_color_destroyed = mask_color_destroyed & 0xF0;
+    nb_group[index_player] = 0;
   }
   else
   {
@@ -1064,7 +1072,6 @@ void manage_point(byte index_player)
     //720:  0xf0   crown
     //1440: 0xf4   comet
     
-    //we should use function to save prg space !!!!
     //first let's get our score divided by 70
     tmp_score = ojamas[(index_player == 0 ? 2 : 0)] / 70;
     index_player = 0;
@@ -1128,11 +1135,6 @@ void manage_point(byte index_player)
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
 
     put_attr_entries((nt2attraddr(addr)),6);
-
-    //reinit value for next compute
-    nb_puyos_destroyed[index_player] = 0;
-    mask_color_destroyed = mask_color_destroyed & 0xF0;
-    nb_group[index_player] = 0;
   }
 }
 
@@ -1597,7 +1599,8 @@ void main(void)
     if (step_p1 == POINT)
     {
       //executed before destroy to avoid doing destroy and fall consecutively
-      nb_hit[0] += 1;
+      if (step_p1_counter == 0)
+        nb_hit[0] += 1;
       manage_point(0);
       ++step_p1_counter;
       if (step_p1_counter == 2)
@@ -1617,7 +1620,7 @@ void main(void)
     if (step_p1 == CHECK && step_p1_counter == 0)
     {
       //reinit variables for counting point
-      nb_puyos_destroyed[1] = 0; //how many puyos are destroyed on that hit      
+      nb_puyos_destroyed[0] = 0; //how many puyos are destroyed on that hit      
       //we keep only p2 maskcolor
       mask_color_destroyed =  mask_color_destroyed & 0xF0; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
       nb_group[0] = 0;//if the group is over 4 puyos add the part over in this variable.
