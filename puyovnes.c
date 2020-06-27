@@ -1066,7 +1066,7 @@ void manage_point(byte index_player)
     
     //we should use function to save prg space !!!!
     //first let's get our score divided by 70
-    tmp_score = ojamas[index_player>>1] / 70;
+    tmp_score = ojamas[(index_player == 0 ? 2 : 0)] / 70;
     index_player = 0;
     //let's cheat, setup everything as ojamaless tile
     memset(str,0xc4, sizeof(str));
