@@ -449,7 +449,7 @@ void update_boards(byte board_index)
 // Look for puyo to destroy and flag them as such
 byte check_board(byte board_index, byte x, byte y)
 {
-  static byte i, j, current_color; //static are faster, but they are keeping there value outside of context
+  static byte i, j, k, current_color; //static are faster, but they are keeping there value outside of context
   byte counter = 0, tmp_counter = 0;
   byte mask = 15, flag = 8, shift = 0;
   byte destruction = 0;
@@ -570,6 +570,7 @@ byte check_board(byte board_index, byte x, byte y)
   //we must do the line in both way (0 to 6 and 6 to 0) to avoid missing something
   while (j < 13)
   {
+    /*
     for (i = 0; i < 6 ; ++i)
     {
       if (tmp_boards[i][j] != flag)
@@ -602,9 +603,78 @@ byte check_board(byte board_index, byte x, byte y)
         }
       }
     }
+    */
+    //for not testing under or over the board
+    k = j+1;
+    //unlooped version
+    //0
+    if (tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+        ( ((k!=13) ? (tmp_boards[0][k] == flag) : false) ||
+         (tmp_boards[1][j] == flag)) )
+    {
+      tmp_boards[0][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //1
+    if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+        ( ((k!=13) ? (tmp_boards[1][k] == flag) : false) ||
+         (tmp_boards[0][j] == flag) ||
+         (tmp_boards[2][j] == flag)) )
+    {
+      tmp_boards[1][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //2
+    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[2][j] & mask) >> shift)) && 
+        ( ((k!=13) ? (tmp_boards[2][k] == flag) : false) ||
+         (tmp_boards[1][j] == flag) ||
+         (tmp_boards[3][j] == flag)) )
+    {
+      tmp_boards[2][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //3
+    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[3][j] & mask) >> shift)) && 
+        ( ((k!=13) ? (tmp_boards[3][k] == flag) : false) ||
+         (tmp_boards[2][j] == flag) ||
+         (tmp_boards[4][j] == flag)) )
+    {
+      tmp_boards[3][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //4
+    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[4][j] & mask) >> shift)) && 
+        ( ((k!=13) ? (tmp_boards[4][k] == flag) : false) ||
+         (tmp_boards[3][j] == flag) ||
+         (tmp_boards[5][j] == flag)) )
+    {
+      tmp_boards[4][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //5
+    if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
+        ( ((k!=13) ? (tmp_boards[5][k] == flag) : false) ||
+         (tmp_boards[4][j] == flag)))
+    {
+      tmp_boards[5][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+    
     //no need to go backward if nothing has been foun in the first loop
     if (tmp_counter != 0) 
     {
+      /*
       for (i = 5; i < 6 ; --i)
       {
         //no need to look below as it has already been done in the previous loop
@@ -629,6 +699,60 @@ byte check_board(byte board_index, byte x, byte y)
           }
         }
       }
+      */
+      
+       //5 inutile on vient de le faire !
+      /*if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
+           (tmp_boards[4][j] == flag))
+      {
+        tmp_boards[5][j] = flag;
+        ++counter;
+      }*/
+      
+      //4
+      if ( tmp_boards[4][j] != flag && (current_color == ((boards[4][j] & mask) >> shift)) && 
+           ((tmp_boards[3][j] == flag) ||
+            (tmp_boards[5][j] == flag)) )
+      {
+        tmp_boards[4][j] = flag;
+        ++counter;
+      }
+      
+      //3
+      if ( tmp_boards[3][j] != flag && (current_color == ((boards[3][j] & mask) >> shift)) && 
+           ((tmp_boards[2][j] == flag) ||
+            (tmp_boards[4][j] == flag)) )
+      {
+        tmp_boards[3][j] = flag;
+        ++counter;
+      }
+      
+      //2
+      if ( tmp_boards[2][j] != flag && (current_color == ((boards[2][j] & mask) >> shift)) && 
+           ((tmp_boards[1][j] == flag) ||
+            (tmp_boards[3][j] == flag)) )
+      {
+        tmp_boards[2][j] = flag;
+        ++counter;
+      }
+      
+      //1
+      if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+           ((tmp_boards[0][j] == flag) ||
+            (tmp_boards[2][j] == flag)) )
+      {
+        tmp_boards[1][j] = flag;
+        ++counter;
+      }
+      
+       //0
+      if ( tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+           ((tmp_boards[1][j] == flag)) )
+      {
+        tmp_boards[0][j] = flag;
+        ++counter;
+      } 
+      
     }
     tmp_counter = 0;
     --j; //going above is getting lower j
@@ -638,6 +762,7 @@ byte check_board(byte board_index, byte x, byte y)
   //we go below so we look above
   while (j < 13)
   {
+    /*
     for (i = 0; i < 6 ; ++i)
     {
       if (tmp_boards[i][j] != flag)
@@ -669,9 +794,78 @@ byte check_board(byte board_index, byte x, byte y)
           }
         }
       }
+    }*/
+    //for not testing under or over the board
+    k = j-1;
+    
+    //unlooped version
+    //0
+    if (tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+        (((k<13) ? (tmp_boards[0][k] == flag) : false) ||
+         (tmp_boards[1][j] == flag)) )
+    {
+      tmp_boards[0][j] = flag;
+      ++counter;
+      ++tmp_counter;
     }
+
+    //1
+    if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+        (((k<13) ? (tmp_boards[1][k] == flag) : false) ||
+         (tmp_boards[0][j] == flag) ||
+         (tmp_boards[2][j] == flag)) )
+    {
+      tmp_boards[1][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //2
+    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[2][j] & mask) >> shift)) && 
+        (((k<13) ? (tmp_boards[2][k] == flag) : false) ||
+         (tmp_boards[1][j] == flag) ||
+         (tmp_boards[3][j] == flag)) )
+    {
+      tmp_boards[2][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //3
+    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[3][j] & mask) >> shift)) && 
+        (((k<13) ? (tmp_boards[3][k] == flag) : false) ||
+         (tmp_boards[2][j] == flag) ||
+         (tmp_boards[4][j] == flag)) )
+    {
+      tmp_boards[3][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //4
+    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[4][j] & mask) >> shift)) && 
+        (((k<13) ? (tmp_boards[4][k] == flag) : false) ||
+         (tmp_boards[3][j] == flag) ||
+         (tmp_boards[5][j] == flag)) )
+    {
+      tmp_boards[4][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
+    //5
+    if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
+        ( ((k<13) ? (tmp_boards[5][k] == flag) : false) ||
+         (tmp_boards[4][j] == flag)))
+    {
+      tmp_boards[5][j] = flag;
+      ++counter;
+      ++tmp_counter;
+    }
+
     if (tmp_counter != 0)
     {
+      /*
       for (i = 5; i < 6 ; --i)
       {
         //no need to look below as it has already been done in the previous loop
@@ -696,6 +890,59 @@ byte check_board(byte board_index, byte x, byte y)
           }
         }
       }
+      */
+      
+      //5 useless, same as last from previous "loop"
+      /*if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
+           (tmp_boards[4][j] == flag))
+      {
+        tmp_boards[5][j] = flag;
+        ++counter;
+      }*/
+      
+      //4
+      if ( tmp_boards[4][j] != flag && (current_color == ((boards[4][j] & mask) >> shift)) && 
+           ((tmp_boards[3][j] == flag) ||
+            (tmp_boards[5][j] == flag)) )
+      {
+        tmp_boards[4][j] = flag;
+        ++counter;
+      }
+      
+      //3
+      if ( tmp_boards[3][j] != flag && (current_color == ((boards[3][j] & mask) >> shift)) && 
+           ((tmp_boards[2][j] == flag) ||
+            (tmp_boards[4][j] == flag)) )
+      {
+        tmp_boards[3][j] = flag;
+        ++counter;
+      }
+      
+      //2
+      if ( tmp_boards[2][j] != flag && (current_color == ((boards[2][j] & mask) >> shift)) && 
+           ((tmp_boards[1][j] == flag) ||
+            (tmp_boards[3][j] == flag)) )
+      {
+        tmp_boards[2][j] = flag;
+        ++counter;
+      }
+      
+      //1
+      if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+           ((tmp_boards[0][j] == flag) ||
+            (tmp_boards[2][j] == flag)) )
+      {
+        tmp_boards[1][j] = flag;
+        ++counter;
+      }
+      
+       //0
+      if ( tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+           ((tmp_boards[1][j] == flag)) )
+      {
+        tmp_boards[0][j] = flag;
+        ++counter;
+      } 
     }
     tmp_counter = 0;
     ++j; //going below is getting higher j
@@ -1481,7 +1728,7 @@ void handle_controler_and_sprites(char i)
 
 void main(void)
 {
-  char i;	// actor index
+  char i,j;	// actor index
   char str[32];
   register word addr;
   byte should_destroy = 0;
@@ -1665,10 +1912,10 @@ void main(void)
     //to top and stop searching as soon empty is found
     if (step_p1 == CHECK_ALL)
     {
-      if (step_p1_counter < 6)
+      if (step_p1_counter < 78)
       { //Start from the left column and go right, do bottom
         //1 column per step to keep some CPU (hopefully)
-        i = 12;
+        /*i = 12;
         //must not be empty (5) and must not have the flag (8) set !
         while ( ((boards[step_p1_counter][i] & 7) != EMPTY) &&
                 ((boards[step_p1_counter][i] & 8) != 8) &&
@@ -1676,7 +1923,23 @@ void main(void)
         {
           should_destroy = (check_board(0, step_p1_counter, i) > 0) || should_destroy ;
           --i;
-        }
+        }*/
+        i = step_p1_counter / 13;
+        j = 13 - (step_p1_counter % 13);
+        if (((boards[i][j] & 7) != EMPTY) && ((boards[i][j] & 8) != 8))
+          should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
+        ++step_p1_counter;
+        
+        i = step_p1_counter / 13;
+        j = 13 - (step_p1_counter % 13);
+        if (((boards[i][j] & 7) != EMPTY) && ((boards[i][j] & 8) != 8))
+          should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
+        ++step_p1_counter;
+        
+        i = step_p1_counter / 13;
+        j = 13 - (step_p1_counter % 13);
+        if (((boards[i][j] & 7) != EMPTY) && ((boards[i][j] & 8) != 8))
+          should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
         ++step_p1_counter;
       }
       else
