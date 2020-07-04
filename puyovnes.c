@@ -145,6 +145,11 @@ char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
 char input_delay_PAD_A[2]; //to avoid multiple input on one press
 char input_delay_PAD_B[2]; //to avoid multiple input on one press
 char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy
+//constant for puyo physics
+#define GRACE_PERIOD 32
+#define MAX_FALLING_BACK_UP 8
+byte timer_grace_period[2];
+byte counter_falling_back_up[2];
 
 //le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
 const unsigned char* const puyoSeq[6] = {
@@ -1584,7 +1589,7 @@ void handle_controler_and_sprites(char i)
   if (actor_x[i*2] < actor_x[(i*2)+1])
   {
     //left/right
-    if (pad&PAD_LEFT && actor_x[i*2] > (16+(i*128)))
+    if ( pad&PAD_LEFT && (actor_x[i*2] > (16+(i*128))) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4) - 2]) )
     {
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
@@ -1593,7 +1598,7 @@ void handle_controler_and_sprites(char i)
         actor_x[(i*2)+1] -= 16;
       }
     }
-    else if (pad&PAD_RIGHT && actor_x[(i*2)+1] < (96+(i*128)))
+    else if ( pad&PAD_RIGHT && (actor_x[(i*2)+1] < (96+(i*128))) && (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4)]) )
     {
       if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
       {
@@ -1627,30 +1632,30 @@ void handle_controler_and_sprites(char i)
   }
   else
   {
-    if (pad&PAD_LEFT && actor_x[(i*2)+1] > (16+i*128))
-    {
-      if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
-      {
-        actor_x[i*2] -= 16;
-        actor_x[(i*2)+1] -= 16;
-      }
-    }
-    else if (pad&PAD_RIGHT && actor_x[i*2] < (96+i*128))
-    {
-      if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
-      {
-        actor_x[i*2] += 16;
-        actor_x[(i*2)+1] += 16;
-      }
-    }
-    else
-    {//doing nothing
-      /*actor_dx[i*2] = 0;
-          actor_dx[(i*2)+1] = 0;*/
-    }
+
+   // (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 1])
 
     if (actor_x[i*2] != actor_x[(i*2)+1])
     {
+      //actor_x i is more to the right than actor_x i+1
+      //going left or right
+      if (pad&PAD_LEFT && (actor_x[(i*2)+1] > (16+i*128)) && (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 2]) )
+      {
+        if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+        {
+          actor_x[i*2] -= 16;
+          actor_x[(i*2)+1] -= 16;
+        }
+      }
+      else if (pad&PAD_RIGHT && (actor_x[i*2] < (96+i*128)) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4)]) )
+      {
+        if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+        {
+          actor_x[i*2] += 16;
+          actor_x[(i*2)+1] += 16;
+        }
+      }
+
       //puyo[0] > puyo[1], it's on its right
       if (pad&PAD_B && input_delay_PAD_B[i] == 0)
       { 
@@ -1669,6 +1674,24 @@ void handle_controler_and_sprites(char i)
     }
     else
     {
+      //left or right movement with both actor on the same x
+      if (pad&PAD_LEFT && (actor_x[i*2] > (16+i*128)) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4) - 2]) )
+      {
+        if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+        {
+          actor_x[i*2] -= 16;
+          actor_x[(i*2)+1] -= 16;
+        }
+      }
+      else if (pad&PAD_RIGHT && (actor_x[i*2] < (96+i*128)) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4)]) )
+      {
+        if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+        {
+          actor_x[i*2] += 16;
+          actor_x[(i*2)+1] += 16;
+        }
+      }
+      
       //same x for both puyo
       //B we go on the left, A we go on the right
       if (pad&PAD_B && input_delay_PAD_B[i] == 0)
@@ -1771,6 +1794,11 @@ void main(void)
   input_delay_PAD_LEFT[1] = 0;
   input_delay_PAD_RIGHT[0] = 0;
   input_delay_PAD_RIGHT[1] = 0;
+  timer_grace_period[0] = GRACE_PERIOD; 
+  timer_grace_period[1] = GRACE_PERIOD;
+  counter_falling_back_up[0] = MAX_FALLING_BACK_UP;
+  counter_falling_back_up[1] = MAX_FALLING_BACK_UP;
+  
   for (i = 0; i < 12 ; ++i)
     column_height[i] = 190;
 
@@ -1805,17 +1833,29 @@ void main(void)
         // et on fait & 3 pour ne garder que les 2 premiers bits    
         oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
 
-        if ( actor_dy[i] != 0)        
-         actor_y[i] += (actor_dy[i] + ((previous_pad[0]&PAD_DOWN)? 2 : 0));
+        if ( actor_dy[i] != 0) 
+          actor_y[i] += (actor_dy[i] + ((previous_pad[0]&PAD_DOWN)? 2 : 0));
 
         //test relative to column_height
-        if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
+        if (actor_dy[i] != 0 && column_height[(actor_x[i] >> 4) - 1] < actor_y[i])
         {
           actor_dy[i] = 0;
-          actor_y[i] = column_height[(actor_x[i]>>4) - 1];
+          actor_y[i] = column_height[(actor_x[i] >> 4) - 1];
           column_height[(actor_x[i]>>4) - 1] -= 16;
         }
       }
+      
+      if (timer_grace_period[0] < GRACE_PERIOD || (actor_dy[0] == 0 && actor_dy[1] == 0))
+      {
+        if (previous_pad[0]&PAD_DOWN)
+          timer_grace_period[0] = 0;
+        else
+          --timer_grace_period[0];
+        
+        if (actor_x[i] == 0 && timer_grace_period[0] == 0)
+          column_height[(actor_x[i]>>4) - 1] = actor_y[i];
+      }
+      
     }
     else
     {
@@ -1995,13 +2035,16 @@ void main(void)
 
     //put_attr_entries(nt2attraddr(addr));
 
-    if ( step_p1 == PLAY && actor_dy[0] == 0 && actor_dy[1] == 0)
+    if ( step_p1 == PLAY && actor_dy[0] == 0 && actor_dy[1] == 0 && actor_dx[0] == 0 && actor_dx[1] == 0 && timer_grace_period[0] == 0 )
     {
       //vrambuf_clear();
       memset(ntbuf1, 0, sizeof(ntbuf1));
       memset(ntbuf2, 0, sizeof(ntbuf2));
       memset(attrbuf, 0, sizeof(attrbuf));
       
+      /*column_height[(actor_x[0]>>4) - 1] -= 16;
+      column_height[(actor_x[1]>>4) - 1] -= 16;*/
+
       set_metatile(0,0xd8);
       //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
       //attrbuf should take the color for 4 tiles !
@@ -2051,8 +2094,8 @@ void main(void)
       actor_dy[0] = 1;
       actor_dy[1] = 1;
       p1_puyo_list_index++;*/
+      timer_grace_period[0] = GRACE_PERIOD; 
     }
-    
     
     if (false && step_p2 == PLAY && actor_dy[2] == 0 && actor_dy[3] == 0)
     {/*
