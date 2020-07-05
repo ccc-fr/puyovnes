@@ -38,6 +38,9 @@ const unsigned char name[]={\
 #include "bcd.h"
 //#link "bcd.c"
 
+#include "apu.h"
+//#link "apu.c"
+
 // VRAM update buffer
 #include "vrambuf.h"
 //#link "vrambuf.c"
@@ -1570,6 +1573,7 @@ void setup_graphics() {
 void handle_controler_and_sprites(char i)
 {
   pad = pad_poll(i);
+
   //update status of controller memory
   if (previous_pad[i]&PAD_LEFT && pad&PAD_LEFT)
     ++input_delay_PAD_LEFT[i];
@@ -1599,6 +1603,8 @@ void handle_controler_and_sprites(char i)
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
       {
+        actor_dx[i*2] = actor_x[i*2];
+        actor_dx[(i*2)+1] = actor_x[(i*2)+1];
         actor_x[i*2] -= 16;
         actor_x[(i*2)+1] -= 16;
       }
@@ -1607,8 +1613,10 @@ void handle_controler_and_sprites(char i)
     {
       if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
       {
+        actor_dx[i*2] = actor_x[i*2];
+        actor_dx[(i*2)+1] = actor_x[(i*2)+1];
         actor_x[i*2] += 16;
-        actor_x[(i*2)+1] += 16;
+        actor_x[(i*2)+1] += 16;       
       }
     }
     else
@@ -1624,6 +1632,7 @@ void handle_controler_and_sprites(char i)
       //B the puyo will go under the 2nd puyo
       //the delay has to be at 0, because we don't want it to turn automatically
       //you have to press each time        
+      actor_dx[i*2] = actor_x[i*2];
       actor_y[i*2] += 16;
       actor_x[i*2] += 16;
     }
@@ -1631,6 +1640,7 @@ void handle_controler_and_sprites(char i)
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
+      actor_dx[i*2] = actor_x[i*2];
       actor_y[i*2] -= 16;
       actor_x[i*2] += 16;
     }   
@@ -1648,6 +1658,8 @@ void handle_controler_and_sprites(char i)
       {
         if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
         {
+          actor_dx[i*2] = actor_x[i*2];
+          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
           actor_x[i*2] -= 16;
           actor_x[(i*2)+1] -= 16;
         }
@@ -1656,8 +1668,10 @@ void handle_controler_and_sprites(char i)
       {
         if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
         {
+          actor_dx[i*2] = actor_x[i*2];
+          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
           actor_x[i*2] += 16;
-          actor_x[(i*2)+1] += 16;
+          actor_x[(i*2)+1] += 16;   
         }
       }
 
@@ -1666,6 +1680,7 @@ void handle_controler_and_sprites(char i)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go over the 2nd puyo
+        actor_dx[i*2] = actor_x[i*2];
         actor_y[i*2] -= 16;
         actor_x[i*2] -= 16;
       }
@@ -1673,8 +1688,9 @@ void handle_controler_and_sprites(char i)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go under the 2nd puyo
+        actor_dx[i*2] = actor_x[i*2];
         actor_y[i*2] += 16;
-        actor_x[i*2] -= 16;    
+        actor_x[i*2] -= 16; 
       }   
     }
     else
@@ -1684,6 +1700,8 @@ void handle_controler_and_sprites(char i)
       {
         if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
         {
+          actor_dx[i*2] = actor_x[i*2];
+          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
           actor_x[i*2] -= 16;
           actor_x[(i*2)+1] -= 16;
         }
@@ -1692,6 +1710,8 @@ void handle_controler_and_sprites(char i)
       {
         if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
         {
+          actor_dx[i*2] = actor_x[i*2];
+          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
           actor_x[i*2] += 16;
           actor_x[(i*2)+1] += 16;
         }
@@ -1710,11 +1730,13 @@ void handle_controler_and_sprites(char i)
           if (actor_x[i*2] == (16+i*128))
           {
             //wall kick
+            actor_dx[(i*2)+1] = actor_x[(i*2)+1];
             actor_x[(i*2)+1] += 16;
-            actor_y[i*2] += 16;
+            actor_y[i*2] += 16;           
           }
           else
           {
+            actor_dx[i*2] = actor_x[i*2];
             actor_x[i*2] -= 16;
             actor_y[i*2] += 16;
           }
@@ -1724,11 +1746,13 @@ void handle_controler_and_sprites(char i)
           if (actor_x[i*2] == (96+i*128))
           {
             //wall kick
+            actor_dx[(i*2)+1] = actor_x[(i*2)+1];
             actor_x[(i*2)+1] -= 16;
-            actor_y[i*2] -= 16; 
+            actor_y[i*2] -= 16;
           }
           else
           {
+            actor_dx[i*2] = actor_x[i*2];
             actor_x[i*2] += 16;
             actor_y[i*2] -= 16; 
           }
@@ -1739,12 +1763,14 @@ void handle_controler_and_sprites(char i)
         if (actor_y[i*2] < actor_y[(i*2)+1])
         {
           // going from up to right
+          actor_dx[i*2] = actor_x[i*2];
           actor_x[i*2] += 16;
-          actor_y[i*2] += 16; 
+          actor_y[i*2] += 16;  
         }
         else
         {
           //going from down to left
+          actor_dx[i*2] = actor_x[i*2];
           actor_x[i*2] -= 16;
           actor_y[i*2] -= 16; 
         }   
@@ -1767,6 +1793,7 @@ void main(void)
   vram_write("HELLO, WORLD!", 12);
   build_field();
   generate_rng();
+    
   // initialize actors
   //P1
   actor_x[0] = 3*16;
@@ -1817,14 +1844,25 @@ void main(void)
   
   //init score at 0
   memset(score,0,sizeof(score));
-  
+
   // enable rendering
   ppu_on_all();
+  //ppu_wait_frame();
   //scroll(0,240);
   // infinite loop
   while(1) {
     //get input
     oam_id = 0;
+
+    if (oam_id!=0) 
+      oam_hide_rest(oam_id);
+    // ensure VRAM buffer is cleared
+    ppu_wait_nmi();
+    vrambuf_clear();
+    
+    if (step_p1 == 32)
+      continue;
+    
     if (step_p1 == PLAY)
     {
       handle_controler_and_sprites(0);
@@ -1844,7 +1882,13 @@ void main(void)
         //test relative to column_height
         if (actor_dy[i] != 0 && column_height[(actor_x[i] >> 4) - 1] < actor_y[i])
         {
-          actor_dy[i] = 0;
+          //actor_dx indicates if the x of the puyo has changed, and the column where it was
+          if (actor_dx[i] != 0)
+          {
+            column_height[actor_dx[i]] += 16;
+            actor_dx[i] = 0;
+          }
+          actor_dy[i] = 0;        
           actor_y[i] = column_height[(actor_x[i] >> 4) - 1];
           column_height[(actor_x[i]>>4) - 1] -= 16;
         }
@@ -2046,7 +2090,6 @@ void main(void)
       memset(ntbuf1, 0, sizeof(ntbuf1));
       memset(ntbuf2, 0, sizeof(ntbuf2));
       memset(attrbuf, 0, sizeof(attrbuf));
-      
       /*column_height[(actor_x[0]>>4) - 1] -= 16;
       column_height[(actor_x[1]>>4) - 1] -= 16;*/
 
@@ -2135,11 +2178,12 @@ void main(void)
     addr = NTADR_A(20,15);
     vrambuf_put(addr,str,10);
     
-    if (oam_id!=0) 
+    /*if (oam_id!=0) 
       oam_hide_rest(oam_id);
     // ensure VRAM buffer is cleared
     ppu_wait_nmi();
-    vrambuf_clear();
+    vrambuf_clear();*/
+    
     //scroll(0,0);
   }
 }
