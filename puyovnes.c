@@ -236,6 +236,62 @@ void start_music(const byte* music) {
   cur_duration = 0;
 }
 
+//sfx
+void play_rotation_sound()
+{
+  //APU_ENABLE(ENABLE_NOISE);
+  APU_NOISE_SUSTAIN(15,2);
+  APU_NOISE_DECAY(3,8,2);
+}
+
+void play_hit(byte hit)
+{
+  //APU_ENABLE(ENABLE_NOISE);
+  //PULSE_CH0 is used by music, the sweep can be an issue
+  //as it won't be deactivated automatically
+  //so we use PULSE_CH1 for the moment
+  switch (hit)
+  {
+    case 0:
+      APU_PULSE_DECAY(PULSE_CH1, 2000, 192, 8, 1);
+      break;
+    case 1:
+      APU_PULSE_DECAY(PULSE_CH1, 1750, 192, 8, 1);
+      break;
+    case 2:
+      APU_PULSE_DECAY(PULSE_CH1, 1200, 192, 8, 1);
+      break;
+    case 3:
+      APU_PULSE_DECAY(PULSE_CH1, 900, 192, 8, 1);
+      break;
+    case 4:
+      APU_PULSE_DECAY(PULSE_CH1, 600, 192, 8, 1);
+      break;
+    case 5:
+      APU_PULSE_DECAY(PULSE_CH1, 300, 192, 8, 1);
+      break;
+    case 6:
+      APU_PULSE_DECAY(PULSE_CH1, 150, 192, 8, 1);
+      break;
+    case 7:
+      APU_PULSE_DECAY(PULSE_CH1, 75, 192, 8, 1);
+      break;
+    default:
+      APU_PULSE_DECAY(PULSE_CH1, 30, 192, 8, 1);
+      break;
+  }
+  
+  //APU_PULSE_DECAY(PULSE_CH1, /*1121*/750+((hit-1)<<7), 192, 8, 1);
+  APU_PULSE_SWEEP(PULSE_CH1,4,2,1);
+  APU_NOISE_DECAY(0,8,3);
+  //APU_PULSE_SWEEP_DISABLE(PULSE_CH0);
+}
+
+void play_puyo_fix()
+{
+  APU_TRIANGLE_LENGTH(497,13);
+}
+
 
 //end of music bloc
 
@@ -1387,12 +1443,15 @@ void manage_point(byte index_player)
     }
 
     //TODO warikomi not handled yet
-     sprintf(str,"Hit:%2d", nb_hit[index_player]);
+    sprintf(str,"Hit:%2d", nb_hit[index_player]);
     addr = NTADR_A(2,26);
     vrambuf_put(addr,str,6);
     sprintf(str,"%6lu", score[index_player]);
     addr = NTADR_A(8,27);
     vrambuf_put(addr,str,6);
+    
+    //play hit sound
+    play_hit(nb_hit[index_player]);
     
     //reinit value for next compute
     nb_puyos_destroyed[index_player] = 0;
@@ -1861,7 +1920,11 @@ void handle_controler_and_sprites(char i)
         }   
       } 
     }
-  }  
+  }
+  //play rotation sound if button pressed
+  if (pad&PAD_A || pad&PAD_B)
+    play_rotation_sound();
+  
   previous_pad[i] = pad;
 }
 
@@ -2233,6 +2296,10 @@ void main(void)
       actor_dy[0] = 1;
       actor_dy[1] = 1;
       p1_puyo_list_index++;*/
+      
+      //play sound of puyo hitting the ground
+      play_puyo_fix();
+      
       timer_grace_period[0] = GRACE_PERIOD; 
     }
     
@@ -2263,6 +2330,7 @@ void main(void)
       actor_dy[2] = 1;
       actor_dy[3] = 1;
       p2_puyo_list_index++;*/
+      
     }
     
     sprintf(str,"S1:%d, %d", step_p1, step_p1_counter);
