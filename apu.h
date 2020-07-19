@@ -2,6 +2,7 @@
 #ifndef _APU_H
 #define _APU_H
 
+//note : nes.h found there https://github.com/cc65/cc65/blob/master/include/nes.h
 #include <nes.h>
 
 // Functions/macros for direct control
@@ -82,6 +83,21 @@
     APU.noise.period = (_period);\
     APU.noise.len = (_len);
 
+// ccc added
+// DMC channel
+// cf https://wiki.nesdev.com/w/index.php/APU_DMC & 
+// https://wiki.nesdev.com/w/index.php/APU#Status_.28.244015.29
+#define APU_DMC_CONTROL(_control)\
+    APU.delta_mod.control = (_control);
+
+#define APU_DMC_OUTPUT(_output)\
+    APU.delta_mod.output = (_output);
+
+#define APU_DMC_address(_address)\
+    APU.delta_mod.address = ((_address & 0x3fff) >> 6);
+
+#define APU_DMC_length(_length)\
+    APU.delta_mod.length = (_length);
 
 // initialize APU with default state
 void apu_init(void);

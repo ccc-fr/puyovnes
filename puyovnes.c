@@ -45,6 +45,10 @@ const unsigned char name[]={\
 #include "vrambuf.h"
 //#link "vrambuf.c"
 
+//Sample bayoen in asm
+//#link "bayoen.s"
+
+
 // number of rows in scrolling playfield (without status bar)
 #define PLAYROWS 30
 #define PLAYCOLUMNS 32
@@ -187,6 +191,9 @@ byte cur_duration = 0;
 
 const byte music1[]; // music data -- see end of file
 const byte* music_ptr = music1;
+#define SAMPLE_TEST 0xF800
+//const byte bayoen[];
+extern const void * bayoen_sample_data[];
 
 byte next_music_byte() {
   return *music_ptr++;
@@ -293,6 +300,14 @@ void play_puyo_fix()
 }
 
 
+void play_bayoen()
+{
+  //APU_ENABLE(ENABLE_DMC);
+  APU_DMC_CONTROL(0x8E);//E 24khz
+  APU_DMC_OUTPUT(0x3f); //3f value given by DMCConv.exe
+  APU_DMC_address(SAMPLE_TEST);
+  APU_DMC_length(0x75);
+}
 //end of music bloc
 
 //le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
@@ -1924,6 +1939,10 @@ void handle_controler_and_sprites(char i)
   //play rotation sound if button pressed
   if (pad&PAD_A || pad&PAD_B)
     play_rotation_sound();
+  
+  //test play bayoen_sample
+  if (pad&PAD_START)
+    play_bayoen();
   
   previous_pad[i] = pad;
 }
