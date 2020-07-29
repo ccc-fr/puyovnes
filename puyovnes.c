@@ -1,4 +1,4 @@
-//custom config file
+//custom config file, explained there http://8bitworkshop.com/blog/docs/ide.md.html#8bitworkshopideusermanual/managingfiles/cc65customconfigfiles
 #define CFGFILE puyovnes.cfg
 //#resource "puyovnes.cfg"
 
@@ -193,10 +193,63 @@ byte cur_duration = 0;
 
 const byte music1[]; // music data -- see end of file
 const byte* music_ptr = music1;
-#define SAMPLE_TEST 0xFF00
+#define SAMPLE_TEST 0xF800
 //const byte bayoen[];
 //extern const void * bayoen_sample_data[];
 
+//end of music bloc
+
+//le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
+const unsigned char* const puyoSeq[6] = {
+  puyo_red, puyo_blue, puyo_green, puyo_yellow, ojama, puyo_pop
+};
+//1:    0xfc   ojama
+//6:    0xf8   big ojama
+//30:   0xe4   rock
+//180:  0xe8   tilted rock
+//360:  0xec   star
+//720:  0xf0   crown
+//1440: 0xf4   comet
+const unsigned int const damageList[7] = 
+{ 
+  1440,720,360,180,30,6,1
+};
+
+const byte const damageTile[7] = 
+{ 
+  0xf4,0xf0,0xec,0xe8,0xe4,0xf8,0xfc
+};
+
+
+//declaration des fonctions, il parait que ça aide
+word nt2attraddr(word a);
+void set_metatile(byte y, byte ch);
+void clear_metatile(byte y);
+void set_attr_entry(byte x, byte y, byte pal);
+void put_attr_entries(word addr, byte length);
+void generate_rng(void);
+byte return_sprite_color(byte spr_index);
+byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_table);
+byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
+void update_boards(byte board_index);
+byte check_board(byte board_index, byte x, byte y);
+byte destroy_board(byte board_index);
+byte fall_board(byte board_index);
+void manage_point(byte index_player);
+void build_field(void);
+void setup_graphics(void);
+void handle_controler_and_sprites(char i);
+void update_next(byte i);
+//music and sfx related
+byte next_music_byte(void);
+void play_music(void);
+void start_music(const byte* music);
+void play_rotation_sound(void);
+void play_hit(byte hit); //pitch get higher with byte until reaching "bayoen !"
+void play_puyo_fix(void); //when puyo is hitting ground, to be changed a bit tamed currently
+void play_bayoen(void); // play bayoen sample
+
+//music bloc definition
 byte next_music_byte() {
   return *music_ptr++;
 }
@@ -277,16 +330,18 @@ void play_hit(byte hit)
       APU_PULSE_DECAY(PULSE_CH1, 600, 192, 8, 1);
       break;
     case 5:
-      APU_PULSE_DECAY(PULSE_CH1, 300, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 450, 192, 8, 1);
       break;
     case 6:
-      APU_PULSE_DECAY(PULSE_CH1, 150, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 200, 192, 8, 1);
       break;
     case 7:
-      APU_PULSE_DECAY(PULSE_CH1, 75, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 100, 192, 8, 1);
       break;
+    case 8:
+      APU_PULSE_DECAY(PULSE_CH1, 60, 192, 8, 1);
     default:
-      APU_PULSE_DECAY(PULSE_CH1, 30, 192, 8, 1);
+      play_bayoen();
       break;
   }
   
@@ -304,56 +359,13 @@ void play_puyo_fix()
 
 void play_bayoen()
 {
-  //APU_ENABLE(ENABLE_DMC);
-  APU_DMC_CONTROL(0x0E);//E 24khz
+  APU_ENABLE(0x1f);//DMC channel must be enabled each time a sample is played, because...
+  APU_DMC_CONTROL(0x0E);//E 24khz, 0e sans int, 8e avec interruption
   APU_DMC_OUTPUT(0x3f); //3f value given by DMCConv.exe
   APU_DMC_address(SAMPLE_TEST);
-  APU_DMC_length(/*0x75*/0xf);
+  APU_DMC_length(0x75/*0xf*/);
 }
 //end of music bloc
-
-//le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
-const unsigned char* const puyoSeq[6] = {
-  puyo_red, puyo_blue, puyo_green, puyo_yellow, ojama, puyo_pop
-};
-//1:    0xfc   ojama
-//6:    0xf8   big ojama
-//30:   0xe4   rock
-//180:  0xe8   tilted rock
-//360:  0xec   star
-//720:  0xf0   crown
-//1440: 0xf4   comet
-const unsigned int const damageList[7] = 
-{ 
-  1440,720,360,180,30,6,1
-};
-
-const byte const damageTile[7] = 
-{ 
-  0xf4,0xf0,0xec,0xe8,0xe4,0xf8,0xfc
-};
-
-
-//declaration des fonctions, il parait que ça aide
-word nt2attraddr(word a);
-void set_metatile(byte y, byte ch);
-void clear_metatile(byte y);
-void set_attr_entry(byte x, byte y, byte pal);
-void put_attr_entries(word addr, byte length);
-void generate_rng(void);
-byte return_sprite_color(byte spr_index);
-byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_table);
-byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
-void update_boards(byte board_index);
-byte check_board(byte board_index, byte x, byte y);
-byte destroy_board(byte board_index);
-byte fall_board(byte board_index);
-void manage_point(byte index_player);
-void build_field(void);
-void setup_graphics(void);
-void handle_controler_and_sprites(char i);
-void update_next(byte i);
-
 
 // convert from nametable address to attribute table address
 word nt2attraddr(word a) {
@@ -1959,7 +1971,7 @@ void main(void)
   setup_graphics();
   // draw message  
   vram_adr(NTADR_A(2,3));
-  vram_write("HELLO, WORLD!", 12);
+  vram_write("HELLO BAYOEN", 12);
   build_field();
   generate_rng();
     
@@ -2366,7 +2378,7 @@ void main(void)
     
     //scroll(0,0);
     //next music 
-    //play_music();
+    play_music();
   }
 }
 
