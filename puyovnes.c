@@ -72,7 +72,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT};
+typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT, FALL_OJAMA, FLUSH};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -141,6 +141,7 @@ byte mask_color_destroyed; // LSB p1, MSB p2, bit mask at 1 for each color prese
 byte nb_group[2];//if the group is over 4 puyos add the part over in this variable.
 unsigned long int score[2];
 unsigned long int ojamas[4];// 2 pockets of ojama per player, but what is displayed is always the sum of both. Warikomi rule.
+byte step_ojama_fall[2];
 
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
@@ -248,6 +249,8 @@ void play_rotation_sound(void);
 void play_hit(byte hit); //pitch get higher with byte until reaching "bayoen !"
 void play_puyo_fix(void); //when puyo is hitting ground, to be changed a bit tamed currently
 void play_bayoen(void); // play bayoen sample
+void fall_ojama(byte i); //fall ojama damage on the player field
+void flush(byte i); // flush loser screen into under the play field
 
 //music bloc definition
 byte next_music_byte() {
@@ -336,13 +339,14 @@ void play_hit(byte hit)
       APU_PULSE_DECAY(PULSE_CH1, 200, 192, 8, 1);
       break;
     case 7:
-      APU_PULSE_DECAY(PULSE_CH1, 100, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 150, 192, 8, 1);
       break;
     case 8:
-      APU_PULSE_DECAY(PULSE_CH1, 60, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 100, 192, 8, 1);
+      break;
     default:
       play_bayoen();
-      break;
+      return;
   }
   
   //APU_PULSE_DECAY(PULSE_CH1, /*1121*/750+((hit-1)<<7), 192, 8, 1);
@@ -1268,7 +1272,7 @@ byte fall_board(byte board_index)
   byte smask = 7, sinvmask = 112, mask = 15, invmask=240, flag = 8, shift = 0; /*on ne veut pas du flag pour les masques*/
   byte attr_x_shift = 1;
   byte fall = 0;
-  byte tmp_counter;
+  byte tmp_counter = 0, tmp_counter_2 = 0;
   register word addr;
   //char str[32];
   
@@ -1277,6 +1281,7 @@ byte fall_board(byte board_index)
   {
     shift = 4;
     mask <<= shift;
+    smask <<= shift;
     invmask >>= shift;
     flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
     attr_x_shift = 9;
@@ -1293,7 +1298,7 @@ byte fall_board(byte board_index)
   
   for (j = 0 ; j < 13 ; ++j)
   {
-    if (can_fall != 1 && (boards[tmp_counter][j] & smask) != EMPTY)
+    if (can_fall != 1 && ( (boards[tmp_counter][j] & smask)) >> shift != EMPTY)
     {
       puyo_found = j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
@@ -1302,13 +1307,13 @@ byte fall_board(byte board_index)
         ++j;  
     }
 
-    if (can_fall == 1 && (boards[tmp_counter][j] & smask) == EMPTY)
+    if (can_fall == 1 && ( (boards[tmp_counter][j] & smask) >> shift) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
       for (j2 = j ; j2 >= previous_empty && j2 < 255 ; --j2)
       {
-        if (j2 == 0)
+        if (j2 == 0) 
           boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
         else
           boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);  
@@ -1332,11 +1337,13 @@ byte fall_board(byte board_index)
       step_p2_counter = tmp_counter;
       //As it fall the height of the column must be lowered:
       column_height[tmp_counter+6] +=16;
+      tmp_counter_2 = tmp_counter + /*6*/8;
     }
     else
     {
       step_p1_counter = tmp_counter;
       column_height[tmp_counter] +=16;
+      tmp_counter_2 = tmp_counter;
     }
     //redraw the column through buffer
     memset(ntbuf1, 0, sizeof(ntbuf1));
@@ -1345,38 +1352,37 @@ byte fall_board(byte board_index)
     //we start at 1 as we don't want to modify the ceiling
     for (j = 1; j < 13 ; ++j)
     {
-      
-      switch (boards[tmp_counter][j] & mask)
-      {
+      switch ((boards[tmp_counter][j] & mask) >> shift)
+      {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
           clear_metatile(j-1);
-          attrbuf[j>>1] = return_tile_attribute_color(2,(tmp_counter+1)*2,j*2);
+          attrbuf[j>>1] = return_tile_attribute_color(2,(tmp_counter_2+1)*2,j*2);
           break;
         case OJAMA:
-          set_metatile(j-1,0xc5);
-          attrbuf[j>>1] = return_tile_attribute_color(0,(tmp_counter+1)*2,j*2);
+          set_metatile(j-1,0xdc);
+          attrbuf[j>>1] = return_tile_attribute_color(0,(tmp_counter_2+1)*2,j*2);
           break;
         case PUYO_RED:
           set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(0,(tmp_counter+1)*2,j*2);
+          attrbuf[j>>1] = return_tile_attribute_color(0,(tmp_counter_2+1)*2,j*2);
           break;
         case PUYO_BLUE:
           set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(1,(tmp_counter+1)*2,j*2);
+          attrbuf[j>>1] = return_tile_attribute_color(1,(tmp_counter_2+1)*2,j*2);
           break;
         case PUYO_GREEN:
           set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(2,(tmp_counter+1)*2,j*2);
+          attrbuf[j>>1] = return_tile_attribute_color(2,(tmp_counter_2+1)*2,j*2);
           break;
         case PUYO_YELLOW:
           set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(3,(tmp_counter+1)*2,j*2);
+          attrbuf[j>>1] = return_tile_attribute_color(3,(tmp_counter_2+1)*2,j*2);
           break;
       }
     } 
    
     //remplir les buffers nt et attr et ensuite faire le put !
-    addr = NTADR_A(((tmp_counter)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+    addr = NTADR_A(((tmp_counter_2)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
     put_attr_entries((nt2attraddr(addr)), 7);
@@ -1384,23 +1390,62 @@ byte fall_board(byte board_index)
   }
   else
   {
+    if (board_index != 0)
+    {
+      tmp_counter_2 = tmp_counter + 6;
+    }
+    else
+    {
+      tmp_counter_2 = tmp_counter;
+    }
     //if something "fall" the counter is always reset to its 0 to 5 equivalent
     //so if nothing fall and we reach 11 (5th column) then a full "loop" as been done and we can continue
     if (puyo_found == 0)
     {  
-      column_height[tmp_counter] = 190;
+      column_height[tmp_counter_2] = 190;
     }
     else
     {
       //if puyo_found kept the height of the first puyo found, with no fall
       //this is the heighest in the stack.
-      column_height[tmp_counter] = ((puyo_found-1)*16) -2;
+      column_height[tmp_counter_2] = ((puyo_found-1)*16) -2;
     }
     
-    if (step_p1_counter == 11)
+    if (board_index == 0)
     {
-      step_p1 = CHECK_ALL;
-      step_p1_counter = 255;
+      if (step_p1_counter == 11)
+      {
+        if (step_p1 == FALL)
+        {
+          step_p1 = CHECK_ALL;
+          step_p1_counter = 255;
+        }
+        else
+        {
+          //FALL_OJAMA case, we go to show_next,
+          step_p1 = SHOW_NEXT;
+          step_p1_counter = 0;
+          step_ojama_fall[0] = 0;
+        }
+      }
+    }
+    else
+    {
+      if (step_p2_counter == 11)
+      {
+        if (step_p2 == FALL)
+        {
+          step_p2 = CHECK_ALL;
+          step_p2_counter = 255;
+        }
+        else
+        {
+          //FALL_OJAMA case, we go to show_next,
+          step_p2 = SHOW_NEXT;
+          step_p2_counter = 0;
+          step_ojama_fall[1] = 0;
+        }
+      }
     }
   }
   
@@ -1412,7 +1457,7 @@ byte fall_board(byte board_index)
   return board_index;
 }
 
-// Calcuate the point and update the score plus the ojama on top of opponent board
+// Calculate the point and update the score plus the ojama on top of opponent board
 // 2 steps : first score calculation plus display under player board
 // 2 tile calculation base on ojamas[] and display
 //doing both at the same time makes the screen jump...
@@ -1569,6 +1614,142 @@ void manage_point(byte index_player)
 
     put_attr_entries((nt2attraddr(addr)),6);
   }
+}
+
+//fall ojama damage on the player field
+void fall_ojama(byte board_index)
+{
+  /* Conditions :
+  The other player must be in "PLAY" step when the step_counter of fall_ojama is at 0
+  We can only fall 5 rows at a time, then it goes to SHOW_NEXT and player continue to play
+  The cell [2][1] must be free, if not game over
+  The ojama score should be superior to 0
+  */
+  
+  byte smask = 7, sinvmask = 112, mask = 15, invmask=240, flag = 8, shift = 0; /*on ne veut pas du flag pour les masques*/
+  byte attr_x_shift = 1;
+  byte fall = 0, i = 0, top_line_space = 0;
+  byte tmp_counter, opponent_status, player_status;
+  //register word addr;
+  //char str[32];
+  
+  //memset(tmp_boards,0,sizeof(tmp_boards));
+  if (board_index != 0)
+  {
+    shift = 4;
+    mask <<= shift;
+    invmask >>= shift;
+    flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
+    attr_x_shift = 9;
+    tmp_counter = step_p2_counter;
+    opponent_status = step_p1;
+    player_status = step_p2;
+  }
+  else
+  { 
+    tmp_counter = step_p1_counter;
+    opponent_status = step_p2;
+  }
+  
+  if ((step_ojama_fall[board_index] == 0 && opponent_status != PLAY) /*|| ojama[board_index<<1] == 0 || tmp_counter == 5*/)
+  {
+    //inutile de continuer on passe à SHOW_NEXT
+    if (board_index == 0)
+    {
+      step_p1 = SHOW_NEXT;
+      step_p1_counter = 0;
+    }
+    else
+    {
+      step_p2 = SHOW_NEXT;
+      step_p2_counter = 0;
+    }   
+    return;
+  }
+  
+  //add a line max of ojama on row 
+  if ( (step_ojama_fall[board_index] < 5) && (ojamas[board_index<<1] >= 70))
+  {
+    if ( ojamas[board_index<<1] >= 420)
+    {
+      // over 70*6, 420, a full line can be added
+      for (i = 0; i < 6; ++i)
+      {
+        if ( (boards[i][0] & mask >> shift) == EMPTY)
+        {
+          boards[i][0] = (boards[i][0] & invmask) + (OJAMA << shift);
+          if ( (ojamas[board_index<<1] - 70) < ojamas[board_index<<1]) //if not inferior then less than 70 !
+          { 
+            ojamas[board_index<<1]-= 70;
+          }
+          else
+          {
+            ojamas[board_index<<1] = 0;
+            break;//no points, no need to continue
+          }
+        }
+      }
+    }
+    else
+    {
+      //less than a line, we have to randomize the popping
+      //look for empty spots on the top hidden line:
+      top_line_space = 0;
+      for (i = 0; i < 6; ++i )
+      {
+        if ((boards[i][0] & mask >> shift) == EMPTY)
+        {
+          ++top_line_space;
+        } 
+      }
+      if (top_line_space > 0)
+      {
+        if (top_line_space > ojamas[board_index<<1] / 70)
+        {
+          i = 0;
+          //more space than ojama, we randomize the fall
+          while (ojamas[board_index<<1] >= 70)
+          {
+            if ((boards[i][0] & mask >> shift) == EMPTY && (rand8() & 1))
+            {
+              //boards[i][0] |= (OJAMA << shift);
+              boards[i][0] = (boards[i][0] & invmask) + (OJAMA << shift);
+              ojamas[board_index<<1] -= 70;
+            }
+            ++i;
+            i = i%6;//to loop
+          }
+        }
+        else
+        {
+          //less space than ojama, we fill every holes., the remaining ojamas will fall at next step
+          for (i = 0; i < 6; ++i )
+          {
+            if ((boards[i][0] & mask >> shift) == EMPTY)
+            {
+              //boards[i][0] |= (OJAMA << shift);
+              boards[i][0] = (boards[i][0] & invmask) + (OJAMA << shift);
+              ojamas[board_index<<1] -= 70;
+            } 
+          }
+        }
+      }
+      
+    }
+    step_ojama_fall[board_index]++;
+  }
+  
+  //make them fall a line, if fall board is not moving, then it will go to "CHECK_ALL" at the end of fall_board
+  fall_board(board_index);
+ 
+  return;
+}
+
+// flush loser screen into under the play field
+void flush(byte board_index)
+{
+  board_index++;
+  return;
 }
 
 //update the color of the next pair to come between fields
@@ -1956,7 +2137,10 @@ void handle_controler_and_sprites(char i)
   
   //test play bayoen_sample
   if (pad&PAD_START)
-    play_bayoen();
+  {
+    step_p2 = FALL_OJAMA;
+    step_ojama_fall[1] = 0;
+  }
   
   previous_pad[i] = pad;
 }
@@ -2099,8 +2283,23 @@ void main(void)
       oam_id = oam_meta_spr(actor_x[0], actor_y[0], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+0)*2))&3]);
       oam_id = oam_meta_spr(actor_x[1], actor_y[1], oam_id, puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+1)*2))&3]);
     }
-    
-   if (step_p1 == FALL)
+   
+    // ojama fall, only when opponent is in step "PLAY" when counter  is at 0
+    // only 5 rows at a time, which will translate to 5*6 columns in our case
+    // only if ojama[x], the damage score, is superior to 0
+    // and if second row, the first visible, and third column is empty (top row : 0, so [2][1])
+    if (step_p1 == FALL_OJAMA)
+    {
+      //fall_ojama(0);
+      step_p1 = SHOW_NEXT;
+    }
+
+    if (step_p2 == FALL_OJAMA)
+    {
+      fall_ojama(1);
+    }
+
+    if (step_p1 == FALL)
     {
       //execute before destroy to avoid doing destroy and fall consecutively
       fall_board(0);
@@ -2116,7 +2315,7 @@ void main(void)
     if (step_p2 == SHOW_NEXT)
     {
       update_next(1);
-      step_p1 = PLAY;
+      step_p2 = PLAY;
     }
     
     if (step_p1 == POINT)
@@ -2173,7 +2372,9 @@ void main(void)
         actor_dy[0] = 1;
         actor_dy[1] = 1;
         ++p1_puyo_list_index;
-        step_p1 = SHOW_NEXT;
+        /*
+        step_p1 = SHOW_NEXT;*/
+        step_p1 = FALL_OJAMA;
         step_p1_counter = 0;
         // step_p1 = DESTROY;
         // Need to reset the boards flag to 0 after destroy!
@@ -2236,7 +2437,8 @@ void main(void)
           actor_dy[0] = 1;
           actor_dy[1] = 1;
           ++p1_puyo_list_index;
-          step_p1 = SHOW_NEXT;
+          //step_p1 = SHOW_NEXT;
+          step_p1 = FALL_OJAMA;
           step_p1_counter = 0;
           nb_hit[0] = 0;// hit combo counter
         }
