@@ -96,7 +96,12 @@ byte attribute_table[64];/* = {
 //4 MSB are for 2nd board, so must use >>4 to get correct value, or even better (value&240)>>4, probably overkill
 //and still 1 bit unused.
 //[0][0] is top left, [5][12] is bottom right, keeping same axis than display for simplification
-byte boards[6][13];
+//byte boards[6][13];
+
+//Ok stop the bit shift thing it's horrendous, let's go simple : each board his table.
+//yes we lose 78 bytes of memory, but it will be simpler to manage and less cycle consuming
+byte boards[2][6][13];
+
 //for sake of simplicity keeping the same table type for tmp
 //but we may look for something less huge in size later.
 byte tmp_boards[6][13];
@@ -587,7 +592,7 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
   return attr;
 }
 
-//Update the boards table, once the puyos have stop moveing, not  optimized :-S
+//Update the boards table, once the puyos have stop moving, not  optimized :-S
 //board_index must take 0 or 2
 void update_boards(byte board_index)
 {
@@ -602,14 +607,14 @@ void update_boards(byte board_index)
     y = ((actor_y[board_index]>>3)+1)>>1;
     //sprintf(str,"%d",(boards[x][y]&240));
     //vrambuf_put(NTADR_A(20,13),str,3);
-    boards[x][y] = (boards[x][y]&240) + return_sprite_color(0);
+    boards[board_index][x][y] = (boards[board_index][x][y]&240) + return_sprite_color(0);
    /* sprintf(str,"x:%d y:%d val:%d buf:%da",x , y, boards[x][y], return_sprite_color(0));
     vrambuf_put(NTADR_A(1,26),str,24);*/
     x = ((actor_x[board_index+1]>>3) - 2) >> 1;
     y = ((actor_y[board_index+1]>>3)+1)>>1;
    // sprintf(str,"%d",(boards[x][y]&240));
     //vrambuf_put(NTADR_A(20,14),str,3);
-    boards[x][y] = (boards[x][y]&240) + return_sprite_color(1);
+    boards[board_index][x][y] = (boards[board_index][x][y]&240) + return_sprite_color(1);
     /*sprintf(str,"x:%d y:%d val:%d buf:%da", x, y, boards[x][y], return_sprite_color(1));
     vrambuf_put(NTADR_A(1,27),str,24);*/
 
@@ -621,10 +626,10 @@ void update_boards(byte board_index)
     //get the column number  right
     x = ((actor_x[board_index]>>3) - 18) >> 1;
     y = ((actor_y[board_index]>>3)+1)>>1;
-    boards[x][y] = (boards[x][y]&15) + (return_sprite_color(2) << 4);
+    boards[board_index][x][y] = (boards[board_index][x][y]&15) + (return_sprite_color(2) << 4);
     x = ((actor_x[board_index+1]>>3) - 18) >> 1;
     y = ((actor_y[board_index+1]>>3)+1)>>1;
-    boards[x][y] = (boards[x][y]&15) + (return_sprite_color(3) << 4);
+    boards[board_index][x][y] = (boards[board_index][x][y]&15) + (return_sprite_color(3) << 4);
   }
 }
 
@@ -660,7 +665,7 @@ byte check_board(byte board_index, byte x, byte y)
   
   memset(tmp_boards,0,sizeof(tmp_boards));
 
-  current_color = ((boards[x][y] & mask) >> shift);
+  current_color = ((boards[board_index][x][y] & mask) >> shift);
   /*sprintf(str,"color:%d",current_color);
   vrambuf_put(NTADR_A(18,10),str,10);*/
   //tmp_boards contains flag of the currently looked color 
@@ -670,7 +675,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[i][y] != flag)
     {
-      if (current_color == ((boards[i][y] & mask) >> shift))
+      if (current_color == ((boards[board_index][i][y] & mask) >> shift))
       {     
         tmp_boards[i][y] = flag;
         ++counter;
@@ -690,7 +695,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[i][y] != flag)
     {
-      if (current_color == ((boards[i][y] & mask) >> shift))
+      if (current_color == ((boards[board_index][i][y] & mask) >> shift))
       {     
         tmp_boards[i][y] = flag;
         ++counter;
@@ -710,7 +715,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[x][i] != flag)
     {
-      if (current_color == ((boards[x][i] & mask) >> shift))
+      if (current_color == ((boards[board_index][x][i] & mask) >> shift))
       {     
         tmp_boards[x][i] = flag;
         ++counter;
@@ -729,7 +734,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[x][i] != flag)
     {
-      if (current_color == ((boards[x][i] & mask) >> shift))
+      if (current_color == ((boards[board_index][x][i] & mask) >> shift))
       {     
         tmp_boards[x][i] = flag;
         ++counter;
@@ -790,7 +795,7 @@ byte check_board(byte board_index, byte x, byte y)
     k = j+1;
     //unlooped version
     //0
-    if (tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+    if (tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] & mask) >> shift)) && 
         ( ((k!=13) ? (tmp_boards[0][k] == flag) : false) ||
          (tmp_boards[1][j] == flag)) )
     {
@@ -800,7 +805,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //1
-    if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+    if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] & mask) >> shift)) && 
         ( ((k!=13) ? (tmp_boards[1][k] == flag) : false) ||
          (tmp_boards[0][j] == flag) ||
          (tmp_boards[2][j] == flag)) )
@@ -811,7 +816,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //2
-    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[2][j] & mask) >> shift)) && 
+    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[board_index][2][j] & mask) >> shift)) && 
         ( ((k!=13) ? (tmp_boards[2][k] == flag) : false) ||
          (tmp_boards[1][j] == flag) ||
          (tmp_boards[3][j] == flag)) )
@@ -822,7 +827,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //3
-    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[3][j] & mask) >> shift)) && 
+    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[board_index][3][j] & mask) >> shift)) && 
         ( ((k!=13) ? (tmp_boards[3][k] == flag) : false) ||
          (tmp_boards[2][j] == flag) ||
          (tmp_boards[4][j] == flag)) )
@@ -833,7 +838,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //4
-    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[4][j] & mask) >> shift)) && 
+    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[board_index][4][j] & mask) >> shift)) && 
         ( ((k!=13) ? (tmp_boards[4][k] == flag) : false) ||
          (tmp_boards[3][j] == flag) ||
          (tmp_boards[5][j] == flag)) )
@@ -844,7 +849,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //5
-    if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
+    if ( tmp_boards[5][j] != flag && (current_color == ((boards[board_index][5][j] & mask) >> shift)) && 
         ( ((k!=13) ? (tmp_boards[5][k] == flag) : false) ||
          (tmp_boards[4][j] == flag)))
     {
@@ -892,7 +897,7 @@ byte check_board(byte board_index, byte x, byte y)
       }*/
       
       //4
-      if ( tmp_boards[4][j] != flag && (current_color == ((boards[4][j] & mask) >> shift)) && 
+      if ( tmp_boards[4][j] != flag && (current_color == ((boards[board_index][4][j] & mask) >> shift)) && 
            ((tmp_boards[3][j] == flag) ||
             (tmp_boards[5][j] == flag)) )
       {
@@ -901,7 +906,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //3
-      if ( tmp_boards[3][j] != flag && (current_color == ((boards[3][j] & mask) >> shift)) && 
+      if ( tmp_boards[3][j] != flag && (current_color == ((boards[board_index][3][j] & mask) >> shift)) && 
            ((tmp_boards[2][j] == flag) ||
             (tmp_boards[4][j] == flag)) )
       {
@@ -910,7 +915,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //2
-      if ( tmp_boards[2][j] != flag && (current_color == ((boards[2][j] & mask) >> shift)) && 
+      if ( tmp_boards[2][j] != flag && (current_color == ((boards[board_index][2][j] & mask) >> shift)) && 
            ((tmp_boards[1][j] == flag) ||
             (tmp_boards[3][j] == flag)) )
       {
@@ -919,7 +924,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //1
-      if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+      if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] & mask) >> shift)) && 
            ((tmp_boards[0][j] == flag) ||
             (tmp_boards[2][j] == flag)) )
       {
@@ -928,7 +933,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
        //0
-      if ( tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+      if ( tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] & mask) >> shift)) && 
            ((tmp_boards[1][j] == flag)) )
       {
         tmp_boards[0][j] = flag;
@@ -982,7 +987,7 @@ byte check_board(byte board_index, byte x, byte y)
     
     //unlooped version
     //0
-    if (tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+    if (tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] & mask) >> shift)) && 
         (((k<13) ? (tmp_boards[0][k] == flag) : false) ||
          (tmp_boards[1][j] == flag)) )
     {
@@ -992,7 +997,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //1
-    if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+    if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] & mask) >> shift)) && 
         (((k<13) ? (tmp_boards[1][k] == flag) : false) ||
          (tmp_boards[0][j] == flag) ||
          (tmp_boards[2][j] == flag)) )
@@ -1003,7 +1008,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //2
-    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[2][j] & mask) >> shift)) && 
+    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[board_index][2][j] & mask) >> shift)) && 
         (((k<13) ? (tmp_boards[2][k] == flag) : false) ||
          (tmp_boards[1][j] == flag) ||
          (tmp_boards[3][j] == flag)) )
@@ -1014,7 +1019,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //3
-    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[3][j] & mask) >> shift)) && 
+    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[board_index][3][j] & mask) >> shift)) && 
         (((k<13) ? (tmp_boards[3][k] == flag) : false) ||
          (tmp_boards[2][j] == flag) ||
          (tmp_boards[4][j] == flag)) )
@@ -1025,7 +1030,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //4
-    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[4][j] & mask) >> shift)) && 
+    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[board_index][4][j] & mask) >> shift)) && 
         (((k<13) ? (tmp_boards[4][k] == flag) : false) ||
          (tmp_boards[3][j] == flag) ||
          (tmp_boards[5][j] == flag)) )
@@ -1036,7 +1041,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //5
-    if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
+    if ( tmp_boards[5][j] != flag && (current_color == ((boards[board_index][5][j] & mask) >> shift)) && 
         ( ((k<13) ? (tmp_boards[5][k] == flag) : false) ||
          (tmp_boards[4][j] == flag)))
     {
@@ -1083,7 +1088,7 @@ byte check_board(byte board_index, byte x, byte y)
       }*/
       
       //4
-      if ( tmp_boards[4][j] != flag && (current_color == ((boards[4][j] & mask) >> shift)) && 
+      if ( tmp_boards[4][j] != flag && (current_color == ((boards[board_index][4][j] & mask) >> shift)) && 
            ((tmp_boards[3][j] == flag) ||
             (tmp_boards[5][j] == flag)) )
       {
@@ -1092,7 +1097,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //3
-      if ( tmp_boards[3][j] != flag && (current_color == ((boards[3][j] & mask) >> shift)) && 
+      if ( tmp_boards[3][j] != flag && (current_color == ((boards[board_index][3][j] & mask) >> shift)) && 
            ((tmp_boards[2][j] == flag) ||
             (tmp_boards[4][j] == flag)) )
       {
@@ -1101,7 +1106,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //2
-      if ( tmp_boards[2][j] != flag && (current_color == ((boards[2][j] & mask) >> shift)) && 
+      if ( tmp_boards[2][j] != flag && (current_color == ((boards[board_index][2][j] & mask) >> shift)) && 
            ((tmp_boards[1][j] == flag) ||
             (tmp_boards[3][j] == flag)) )
       {
@@ -1110,7 +1115,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //1
-      if ( tmp_boards[1][j] != flag && (current_color == ((boards[1][j] & mask) >> shift)) && 
+      if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] & mask) >> shift)) && 
            ((tmp_boards[0][j] == flag) ||
             (tmp_boards[2][j] == flag)) )
       {
@@ -1119,7 +1124,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
        //0
-      if ( tmp_boards[0][j] != flag && (current_color == ((boards[0][j] & mask) >> shift)) && 
+      if ( tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] & mask) >> shift)) && 
            ((tmp_boards[1][j] == flag)) )
       {
         tmp_boards[0][j] = flag;
@@ -1146,7 +1151,7 @@ byte check_board(byte board_index, byte x, byte y)
       {
         if ( tmp_boards[i][j] == flag)
         {
-          boards[i][j] |= flag;
+          boards[board_index][i][j] |= flag;
           //tmp_boards[i][j] = 0;
           /*sprintf(str,"%d %d",i,j);
           vrambuf_put(NTADR_A(18,4+destruction),str,5);*/
@@ -1193,7 +1198,7 @@ byte destroy_board(byte board_index)
     {*/
     for (j = 0; j < 13 ; ++j)
     {
-      if ((boards[tmp_counter][j] & flag) > 0)
+      if ((boards[board_index][tmp_counter][j] & flag) > 0)
       {
         //(i+1)<<1 à l'air ok, y on y est pas encore
         //addr = NTADR_A((i+1)<<1, j *2 );//?????
@@ -1204,13 +1209,13 @@ byte destroy_board(byte board_index)
           vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
           vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
         //sujet traité, on zappe le flag
-        boards[tmp_counter][j] -= flag;
+        boards[board_index][tmp_counter][j] -= flag;
         //on change le board pour puyo_pop
         //PUYO_POP
         //(boards[x][y]&15) + (return_sprite_color(3) << 4);
-        boards[tmp_counter][j] = (boards[tmp_counter][j] & invmask) + (PUYO_POP << shift);
+        boards[board_index][tmp_counter][j] = (boards[board_index][tmp_counter][j] & invmask) + (PUYO_POP << shift);
         //we will reuse the flag for destruction
-        boards[tmp_counter][j] += flag;
+        boards[board_index][tmp_counter][j] += flag;
         tmp_line=j;
         /*sprintf(str,"%d", j);
           vrambuf_put(NTADR_A(18,j*2),str,2);*/
@@ -1233,15 +1238,15 @@ byte destroy_board(byte board_index)
     {*/
     for (j = 0; j < 13 ; ++j)
     {
-      if ((boards[i][j] & flag) > 0)
+      if ((boards[board_index][i][j] & flag) > 0)
       {
         addr = NTADR_A(((i)*2)+2, j *2 );
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         //sujet traité, on zappe le flag
-        boards[i][j] -= flag;
+        boards[board_index][i][j] -= flag;
         //on change le board pour EMPTY
-        boards[i][j] = (boards[i][j] & invmask) + (EMPTY << shift);
+        boards[board_index][i][j] = (boards[board_index][i][j] & invmask) + (EMPTY << shift);
       }
     }
    // }
@@ -1298,7 +1303,7 @@ byte fall_board(byte board_index)
   
   for (j = 0 ; j < 13 ; ++j)
   {
-    if (can_fall != 1 && ( (boards[tmp_counter][j] & smask)) >> shift != EMPTY)
+    if (can_fall != 1 && ( (boards[board_index][tmp_counter][j] & smask)) >> shift != EMPTY)
     {
       puyo_found = j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
@@ -1307,16 +1312,16 @@ byte fall_board(byte board_index)
         ++j;  
     }
 
-    if (can_fall == 1 && ( (boards[tmp_counter][j] & smask) >> shift) == EMPTY)
+    if (can_fall == 1 && ( (boards[board_index][tmp_counter][j] & smask) >> shift) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
       for (j2 = j ; j2 >= previous_empty && j2 < 255 ; --j2)
       {
         if (j2 == 0) 
-          boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (EMPTY << shift);
+          boards[board_index][tmp_counter][j2] = (boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);
         else
-          boards[tmp_counter][j2] = (boards[tmp_counter][j2] & invmask) + (boards[tmp_counter][j2-1] & mask);  
+          boards[board_index][tmp_counter][j2] = (boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  
       }
       fall = 1;
       /*sprintf(str,"F %d", tmp_counter);
@@ -1352,7 +1357,7 @@ byte fall_board(byte board_index)
     //we start at 1 as we don't want to modify the ceiling
     for (j = 1; j < 13 ; ++j)
     {
-      switch ((boards[tmp_counter][j] & mask) >> shift)
+      switch ((boards[board_index][tmp_counter][j] & mask) >> shift)
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
           clear_metatile(j-1);
@@ -1675,9 +1680,9 @@ void fall_ojama(byte board_index)
       // over 70*6, 420, a full line can be added
       for (i = 0; i < 6; ++i)
       {
-        if ( (boards[i][0] & mask >> shift) == EMPTY)
+        if ( (boards[board_index][i][0] & mask >> shift) == EMPTY)
         {
-          boards[i][0] = (boards[i][0] & invmask) + (OJAMA << shift);
+          boards[board_index][i][0] = (boards[board_index][i][0] & invmask) + (OJAMA << shift);
           if ( (ojamas[board_index<<1] - 70) < ojamas[board_index<<1]) //if not inferior then less than 70 !
           { 
             ojamas[board_index<<1]-= 70;
@@ -1697,7 +1702,7 @@ void fall_ojama(byte board_index)
       top_line_space = 0;
       for (i = 0; i < 6; ++i )
       {
-        if ((boards[i][0] & mask >> shift) == EMPTY)
+        if ((boards[board_index][i][0] & mask >> shift) == EMPTY)
         {
           ++top_line_space;
         } 
@@ -1710,10 +1715,10 @@ void fall_ojama(byte board_index)
           //more space than ojama, we randomize the fall
           while (ojamas[board_index<<1] >= 70)
           {
-            if ((boards[i][0] & mask >> shift) == EMPTY && (rand8() & 1))
+            if ((boards[board_index][i][0] & mask >> shift) == EMPTY && (rand8() & 1))
             {
               //boards[i][0] |= (OJAMA << shift);
-              boards[i][0] = (boards[i][0] & invmask) + (OJAMA << shift);
+              boards[board_index][i][0] = (boards[board_index][i][0] & invmask) + (OJAMA << shift);
               ojamas[board_index<<1] -= 70;
             }
             ++i;
@@ -1725,10 +1730,10 @@ void fall_ojama(byte board_index)
           //less space than ojama, we fill every holes., the remaining ojamas will fall at next step
           for (i = 0; i < 6; ++i )
           {
-            if ((boards[i][0] & mask >> shift) == EMPTY)
+            if ((boards[board_index][i][0] & mask >> shift) == EMPTY)
             {
               //boards[i][0] |= (OJAMA << shift);
-              boards[i][0] = (boards[i][0] & invmask) + (OJAMA << shift);
+              boards[board_index][i][0] = (boards[board_index][i][0] & invmask) + (OJAMA << shift);
               ojamas[board_index<<1] -= 70;
             } 
           }
@@ -1794,8 +1799,16 @@ void build_field()
   {
     for (y = 0; y < 13; ++y)
     {
-      boards[x][y] = EMPTY + (EMPTY << 4);
+      boards[0][x][y] = EMPTY + (EMPTY << 4);
       tmp_boards[x][y] = 0;
+    }
+  }
+  for (x = 0; x < 6; ++x)
+  {
+    for (y = 0; y < 13; ++y)
+    {
+      boards[1][x][y] = EMPTY + (EMPTY << 4);
+      //tmp_boards[x][y] = 0;
     }
   }
   
@@ -2349,7 +2362,7 @@ void main(void)
       
       should_destroy = (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
       //if both puyo had the same color it's unless to perform the second check
-      if ( (boards[((actor_x[1]>>3) - 2) >> 1][((actor_y[1]>>3)+1)>>1] & 8) != 8)
+      if ( (boards[0][((actor_x[1]>>3) - 2) >> 1][((actor_y[1]>>3)+1)>>1] & 8) != 8)
         should_destroy = (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
       
       if (should_destroy)
@@ -2403,19 +2416,19 @@ void main(void)
         }*/
         i = step_p1_counter / 13;
         j = 13 - (step_p1_counter % 13);
-        if (((boards[i][j] & 7) != EMPTY) && ((boards[i][j] & 8) != 8))
+        if (((boards[0][i][j] & 7) != EMPTY) && ((boards[0][i][j] & 8) != 8))
           should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
         ++step_p1_counter;
         
         i = step_p1_counter / 13;
         j = 13 - (step_p1_counter % 13);
-        if (((boards[i][j] & 7) != EMPTY) && ((boards[i][j] & 8) != 8))
+        if (((boards[0][i][j] & 7) != EMPTY) && ((boards[0][i][j] & 8) != 8))
           should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
         ++step_p1_counter;
         
         i = step_p1_counter / 13;
         j = 13 - (step_p1_counter % 13);
-        if (((boards[i][j] & 7) != EMPTY) && ((boards[i][j] & 8) != 8))
+        if (((boards[0][i][j] & 7) != EMPTY) && ((boards[0][i][j] & 8) != 8))
           should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
         ++step_p1_counter;
       }
