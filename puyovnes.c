@@ -137,12 +137,17 @@ char p_puyo_list_index[2];
 // and 4 for preview on each side
 #define NUM_ACTORS 4
 
+// changed in favor of actor_x[2][2], will ease a lot the handling and caculation of indexes
 // actor x/y positions
-byte actor_x[NUM_ACTORS];
-byte actor_y[NUM_ACTORS];
+//byte actor_x[NUM_ACTORS];
+//byte actor_y[NUM_ACTORS];
+byte actor_x[2][2];
+byte actor_y[2][2];
 // actor x/y deltas per frame (signed)
-sbyte actor_dx[NUM_ACTORS];
-sbyte actor_dy[NUM_ACTORS];
+//sbyte actor_dx[NUM_ACTORS];
+//sbyte actor_dy[NUM_ACTORS];
+sbyte actor_dx[2][2];
+sbyte actor_dy[2][2];
 
 //Variables for damages 
 //cf https://www.bayoen.fr/wiki/Tableau_des_dommages for how to compute damages.
@@ -234,6 +239,17 @@ const unsigned int const damageList[7] =
 const byte const damageTile[7] = 
 { 
   0xf4,0xf0,0xec,0xe8,0xe4,0xf8,0xfc
+};
+
+const byte const start_pos_x[2] = 
+{
+  3*16,11*16
+};
+
+const byte const start_pos_y[2][2] =
+{
+ {0,16},
+ {0,16}
 };
 
 
@@ -603,46 +619,34 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 }
 
 //Update the boards table, once the puyos have stop moving, not  optimized :-S
-//board_index must take 0 or 2=>Not naymore, changed to match current_player elsewhere !
+//board_index must take 0 or 2=>Not anymore, changed to match current_player elsewhere !
 void update_boards(/*byte board_index*/)
 {
   byte x,y;
+  //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
+  //get the column number right
+  //column 0 is at 18 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
+  byte offset = (current_player == 0) ? 2 : 18;
   //char str[32];
-  if (current_player == 0)
-  { 
-    //we must be careful not to erase the data for p2 table
-    //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
-    //get the column number right
-    x = ((actor_x[0]>>3) - 2) >> 1;
-    y = ((actor_y[0]>>3)+1)>>1;
-    //sprintf(str,"%d",(boards[x][y]&240));
-    //vrambuf_put(NTADR_A(20,13),str,3);
-    boards[current_player][x][y] = /*(boards[board_index][x][y] & 240) +*/ return_sprite_color(0);
-   /* sprintf(str,"x:%d y:%d val:%d buf:%da",x , y, boards[x][y], return_sprite_color(0));
+  //we must be careful not to erase the data for p2 table
+  //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
+  //get the column number right
+  x = ((actor_x[current_player][0]>>3) - offset) >> 1;
+  y = ((actor_y[current_player][0]>>3)+1)>>1;
+  //sprintf(str,"%d",(boards[x][y]&240));
+  //vrambuf_put(NTADR_A(20,13),str,3);
+  boards[current_player][x][y] = /*(boards[board_index][x][y] & 240) +*/ return_sprite_color(current_player<<1);
+  /* sprintf(str,"x:%d y:%d val:%d buf:%da",x , y, boards[x][y], return_sprite_color(0));
     vrambuf_put(NTADR_A(1,26),str,24);*/
-    x = ((actor_x[1]>>3) - 2) >> 1;
-    y = ((actor_y[1]>>3)+1)>>1;
-    /*sprintf(str,"x:%d y:%d",x,y);
+  x = ((actor_x[current_player][1]>>3) - offset) >> 1;
+  y = ((actor_y[current_player][1]>>3)+1)>>1;
+  /*sprintf(str,"x:%d y:%d",x,y);
     vrambuf_put(NTADR_A(20,11),str,10);*/
-   // sprintf(str,"%d",(boards[x][y]&240));
-    //vrambuf_put(NTADR_A(20,14),str,3);
-    boards[current_player][x][y] = /*(boards[board_index][x][y] &240) +*/ return_sprite_color(1);
-    /*sprintf(str,"x:%d y:%d val:%d buf:%da", x, y, boards[x][y], return_sprite_color(1));
+  // sprintf(str,"%d",(boards[x][y]&240));
+  //vrambuf_put(NTADR_A(20,14),str,3);
+  boards[current_player][x][y] = /*(boards[board_index][x][y] &240) +*/ return_sprite_color((current_player<<1)+1);
+  /*sprintf(str,"x:%d y:%d val:%d buf:%da", x, y, boards[x][y], return_sprite_color(1));
     vrambuf_put(NTADR_A(1,27),str,24);*/
-
-  }
-  else
-  {
-    //we must be careful to not erase the ddata for p1 table
-    //column 0 is at 18 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
-    //get the column number  right
-    x = ((actor_x[2]>>3) - 18) >> 1;
-    y = ((actor_y[2]>>3)+1)>>1;
-    boards[current_player][x][y] = /*(boards[board_index][x][y] &15) +*/ (return_sprite_color(2) /*<< 4*/);
-    x = ((actor_x[3]>>3) - 18) >> 1;
-    y = ((actor_y[3]>>3)+1)>>1;
-    boards[current_player][x][y] = /*(boards[board_index][x][y] &15) +*/ (return_sprite_color(3) /*<< 4*/);
-  }
 }
 
 // Look for puyo to destroy and flag them as such
@@ -1870,28 +1874,28 @@ void handle_controler_and_sprites()
 
   //you have to look at the leftmost or rightmost puyo
   //p1 puyo 0 & 1, p2 puyo 2 & 3
-  if (actor_x[current_player*2] < actor_x[(current_player*2)+1])
+  if (actor_x[current_player][0] < actor_x[current_player][1])
   {
     //left/right
-    if ( pad&PAD_LEFT && (actor_x[current_player*2] > (16+(current_player*128))) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4) - 2]) )
+    if ( pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player*128))) && (actor_y[current_player][0] <= column_height[(actor_x[current_player][0] >> 4) - 2]) )
     {
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
       {
-        actor_dx[current_player*2] = actor_x[current_player*2];
-        actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-        actor_x[current_player*2] -= 16;
-        actor_x[(current_player*2)+1] -= 16;
+        actor_dx[current_player][0] = actor_x[current_player][0];
+        actor_dx[current_player][1] = actor_x[current_player][1];
+        actor_x[current_player][0] -= 16;
+        actor_x[current_player][1] -= 16;
       }
     }
-    else if ( pad&PAD_RIGHT && (actor_x[(current_player*2)+1] < (96+(current_player*128))) && (actor_y[(current_player*2)+1] <= column_height[(actor_x[(current_player*2)+1] >> 4)]) )
+    else if ( pad&PAD_RIGHT && (actor_x[current_player][1] < (96+(current_player*128))) && (actor_y[current_player][1] <= column_height[(actor_x[current_player][1] >> 4)]) )
     {
       if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
-        actor_dx[current_player*2] = actor_x[current_player*2];
-        actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-        actor_x[current_player*2] += 16;
-        actor_x[(current_player*2)+1] += 16;       
+        actor_dx[current_player][0] = actor_x[current_player][0];
+        actor_dx[current_player][1] = actor_x[current_player][1];
+        actor_x[current_player][0] += 16;
+        actor_x[current_player][1] += 16;       
       }
     }
     else
@@ -1907,17 +1911,17 @@ void handle_controler_and_sprites()
       //B the puyo will go under the 2nd puyo
       //the delay has to be at 0, because we don't want it to turn automatically
       //you have to press each time        
-      actor_dx[current_player*2] = actor_x[current_player*2];
-      actor_y[current_player*2] += 16;
-      actor_x[current_player*2] += 16;
+      actor_dx[current_player][0] = actor_x[current_player][0];
+      actor_y[current_player][0] += 16;
+      actor_x[current_player][0] += 16;
     }
     if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
-      actor_dx[current_player*2] = actor_x[current_player*2];
-      actor_y[current_player*2] -= 16;
-      actor_x[current_player*2] += 16;
+      actor_dx[current_player][0] = actor_x[current_player][0];
+      actor_y[current_player][0] -= 16;
+      actor_x[current_player][0] += 16;
     }   
   }
   else
@@ -1925,28 +1929,28 @@ void handle_controler_and_sprites()
 
    // (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 1])
 
-    if (actor_x[current_player*2] != actor_x[(current_player*2)+1])
+    if (actor_x[current_player][0] != actor_x[current_player][1])
     {
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[(current_player*2)+1] > (16+current_player*128)) && (actor_y[(current_player*2)+1] <= column_height[(actor_x[(current_player*2)+1] >> 4) - 2]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+current_player*128)) && (actor_y[current_player][1] <= column_height[(actor_x[current_player][1] >> 4) - 2]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player*2] = actor_x[current_player*2];
-          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-          actor_x[current_player*2] -= 16;
-          actor_x[(current_player*2)+1] -= 16;
+          actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];
+          actor_x[current_player][0] -= 16;
+          actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player*2] < (96+current_player*128)) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4)]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[(actor_x[current_player][0] >> 4)]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player*2] = actor_x[current_player*2];
-          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-          actor_x[current_player*2] += 16;
-          actor_x[(current_player*2)+1] += 16;   
+          actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];
+          actor_x[current_player][0] += 16;
+          actor_x[current_player][1] += 16;   
         }
       }
 
@@ -1955,40 +1959,40 @@ void handle_controler_and_sprites()
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go over the 2nd puyo
-        actor_dx[current_player*2] = actor_x[current_player*2];
-        actor_y[current_player*2] -= 16;
-        actor_x[current_player*2] -= 16;
+        actor_dx[current_player][0] = actor_x[current_player][0];
+        actor_y[current_player][0] -= 16;
+        actor_x[current_player][0] -= 16;
       }
       if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go under the 2nd puyo
-        actor_dx[current_player*2] = actor_x[current_player*2];
-        actor_y[current_player*2] += 16;
-        actor_x[current_player*2] -= 16; 
+        actor_dx[current_player][0] = actor_x[current_player][0];
+        actor_y[current_player][0] += 16;
+        actor_x[current_player][0] -= 16; 
       }   
     }
     else
     {
       //left or right movement with both actor on the same x
-      if (pad&PAD_LEFT && (actor_x[current_player*2] > (16+current_player*128)) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4) - 2]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+current_player*128)) && (actor_y[current_player][0] <= column_height[(actor_x[current_player][0] >> 4) - 2]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player*2] = actor_x[current_player*2];
-          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-          actor_x[current_player*2] -= 16;
-          actor_x[(current_player*2)+1] -= 16;
+          actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];
+          actor_x[current_player][0] -= 16;
+          actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player*2] < (96+current_player*128)) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4)]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[(actor_x[current_player][0] >> 4)]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player*2] = actor_x[current_player*2];
-          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-          actor_x[current_player*2] += 16;
-          actor_x[(current_player*2)+1] += 16;
+          actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];
+          actor_x[current_player][0] += 16;
+          actor_x[current_player][1] += 16;
         }
       }
       
@@ -1998,56 +2002,56 @@ void handle_controler_and_sprites()
       { 
         //we need to know if puyo[0] is above or below puyo[1]
         // the lowest value is higher on the screen !
-        if (actor_y[current_player*2] < actor_y[(current_player*2)+1])
+        if (actor_y[current_player][0] < actor_y[current_player][1])
         {
           //going from up to left
           ///are we on the side left side?
-          if (actor_x[current_player*2] == (16+current_player*128))
+          if (actor_x[current_player][0] == (16+current_player*128))
           {
             //wall kick
-            actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-            actor_x[(current_player*2)+1] += 16;
-            actor_y[current_player*2] += 16;           
+            actor_dx[current_player][1] = actor_x[current_player][1];
+            actor_x[current_player][1] += 16;
+            actor_y[current_player][0] += 16;           
           }
           else
           {
-            actor_dx[current_player*2] = actor_x[current_player*2];
-            actor_x[current_player*2] -= 16;
-            actor_y[current_player*2] += 16;
+            actor_dx[current_player][0] = actor_x[current_player][0];
+            actor_x[current_player][0] -= 16;
+            actor_y[current_player][0] += 16;
           }
         }
         else
         {  //going down to right
-          if (actor_x[current_player*2] == (96+current_player*128))
+          if (actor_x[current_player][0] == (96+current_player*128))
           {
             //wall kick
-            actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
-            actor_x[(current_player*2)+1] -= 16;
-            actor_y[current_player*2] -= 16;
+            actor_dx[current_player][1] = actor_x[current_player][1];
+            actor_x[current_player][1] -= 16;
+            actor_y[current_player][0] -= 16;
           }
           else
           {
-            actor_dx[current_player*2] = actor_x[current_player*2];
-            actor_x[current_player*2] += 16;
-            actor_y[current_player*2] -= 16; 
+            actor_dx[current_player][0] = actor_x[current_player][0];
+            actor_x[current_player][0] += 16;
+            actor_y[current_player][0] -= 16; 
           }
         }
       }
       if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
-        if (actor_y[current_player*2] < actor_y[(current_player*2)+1])
+        if (actor_y[current_player][0] < actor_y[current_player][1])
         {
           // going from up to right
-          actor_dx[current_player*2] = actor_x[current_player*2];
-          actor_x[current_player*2] += 16;
-          actor_y[current_player*2] += 16;  
+          actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_x[current_player][0] += 16;
+          actor_y[current_player][0] += 16;  
         }
         else
         {
           //going from down to left
-          actor_dx[current_player*2] = actor_x[current_player*2];
-          actor_x[current_player*2] -= 16;
-          actor_y[current_player*2] -= 16; 
+          actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_x[current_player][0] -= 16;
+          actor_y[current_player][0] -= 16; 
         }   
       } 
     }
@@ -2082,24 +2086,24 @@ void main(void)
     
   // initialize actors
   //P1
-  actor_x[0] = 3*16;
-  actor_y[0] = 0*16;
-  actor_dx[0] = 0;
-  actor_dy[0] = 1;
-  actor_x[1] = 3*16;
-  actor_y[1] = 1*16;
-  actor_dx[1] = 0;
-  actor_dy[1] = 1;
+  actor_x[0][0] = start_pos_x[0]/*3*16*/;
+  actor_y[0][0] = start_pos_y[0][0]/*0*16*/;
+  actor_dx[0][0] = 0;
+  actor_dy[0][0] = 1;
+  actor_x[0][1] = start_pos_x[0]/*3*16*/;
+  actor_y[0][1] = start_pos_y[0][1]/*1*16*/;
+  actor_dx[0][1] = 0;
+  actor_dy[0][1] = 1;
   p_puyo_list_index[0] = 0;
   //P2
-  actor_x[2] = 11*16;
-  actor_y[2] = 0*16;
-  actor_dx[2] = 0;
-  actor_dy[2] = 1;
-  actor_x[3] = 11*16;
-  actor_y[3] = 1*16;
-  actor_dx[3] = 0;
-  actor_dy[3] = 1;
+  actor_x[1][0] = start_pos_x[1]/*11*16*/;
+  actor_y[1][0] = start_pos_y[1][0] /*0*16*/;
+  actor_dx[1][0] = 0;
+  actor_dy[1][0] = 1;
+  actor_x[1][1] = start_pos_x[1]/*11*16*/;
+  actor_y[1][1] = start_pos_y[1][1]/*1*16*/;
+  actor_dx[1][1] = 0;
+  actor_dy[1][1] = 1;
   p_puyo_list_index[1] = 0;
     
   previous_pad[0] = 0;
@@ -2166,7 +2170,7 @@ void main(void)
       if (step_p[current_player] == PLAY)
       {
         handle_controler_and_sprites(/*0*/);
-        for (i = (current_player<<1) ; i <= ((current_player<<1)+1) ; ++i)
+        for (i = 0 ; i < 2 ; ++i)
         {
           // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
           // puyo_list       p1_puyo_list_index
@@ -2174,43 +2178,43 @@ void main(void)
           // ensuite on décale sur le bon élément de l'index 
           // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
           // et on fait & 3 pour ne garder que les 2 premiers bits    
-          oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+(i-current_player<<1))*2))&3]);
+          oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
 
-          if ( actor_dy[i] != 0) 
-            actor_y[i] += (actor_dy[i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
+          if ( actor_dy[current_player][i] != 0) 
+            actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
           //test relative to column_height
-          if (actor_dy[i] != 0 && column_height[(actor_x[i] >> 4) - 1] < actor_y[i])
+          if (actor_dy[current_player][i] != 0 && column_height[(actor_x[current_player][i] >> 4) - 1] < actor_y[current_player][i])
           {
             //actor_dx indicates if the x of the puyo has changed, and the column where it was
-            if (actor_dx[i] != 0)
+            if (actor_dx[current_player][i] != 0)
             {
-              column_height[actor_dx[i]] += 16;
-              actor_dx[i] = 0;
+              column_height[actor_dx[current_player][i]] += 16;
+              actor_dx[current_player][i] = 0;
             }
-            actor_dy[i] = 0;        
-            actor_y[i] = column_height[(actor_x[i] >> 4) - 1];
-            column_height[(actor_x[i]>>4) - 1] -= 16;
+            actor_dy[current_player][i] = 0;        
+            actor_y[current_player][i] = column_height[(actor_x[current_player][i] >> 4) - 1];
+            column_height[(actor_x[current_player][i]>>4) - 1] -= 16;
           }
         }
 
-        if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player<<1] == 0 && actor_dy[(current_player<<1)+1] == 0))
+        if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0))
         {
           if (previous_pad[current_player]&PAD_DOWN)
             timer_grace_period[current_player] = 0;
           else
             --timer_grace_period[current_player];
 
-          if (actor_x[(current_player<<1)+1] == 0 && timer_grace_period[current_player] == 0)
-            column_height[(actor_x[(current_player<<1)+1]>>4) - 1] = actor_y[(current_player<<1)+1];
+          if (actor_x[current_player][1] == 0 && timer_grace_period[current_player] == 0)
+            column_height[(actor_x[current_player][1]>>4) - 1] = actor_y[current_player][1];
         }
 
       }
       else
       {
         //we need to move oam_id to not have an offset, should be a better way though...
-        oam_id = oam_meta_spr(actor_x[current_player<<1], actor_y[current_player<<1], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+0)*2))&3]);
-        oam_id = oam_meta_spr(actor_x[(current_player<<1)+1], actor_y[(current_player<<1)+1], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+1)*2))&3]);
+        oam_id = oam_meta_spr(actor_x[current_player][0], actor_y[current_player][0], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+0)*2))&3]);
+        oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+1)*2))&3]);
       }
 
       // ojama fall, only when opponent is in step "PLAY" when counter  is at 0
@@ -2265,30 +2269,30 @@ void main(void)
         mask_color_destroyed =  mask_color_destroyed & 0xF0; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
         nb_group[current_player] = 0;//if the group is over 4 puyos add the part over in this variable.
 
-        should_destroy = (check_board(/*0,*/ ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
+        should_destroy = (check_board(/*0,*/ ((actor_x[current_player][0]>>3) - 2) >> 1, ((actor_y[current_player][0]>>3)+1)>>1) > 0);
         //if both puyo had the same color it's useless to perform the second check
-        if ( (boards[0][((actor_x[1]>>3) - 2) >> 1][((actor_y[1]>>3)+1)>>1] & 8) != 8)
-          should_destroy = (check_board(/*0,*/ ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
+        if ( (boards[0][((actor_x[current_player][1]>>3) - 2) >> 1][((actor_y[current_player][1]>>3)+1)>>1] & 8) != 8)
+          should_destroy = (check_board(/*0,*/ ((actor_x[current_player][1]>>3) - 2) >> 1, ((actor_y[current_player][1]>>3)+1)>>1) > 0) || should_destroy;
 
         if (should_destroy)
         {
           step_p_counter[current_player] = 0;
           step_p[current_player] = DESTROY;
           //let's move sprites to not have them on screen when things explode
-          actor_x[0] = 255;
-          actor_y[0] = 255;
-          actor_x[1] = 255;
-          actor_y[1] = 255;
+          actor_x[current_player][0] = 255;
+          actor_y[current_player][0] = 255;
+          actor_x[current_player][1] = 255;
+          actor_y[current_player][1] = 255;
           should_destroy = 0;
         }
         else
         {
-          actor_x[0] = 3*16;
-          actor_y[0] = 0;
-          actor_x[1] = 3*16;
-          actor_y[1] = 16;
-          actor_dy[0] = 1;
-          actor_dy[1] = 1;
+          actor_x[current_player][0] = start_pos_x[current_player]/*3*16*/;
+          actor_y[current_player][0] = start_pos_y[current_player][0]/*0*/;
+          actor_x[current_player][1] = start_pos_x[current_player]/*3*16*/;
+          actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
+          actor_dy[current_player][0] = 1;
+          actor_dy[current_player][1] = 1;
           ++p_puyo_list_index[current_player];
           /*
           step_p1 = SHOW_NEXT;*/
@@ -2348,12 +2352,12 @@ void main(void)
           }
           else
           {
-            actor_x[0] = 3*16;
-            actor_y[0] = 0;
-            actor_x[1] = 3*16;
-            actor_y[1] = 16;
-            actor_dy[0] = 1;
-            actor_dy[1] = 1;
+            actor_x[current_player][0] = start_pos_x[0]/*3*16*/;
+            actor_y[current_player][0] = start_pos_y[current_player][0]/*0*/;
+            actor_x[current_player][1] = start_pos_x[0]/*3*16*/;
+            actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
+            actor_dy[current_player][0] = 1;
+            actor_dy[current_player][1] = 1;
             ++p_puyo_list_index[current_player];
             //step_p1 = SHOW_NEXT;
             step_p[current_player] = FALL_OJAMA;
@@ -2363,7 +2367,7 @@ void main(void)
         }    
       }
 
-      if ( step_p[current_player] == PLAY && actor_dy[0] == 0 && actor_dy[1] == 0 && actor_dx[0] == 0 && actor_dx[1] == 0 && timer_grace_period[0] == 0 )
+      if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 && timer_grace_period[0] == 0 )
       {
         //vrambuf_clear();
         memset(ntbuf1, 0, sizeof(ntbuf1));
@@ -2375,7 +2379,7 @@ void main(void)
         set_metatile(0,0xd8);
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
-        attrbuf[0] = return_attribute_color(0, actor_x[0]>>3,(actor_y[0]>>3)+1, attribute_table);
+        attrbuf[0] = return_attribute_color(0, actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1, attribute_table);
         //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
         //like here
         //attribute_table[(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2)] = attrbuf[0];
@@ -2385,17 +2389,17 @@ void main(void)
         vrambuf_put(addr,str,20);*/
 
         //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
-        attrbuf[1] = return_attribute_color(1, actor_x[1]>>3, (actor_y[1]>>3)+1, attribute_table);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+        attrbuf[1] = return_attribute_color(1, actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3)+1, attribute_table);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
         /*sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
         addr = NTADR_A(1,27);
         vrambuf_put(addr,str,20);*/
 
-        addr = NTADR_A((actor_x[0]>>3), (actor_y[0]>>3)+1);
+        addr = NTADR_A((actor_x[current_player][0]>>3), (actor_y[current_player][0]>>3)+1);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
 
-        addr = NTADR_A((actor_x[1]>>3), (actor_y[1]>>3)+1);
+        addr = NTADR_A((actor_x[current_player][1]>>3), (actor_y[current_player][1]>>3)+1);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
@@ -2444,9 +2448,9 @@ void main(void)
         // ensuite on décale sur le bon élément de l'index 
         // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
         // et on fait & 3 pour ne garder que les 2 premiers bits
-        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+(i-2))*2))&3]);
+        oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+(i-2))*2))&3]);
  
-        actor_y[i] += (actor_dy[i] + ((previous_pad[1]&PAD_DOWN)? 2 : 0));
+        actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
         //test relative to column_height
         /*if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
