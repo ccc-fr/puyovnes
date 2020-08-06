@@ -167,6 +167,9 @@ char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not b
 byte timer_grace_period[2];
 byte counter_falling_back_up[2];
 
+//global variables to avoid function parameters
+byte current_player; // takes 0 or 1
+
 
 //
 // MUSIC ROUTINES
@@ -238,15 +241,15 @@ void generate_rng(void);
 byte return_sprite_color(byte spr_index);
 byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y, byte * attr_table);
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
-void update_boards(byte board_index);
-byte check_board(byte board_index, byte x, byte y);
-byte destroy_board(byte board_index);
-byte fall_board(byte board_index);
-void manage_point(byte index_player);
+void update_boards(void /*byte board_index*/);
+byte check_board(/*byte board_index,*/ byte x, byte y);
+byte destroy_board(void /*byte board_index*/);
+byte fall_board(void);
+void manage_point(void/*byte index_player*/);
 void build_field(void);
 void setup_graphics(void);
-void handle_controler_and_sprites(char i);
-void update_next(byte i);
+void handle_controler_and_sprites(void);
+void update_next(void);
 //music and sfx related
 byte next_music_byte(void);
 void play_music(void);
@@ -255,7 +258,7 @@ void play_rotation_sound(void);
 void play_hit(byte hit); //pitch get higher with byte until reaching "bayoen !"
 void play_puyo_fix(void); //when puyo is hitting ground, to be changed a bit tamed currently
 void play_bayoen(void); // play bayoen sample
-void fall_ojama(byte i); //fall ojama damage on the player field
+void fall_ojama(void); //fall ojama damage on the player field
 void flush(byte i); // flush loser screen into under the play field
 
 //music bloc definition
@@ -594,12 +597,12 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 }
 
 //Update the boards table, once the puyos have stop moving, not  optimized :-S
-//board_index must take 0 or 2=>No changed to match board_index elsewhere !
-void update_boards(byte board_index)
+//board_index must take 0 or 2=>Not naymore, changed to match current_player elsewhere !
+void update_boards(/*byte board_index*/)
 {
   byte x,y;
   //char str[32];
-  if (board_index == 0)
+  if (current_player == 0)
   { 
     //we must be careful not to erase the data for p2 table
     //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
@@ -608,7 +611,7 @@ void update_boards(byte board_index)
     y = ((actor_y[0]>>3)+1)>>1;
     //sprintf(str,"%d",(boards[x][y]&240));
     //vrambuf_put(NTADR_A(20,13),str,3);
-    boards[board_index][x][y] = /*(boards[board_index][x][y] & 240) +*/ return_sprite_color(0);
+    boards[current_player][x][y] = /*(boards[board_index][x][y] & 240) +*/ return_sprite_color(0);
    /* sprintf(str,"x:%d y:%d val:%d buf:%da",x , y, boards[x][y], return_sprite_color(0));
     vrambuf_put(NTADR_A(1,26),str,24);*/
     x = ((actor_x[1]>>3) - 2) >> 1;
@@ -617,7 +620,7 @@ void update_boards(byte board_index)
     vrambuf_put(NTADR_A(20,11),str,10);*/
    // sprintf(str,"%d",(boards[x][y]&240));
     //vrambuf_put(NTADR_A(20,14),str,3);
-    boards[board_index][x][y] = /*(boards[board_index][x][y] &240) +*/ return_sprite_color(1);
+    boards[current_player][x][y] = /*(boards[board_index][x][y] &240) +*/ return_sprite_color(1);
     /*sprintf(str,"x:%d y:%d val:%d buf:%da", x, y, boards[x][y], return_sprite_color(1));
     vrambuf_put(NTADR_A(1,27),str,24);*/
 
@@ -627,17 +630,17 @@ void update_boards(byte board_index)
     //we must be careful to not erase the ddata for p1 table
     //column 0 is at 18 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
     //get the column number  right
-    x = ((actor_x[board_index]>>3) - 18) >> 1;
-    y = ((actor_y[board_index]>>3)+1)>>1;
-    boards[board_index][x][y] = /*(boards[board_index][x][y] &15) +*/ (return_sprite_color(2) /*<< 4*/);
-    x = ((actor_x[board_index+1]>>3) - 18) >> 1;
-    y = ((actor_y[board_index+1]>>3)+1)>>1;
-    boards[board_index][x][y] = /*(boards[board_index][x][y] &15) +*/ (return_sprite_color(3) /*<< 4*/);
+    x = ((actor_x[2]>>3) - 18) >> 1;
+    y = ((actor_y[2]>>3)+1)>>1;
+    boards[current_player][x][y] = /*(boards[board_index][x][y] &15) +*/ (return_sprite_color(2) /*<< 4*/);
+    x = ((actor_x[3]>>3) - 18) >> 1;
+    y = ((actor_y[3]>>3)+1)>>1;
+    boards[current_player][x][y] = /*(boards[board_index][x][y] &15) +*/ (return_sprite_color(3) /*<< 4*/);
   }
 }
 
 // Look for puyo to destroy and flag them as such
-byte check_board(byte board_index, byte x, byte y)
+byte check_board(/*byte board_index,*/ byte x, byte y)
 {
   static byte i, j, k, current_color; //static are faster, but they are keeping there value outside of context
   byte counter = 0, tmp_counter = 0;
@@ -645,7 +648,7 @@ byte check_board(byte board_index, byte x, byte y)
   byte destruction = 0;
   //char str[32];
   
-  if (board_index != 0)
+  if (current_player != 0)
   {
     shift = 4;
     mask <<= shift;
@@ -668,7 +671,7 @@ byte check_board(byte board_index, byte x, byte y)
   
   memset(tmp_boards,0,sizeof(tmp_boards));
 
-  current_color = ((boards[board_index][x][y] /*& mask*/) /*>> shift*/);
+  current_color = ((boards[current_player][x][y] /*& mask*/) /*>> shift*/);
   /*sprintf(str,"color:%d",current_color);
   vrambuf_put(NTADR_A(18,10),str,10);*/
   //tmp_boards contains flag of the currently looked color 
@@ -678,7 +681,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[i][y] != flag)
     {
-      if (current_color == ((boards[board_index][i][y]/* & mask*/) /*>> shift*/))
+      if (current_color == ((boards[current_player][i][y]/* & mask*/) /*>> shift*/))
       {     
         tmp_boards[i][y] = flag;
         ++counter;
@@ -698,7 +701,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[i][y] != flag)
     {
-      if (current_color == ((boards[board_index][i][y]/* & mask*/) /*>> shift*/))
+      if (current_color == ((boards[current_player][i][y]/* & mask*/) /*>> shift*/))
       {     
         tmp_boards[i][y] = flag;
         ++counter;
@@ -718,7 +721,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[x][i] != flag)
     {
-      if (current_color == ((boards[board_index][x][i]/* & mask*/) /*>> shift*/))
+      if (current_color == ((boards[current_player][x][i]/* & mask*/) /*>> shift*/))
       {     
         tmp_boards[x][i] = flag;
         ++counter;
@@ -737,7 +740,7 @@ byte check_board(byte board_index, byte x, byte y)
   {
     if ( tmp_boards[x][i] != flag)
     {
-      if (current_color == ((boards[board_index][x][i]/* & mask*/) /*>> shift*/))
+      if (current_color == ((boards[current_player][x][i]/* & mask*/) /*>> shift*/))
       {     
         tmp_boards[x][i] = flag;
         ++counter;
@@ -764,7 +767,7 @@ byte check_board(byte board_index, byte x, byte y)
     k = j+1;
     //unlooped version
     //0
-    if (tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j]/* & mask*/) /*>> shift*/)) && 
+    if (tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j]/* & mask*/) /*>> shift*/)) && 
         ( ((k!=13) ? (tmp_boards[0][k] == flag) : false) ||
          (tmp_boards[1][j] == flag)) )
     {
@@ -774,7 +777,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //1
-    if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j]/* & mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j]/* & mask*/) /*>> shift*/)) && 
         ( ((k!=13) ? (tmp_boards[1][k] == flag) : false) ||
          (tmp_boards[0][j] == flag) ||
          (tmp_boards[2][j] == flag)) )
@@ -785,7 +788,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //2
-    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[board_index][2][j]/* & mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[current_player][2][j]/* & mask*/) /*>> shift*/)) && 
         ( ((k!=13) ? (tmp_boards[2][k] == flag) : false) ||
          (tmp_boards[1][j] == flag) ||
          (tmp_boards[3][j] == flag)) )
@@ -796,7 +799,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //3
-    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[board_index][3][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[current_player][3][j] /*& mask*/) /*>> shift*/)) && 
         ( ((k!=13) ? (tmp_boards[3][k] == flag) : false) ||
          (tmp_boards[2][j] == flag) ||
          (tmp_boards[4][j] == flag)) )
@@ -807,7 +810,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //4
-    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[board_index][4][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[current_player][4][j] /*& mask*/) /*>> shift*/)) && 
         ( ((k!=13) ? (tmp_boards[4][k] == flag) : false) ||
          (tmp_boards[3][j] == flag) ||
          (tmp_boards[5][j] == flag)) )
@@ -818,7 +821,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //5
-    if ( tmp_boards[5][j] != flag && (current_color == ((boards[board_index][5][j] /*& mask*/)/* >> shift*/)) && 
+    if ( tmp_boards[5][j] != flag && (current_color == ((boards[current_player][5][j] /*& mask*/)/* >> shift*/)) && 
         ( ((k!=13) ? (tmp_boards[5][k] == flag) : false) ||
          (tmp_boards[4][j] == flag)))
     {
@@ -832,7 +835,7 @@ byte check_board(byte board_index, byte x, byte y)
     {
       
       //4
-      if ( tmp_boards[4][j] != flag && (current_color == ((boards[board_index][4][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[4][j] != flag && (current_color == ((boards[current_player][4][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[3][j] == flag) ||
             (tmp_boards[5][j] == flag)) )
       {
@@ -841,7 +844,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //3
-      if ( tmp_boards[3][j] != flag && (current_color == ((boards[board_index][3][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[3][j] != flag && (current_color == ((boards[current_player][3][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[2][j] == flag) ||
             (tmp_boards[4][j] == flag)) )
       {
@@ -850,7 +853,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //2
-      if ( tmp_boards[2][j] != flag && (current_color == ((boards[board_index][2][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[2][j] != flag && (current_color == ((boards[current_player][2][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[1][j] == flag) ||
             (tmp_boards[3][j] == flag)) )
       {
@@ -859,7 +862,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //1
-      if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[0][j] == flag) ||
             (tmp_boards[2][j] == flag)) )
       {
@@ -868,7 +871,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
        //0
-      if ( tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[1][j] == flag)) )
       {
         tmp_boards[0][j] = flag;
@@ -890,7 +893,7 @@ byte check_board(byte board_index, byte x, byte y)
     
     //unlooped version
     //0
-    if (tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] /*& mask*/) /*>> shift*/)) && 
+    if (tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j] /*& mask*/) /*>> shift*/)) && 
         (((k<13) ? (tmp_boards[0][k] == flag) : false) ||
          (tmp_boards[1][j] == flag)) )
     {
@@ -900,7 +903,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //1
-    if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j] /*& mask*/) /*>> shift*/)) && 
         (((k<13) ? (tmp_boards[1][k] == flag) : false) ||
          (tmp_boards[0][j] == flag) ||
          (tmp_boards[2][j] == flag)) )
@@ -911,7 +914,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //2
-    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[board_index][2][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[current_player][2][j] /*& mask*/) /*>> shift*/)) && 
         (((k<13) ? (tmp_boards[2][k] == flag) : false) ||
          (tmp_boards[1][j] == flag) ||
          (tmp_boards[3][j] == flag)) )
@@ -922,7 +925,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //3
-    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[board_index][3][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[current_player][3][j] /*& mask*/) /*>> shift*/)) && 
         (((k<13) ? (tmp_boards[3][k] == flag) : false) ||
          (tmp_boards[2][j] == flag) ||
          (tmp_boards[4][j] == flag)) )
@@ -933,7 +936,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //4
-    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[board_index][4][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[current_player][4][j] /*& mask*/) /*>> shift*/)) && 
         (((k<13) ? (tmp_boards[4][k] == flag) : false) ||
          (tmp_boards[3][j] == flag) ||
          (tmp_boards[5][j] == flag)) )
@@ -944,7 +947,7 @@ byte check_board(byte board_index, byte x, byte y)
     }
 
     //5
-    if ( tmp_boards[5][j] != flag && (current_color == ((boards[board_index][5][j] /*& mask*/) /*>> shift*/)) && 
+    if ( tmp_boards[5][j] != flag && (current_color == ((boards[current_player][5][j] /*& mask*/) /*>> shift*/)) && 
         ( ((k<13) ? (tmp_boards[5][k] == flag) : false) ||
          (tmp_boards[4][j] == flag)))
     {
@@ -965,7 +968,7 @@ byte check_board(byte board_index, byte x, byte y)
       }*/
       
       //4
-      if ( tmp_boards[4][j] != flag && (current_color == ((boards[board_index][4][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[4][j] != flag && (current_color == ((boards[current_player][4][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[3][j] == flag) ||
             (tmp_boards[5][j] == flag)) )
       {
@@ -974,7 +977,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //3
-      if ( tmp_boards[3][j] != flag && (current_color == ((boards[board_index][3][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[3][j] != flag && (current_color == ((boards[current_player][3][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[2][j] == flag) ||
             (tmp_boards[4][j] == flag)) )
       {
@@ -983,7 +986,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //2
-      if ( tmp_boards[2][j] != flag && (current_color == ((boards[board_index][2][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[2][j] != flag && (current_color == ((boards[current_player][2][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[1][j] == flag) ||
             (tmp_boards[3][j] == flag)) )
       {
@@ -992,7 +995,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
       //1
-      if ( tmp_boards[1][j] != flag && (current_color == ((boards[board_index][1][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[0][j] == flag) ||
             (tmp_boards[2][j] == flag)) )
       {
@@ -1001,7 +1004,7 @@ byte check_board(byte board_index, byte x, byte y)
       }
       
        //0
-      if ( tmp_boards[0][j] != flag && (current_color == ((boards[board_index][0][j] /*& mask*/) /*>> shift*/)) && 
+      if ( tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j] /*& mask*/) /*>> shift*/)) && 
            ((tmp_boards[1][j] == flag)) )
       {
         tmp_boards[0][j] = flag;
@@ -1016,10 +1019,10 @@ byte check_board(byte board_index, byte x, byte y)
   if (counter >= 3)
   {
     //update the variable for point counting
-    nb_puyos_destroyed[board_index] += (counter + 1); //how many puyos are destroyed on that hit
+    nb_puyos_destroyed[current_player] += (counter + 1); //how many puyos are destroyed on that hit
     // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow
     mask_color_destroyed |= (1 << shift) << current_color;  
-    nb_group[board_index] += (counter + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
+    nb_group[current_player] += (counter + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
 
     //copy flag to boards
     for (i = 0; i < 6; ++i)
@@ -1028,7 +1031,7 @@ byte check_board(byte board_index, byte x, byte y)
       {
         if ( tmp_boards[i][j] == flag)
         {
-          boards[board_index][i][j] |= flag;
+          boards[current_player][i][j] |= flag;
           ++destruction;
         }
       }
@@ -1038,7 +1041,7 @@ byte check_board(byte board_index, byte x, byte y)
 }
 
 //puyo visual destroying after check_board
-byte destroy_board(byte board_index)
+byte destroy_board(/*byte board_index*/)
 {
   byte i, j/*, current_color*/;
   byte counter = 0, tmp_line = 0;
@@ -1049,7 +1052,7 @@ byte destroy_board(byte board_index)
   //char str[32];
   
   //memset(tmp_boards,0,sizeof(tmp_boards));
-  if (board_index != 0)
+  if (current_player != 0)
   {
     shift = 4;
     mask <<= shift;
@@ -1072,7 +1075,7 @@ byte destroy_board(byte board_index)
     {*/
     for (j = 0; j < 13 ; ++j)
     {
-      if ((boards[board_index][tmp_counter][j] & flag) > 0)
+      if ((boards[current_player][tmp_counter][j] & flag) > 0)
       {
         //(i+1)<<1 à l'air ok, y on y est pas encore
         //addr = NTADR_A((i+1)<<1, j *2 );//?????
@@ -1083,13 +1086,13 @@ byte destroy_board(byte board_index)
           vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
           vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
         //sujet traité, on zappe le flag
-        boards[board_index][tmp_counter][j] -= flag;
+        boards[current_player][tmp_counter][j] -= flag;
         //on change le board pour puyo_pop
         //PUYO_POP
         //(boards[x][y]&15) + (return_sprite_color(3) << 4);
-        boards[board_index][tmp_counter][j] = PUYO_POP;/*(boards[board_index][tmp_counter][j] & invmask) + (PUYO_POP << shift)*/;
+        boards[current_player][tmp_counter][j] = PUYO_POP;/*(boards[board_index][tmp_counter][j] & invmask) + (PUYO_POP << shift)*/;
         //we will reuse the flag for destruction
-        boards[board_index][tmp_counter][j] += flag;
+        boards[current_player][tmp_counter][j] += flag;
         tmp_line=j;
         /*sprintf(str,"%d", j);
           vrambuf_put(NTADR_A(18,j*2),str,2);*/
@@ -1112,15 +1115,15 @@ byte destroy_board(byte board_index)
     {*/
     for (j = 0; j < 13 ; ++j)
     {
-      if ((boards[board_index][i][j] & flag) > 0)
+      if ((boards[current_player][i][j] & flag) > 0)
       {
         addr = NTADR_A(((i)*2)+2, j *2 );
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         //sujet traité, on zappe le flag
-        boards[board_index][i][j] -= flag;
+        boards[current_player][i][j] -= flag;
         //on change le board pour EMPTY
-        boards[board_index][i][j] = EMPTY /*(boards[board_index][i][j] & invmask) + (EMPTY << shift)*/;
+        boards[current_player][i][j] = EMPTY /*(boards[board_index][i][j] & invmask) + (EMPTY << shift)*/;
       }
     }
    // }
@@ -1137,7 +1140,7 @@ byte destroy_board(byte board_index)
 }
 
 /*puyo falling*/
-byte fall_board(byte board_index)
+byte fall_board()
 {
   //TODO !
   //column_height doit être baissé (enfin montée, 0 est en haut) de 16 (+=16) à chaque fois qu'on descend un truc
@@ -1156,7 +1159,7 @@ byte fall_board(byte board_index)
   //char str[32];
   
   //memset(tmp_boards,0,sizeof(tmp_boards));
-  if (board_index != 0)
+  if (current_player != 0)
   {
     /*shift = 4;
     mask <<= shift;
@@ -1177,7 +1180,7 @@ byte fall_board(byte board_index)
   
   for (j = 0 ; j < 13 ; ++j)
   {
-    if (can_fall != 1 && ( (boards[board_index][tmp_counter][j] & smask)) /*>> shift*/ != EMPTY)
+    if (can_fall != 1 && ( (boards[current_player][tmp_counter][j] & smask)) /*>> shift*/ != EMPTY)
     {
       puyo_found = j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
@@ -1186,16 +1189,16 @@ byte fall_board(byte board_index)
         ++j;  
     }
 
-    if (can_fall == 1 && ( (boards[board_index][tmp_counter][j] & smask) /*>> shift*/) == EMPTY)
+    if (can_fall == 1 && ( (boards[current_player][tmp_counter][j] & smask) /*>> shift*/) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
       for (j2 = j ; j2 >= previous_empty && j2 < 255 ; --j2)
       {
         if (j2 == 0) 
-          boards[board_index][tmp_counter][j2] = EMPTY; /*(boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);*/
+          boards[current_player][tmp_counter][j2] = EMPTY; /*(boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);*/
         else
-          boards[board_index][tmp_counter][j2] = boards[board_index][tmp_counter][j2-1]; /*(boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  */
+          boards[current_player][tmp_counter][j2] = boards[current_player][tmp_counter][j2-1]; /*(boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  */
       }
       fall = 1;
       /*sprintf(str,"F %d", tmp_counter);
@@ -1211,7 +1214,7 @@ byte fall_board(byte board_index)
   if (fall == 1)
   {
     //If we got a fall we reset the counter, then 
-    if (board_index != 0)
+    if (current_player != 0)
     {
       step_p2_counter = tmp_counter;
       //As it fall the height of the column must be lowered:
@@ -1231,7 +1234,7 @@ byte fall_board(byte board_index)
     //we start at 1 as we don't want to modify the ceiling
     for (j = 1; j < 13 ; ++j)
     {
-      switch ((boards[board_index][tmp_counter][j] /*& mask*/) /*>> shift*/)
+      switch ((boards[current_player][tmp_counter][j] /*& mask*/) /*>> shift*/)
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
           clear_metatile(j-1);
@@ -1269,7 +1272,7 @@ byte fall_board(byte board_index)
   }
   else
   {
-    if (board_index != 0)
+    if (current_player != 0)
     {
       tmp_counter_2 = tmp_counter + 6;
     }
@@ -1290,7 +1293,7 @@ byte fall_board(byte board_index)
       column_height[tmp_counter_2] = ((puyo_found-1)*16) -2;
     }
     
-    if (board_index == 0)
+    if (current_player == 0)
     {
       if (step_p1_counter == 11)
       {
@@ -1328,44 +1331,44 @@ byte fall_board(byte board_index)
     }
   }
   
-  if (board_index != 0)
+  if (current_player != 0)
     ++step_p2_counter;
   else
     ++step_p1_counter;
 
-  return board_index;
+  return current_player;
 }
 
 // Calculate the point and update the score plus the ojama on top of opponent board
 // 2 steps : first score calculation plus display under player board
 // 2 tile calculation base on ojamas[] and display
 //doing both at the same time makes the screen jump...
-void manage_point(byte index_player)
+void manage_point(/*byte index_player*/)
 {
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
   char str[6];
-  byte tmp_mask = 0, i = 0;
+  byte tmp_mask = 0, i = 0, j = 0;
   unsigned long int tmp_score = 0;
   register word addr;
   
-  if ((index_player == 0)  ? (step_p1_counter == 0):(step_p2_counter == 0))
+  if ((current_player == 0)  ? (step_p1_counter == 0):(step_p2_counter == 0))
   {
     //hit power
-    tmp_score = (nb_hit[index_player] <= 3) ? ((nb_hit[index_player]-1) << 3) : ((nb_hit[index_player]-3) << 5);
+    tmp_score = (nb_hit[current_player] <= 3) ? ((nb_hit[current_player]-1) << 3) : ((nb_hit[current_player]-3) << 5);
 
     //color_bonus
     //first get colors for current player
-    tmp_mask = mask_color_destroyed & ((index_player == 0) ? 0xf : 0xf0);
+    tmp_mask = mask_color_destroyed & ((current_player == 0) ? 0xf : 0xf0);
 
     //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
     tmp_score += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
 
 
     // group_bonus
-    if ( nb_group[index_player] > 0 )
+    if ( nb_group[current_player] > 0 )
     {
-      tmp_score += ( (nb_group[index_player] < 7) ? (nb_group[index_player] + 1) : 10 );
+      tmp_score += ( (nb_group[current_player] < 7) ? (nb_group[current_player] + 1) : 10 );
     }
 
     //you need to raise the score if bonus are null, to avoid multiply by 0
@@ -1373,12 +1376,12 @@ void manage_point(byte index_player)
       tmp_score = 1;
 
     //Now the disappearing puyos
-    tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[index_player] * 10);
+    tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[current_player] * 10);
 
-    score[index_player] += tmp_score;
+    score[current_player] += tmp_score;
 
     //WIP add the opponent ojama removal from current player stack !
-    if (index_player == 0)
+    if (current_player == 0)
     {
       ojamas[2] += tmp_score;
       if (ojamas[0] > 0)
@@ -1396,20 +1399,20 @@ void manage_point(byte index_player)
     }
 
     //TODO warikomi not handled yet
-    sprintf(str,"Hit:%2d", nb_hit[index_player]);
+    sprintf(str,"Hit:%2d", nb_hit[current_player]);
     addr = NTADR_A(2,26);
     vrambuf_put(addr,str,6);
-    sprintf(str,"%6lu", score[index_player]);
+    sprintf(str,"%6lu", score[current_player]);
     addr = NTADR_A(8,27);
     vrambuf_put(addr,str,6);
     
     //play hit sound
-    play_hit(nb_hit[index_player]);
+    play_hit(nb_hit[current_player]);
     
     //reinit value for next compute
-    nb_puyos_destroyed[index_player] = 0;
-    mask_color_destroyed = mask_color_destroyed & ((index_player == 0) ? 0xf0 : 0xf) /*0xF0*/;
-    nb_group[index_player] = 0;
+    nb_puyos_destroyed[current_player] = 0;
+    mask_color_destroyed = mask_color_destroyed & ((current_player == 0) ? 0xf0 : 0xf) /*0xF0*/;
+    nb_group[current_player] = 0;
   }
   else
   {
@@ -1430,12 +1433,12 @@ void manage_point(byte index_player)
     //1440: 0xf4   comet
     
     //first let's get our score divided by 70
-    tmp_score = ojamas[(index_player == 0 ? 2 : 0)] / 70;
-    index_player = 0;
+    tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+    j = 0;
     //let's cheat, setup everything as ojamaless tile
     memset(str,0xc4, sizeof(str));
     
-    for ( i = 0; i < 7  && index_player < 6 ; ++i)
+    for ( i = 0; i < 7  && j < 6 ; ++i)
     {
       //we go from higher score to lowest, checking the rest.
       if (tmp_score / damageList[i] > 0 )
@@ -1443,10 +1446,10 @@ void manage_point(byte index_player)
         //we use our previously declared str to store the address of the tile
         //we use byte_mask because as str it is there, avoidinf declaring something else
         //index_is reused too !
-        for (tmp_mask = 0; tmp_mask < (tmp_score/damageList[i]) && index_player < 6 ; ++tmp_mask)
+        for (tmp_mask = 0; tmp_mask < (tmp_score/damageList[i]) && j < 6 ; ++tmp_mask)
         {
-          str[index_player] = damageTile[i];
-          ++index_player;
+          str[j] = damageTile[i];
+          ++j;
         }   
       }
       tmp_score %= damageList[i];     
@@ -1496,7 +1499,7 @@ void manage_point(byte index_player)
 }
 
 //fall ojama damage on the player field
-void fall_ojama(byte board_index)
+void fall_ojama()
 {
   /* Conditions :
   The other player must be in "PLAY" step when the step_counter of fall_ojama is at 0
@@ -1513,7 +1516,7 @@ void fall_ojama(byte board_index)
   //char str[32];
   
   //memset(tmp_boards,0,sizeof(tmp_boards));
-  if (board_index != 0)
+  if (current_player != 0)
   {
     shift = 4;
     mask <<= shift;
@@ -1530,10 +1533,10 @@ void fall_ojama(byte board_index)
     opponent_status = step_p2;
   }
   
-  if ((step_ojama_fall[board_index] == 0 && opponent_status != PLAY) /*|| ojama[board_index<<1] == 0 || tmp_counter == 5*/)
+  if ((step_ojama_fall[current_player] == 0 && opponent_status != PLAY) /*|| ojama[board_index<<1] == 0 || tmp_counter == 5*/)
   {
     //inutile de continuer on passe à SHOW_NEXT
-    if (board_index == 0)
+    if (current_player == 0)
     {
       step_p1 = SHOW_NEXT;
       step_p1_counter = 0;
@@ -1547,23 +1550,23 @@ void fall_ojama(byte board_index)
   }
   
   //add a line max of ojama on row 
-  if ( (step_ojama_fall[board_index] < 5) && (ojamas[board_index<<1] >= 70))
+  if ( (step_ojama_fall[current_player] < 5) && (ojamas[current_player<<1] >= 70))
   {
-    if ( ojamas[board_index<<1] >= 420)
+    if ( ojamas[current_player<<1] >= 420)
     {
       // over 70*6, 420, a full line can be added
       for (i = 0; i < 6; ++i)
       {
-        if ( (boards[board_index][i][0] & mask >> shift) == EMPTY)
+        if ( (boards[current_player][i][0] & mask >> shift) == EMPTY)
         {
-          boards[board_index][i][0] = OJAMA /*(boards[board_index][i][0] & invmask) + (OJAMA << shift)*/;
-          if ( (ojamas[board_index<<1] - 70) < ojamas[board_index<<1]) //if not inferior then less than 70 !
+          boards[current_player][i][0] = OJAMA /*(boards[board_index][i][0] & invmask) + (OJAMA << shift)*/;
+          if ( (ojamas[current_player<<1] - 70) < ojamas[current_player<<1]) //if not inferior then less than 70 !
           { 
-            ojamas[board_index<<1]-= 70;
+            ojamas[current_player<<1]-= 70;
           }
           else
           {
-            ojamas[board_index<<1] = 0;
+            ojamas[current_player<<1] = 0;
             break;//no points, no need to continue
           }
         }
@@ -1576,24 +1579,24 @@ void fall_ojama(byte board_index)
       top_line_space = 0;
       for (i = 0; i < 6; ++i )
       {
-        if ((boards[board_index][i][0]/* & mask >> shift*/) == EMPTY)
+        if ((boards[current_player][i][0]/* & mask >> shift*/) == EMPTY)
         {
           ++top_line_space;
         } 
       }
       if (top_line_space > 0)
       {
-        if (top_line_space > ojamas[board_index<<1] / 70)
+        if (top_line_space > ojamas[current_player<<1] / 70)
         {
           i = 0;
           //more space than ojama, we randomize the fall
-          while (ojamas[board_index<<1] >= 70)
+          while (ojamas[current_player<<1] >= 70)
           {
-            if ((boards[board_index][i][0] /*& mask >> shift*/) == EMPTY && (rand8() & 1))
+            if ((boards[current_player][i][0] /*& mask >> shift*/) == EMPTY && (rand8() & 1))
             {
               //boards[i][0] |= (OJAMA << shift);
-              boards[board_index][i][0] = OJAMA; /*(boards[board_index][i][0] & invmask) + (OJAMA << shift);*/
-              ojamas[board_index<<1] -= 70;
+              boards[current_player][i][0] = OJAMA; /*(boards[board_index][i][0] & invmask) + (OJAMA << shift);*/
+              ojamas[current_player<<1] -= 70;
             }
             ++i;
             i = i%6;//to loop
@@ -1604,22 +1607,22 @@ void fall_ojama(byte board_index)
           //less space than ojama, we fill every holes., the remaining ojamas will fall at next step
           for (i = 0; i < 6; ++i )
           {
-            if ((boards[board_index][i][0] /*& mask >> shift*/) == EMPTY)
+            if ((boards[current_player][i][0] /*& mask >> shift*/) == EMPTY)
             {
               //boards[i][0] |= (OJAMA << shift);
-              boards[board_index][i][0] = OJAMA; /*(boards[board_index][i][0] & invmask) + (OJAMA << shift);*/
-              ojamas[board_index<<1] -= 70;
+              boards[current_player][i][0] = OJAMA; /*(boards[board_index][i][0] & invmask) + (OJAMA << shift);*/
+              ojamas[current_player<<1] -= 70;
             } 
           }
         }
       }
       
     }
-    step_ojama_fall[board_index]++;
+    step_ojama_fall[current_player]++;
   }
   
   //make them fall a line, if fall board is not moving, then it will go to "CHECK_ALL" at the end of fall_board
-  fall_board(board_index);
+  fall_board(/*board_index*/);
  
   return;
 }
@@ -1632,7 +1635,7 @@ void flush(byte board_index)
 }
 
 //update the color of the next pair to come between fields
-void update_next(byte i)
+void update_next(/*byte i*/)
 {
   // current position is p1_puyo_list_index, 
   //We have to remember that one byte contains 4 colors/puyo (2 bits per color)
@@ -1649,16 +1652,16 @@ void update_next(byte i)
   //I still quite don't get how this tile buffering fuctions works
   //So I do it like..that, and it's ugly.
   memset(attrbuf, 0, sizeof(attrbuf));
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+1)>>1)]>>(((((p1_puyo_list_index+1)%2)*2)+0)*2))&3,14+(i<<1),4); 
-  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 4 ))), 1);
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+1)>>1)]>>(((((p1_puyo_list_index+1)%2)*2)+1)*2))&3,14+(i<<1),6); 
-  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 6 ))), 1);
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+1)>>1)]>>(((((p1_puyo_list_index+1)%2)*2)+0)*2))&3,14+(current_player<<1),4); 
+  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 4 ))), 1);
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+1)>>1)]>>(((((p1_puyo_list_index+1)%2)*2)+1)*2))&3,14+(current_player<<1),6); 
+  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 6 ))), 1);
   //attrbuf[0] = return_tile_attribute_color(0,14+(i<<1),8); 
   //put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 8 ))), 1);
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+2)>>1)]>>(((((p1_puyo_list_index+2)%2)*2)+0)*2))&3,14+(i<<1),10);
-  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 10 ))), 1);
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+2)>>1)]>>(((((p1_puyo_list_index+2)%2)*2)+1)*2))&3,14+(i<<1),12);
-  put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 12 ))), 1);; 
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+2)>>1)]>>(((((p1_puyo_list_index+2)%2)*2)+0)*2))&3,14+(current_player<<1),10);
+  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 10 ))), 1);
+  attrbuf[0] = return_tile_attribute_color((puyo_list[((p1_puyo_list_index+2)>>1)]>>(((((p1_puyo_list_index+2)%2)*2)+1)*2))&3,14+(current_player<<1),12);
+  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 12 ))), 1);; 
   return;
 }
 
@@ -1811,53 +1814,53 @@ void setup_graphics() {
   seg_char = 0xe0;
 }
 
-void handle_controler_and_sprites(char i)
+void handle_controler_and_sprites()
 {
-  pad = pad_poll(i);
+  pad = pad_poll(current_player);
 
   //update status of controller memory
-  if (previous_pad[i]&PAD_LEFT && pad&PAD_LEFT)
-    ++input_delay_PAD_LEFT[i];
+  if (previous_pad[current_player]&PAD_LEFT && pad&PAD_LEFT)
+    ++input_delay_PAD_LEFT[current_player];
   else
-    input_delay_PAD_LEFT[i] = 0;
-  if (previous_pad[i]&PAD_RIGHT && pad&PAD_RIGHT)
-    ++input_delay_PAD_RIGHT[i];
+    input_delay_PAD_LEFT[current_player] = 0;
+  if (previous_pad[current_player]&PAD_RIGHT && pad&PAD_RIGHT)
+    ++input_delay_PAD_RIGHT[current_player];
   else
-    input_delay_PAD_RIGHT[i] = 0;
+    input_delay_PAD_RIGHT[current_player] = 0;
   
-  if (previous_pad[i]&PAD_A && pad&PAD_A)
-    ++input_delay_PAD_A[i];
+  if (previous_pad[current_player]&PAD_A && pad&PAD_A)
+    ++input_delay_PAD_A[current_player];
   else
-    input_delay_PAD_A[i] = 0;
-  if (previous_pad[i]&PAD_B && pad&PAD_B)
-    ++input_delay_PAD_B[i];
+    input_delay_PAD_A[current_player] = 0;
+  if (previous_pad[current_player]&PAD_B && pad&PAD_B)
+    ++input_delay_PAD_B[current_player];
   else
-    input_delay_PAD_B[i] = 0;
+    input_delay_PAD_B[current_player] = 0;
 
   //you have to look at the leftmost or rightmost puyo
   //p1 puyo 0 & 1, p2 puyo 2 & 3
-  if (actor_x[i*2] < actor_x[(i*2)+1])
+  if (actor_x[current_player*2] < actor_x[(current_player*2)+1])
   {
     //left/right
-    if ( pad&PAD_LEFT && (actor_x[i*2] > (16+(i*128))) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4) - 2]) )
+    if ( pad&PAD_LEFT && (actor_x[current_player*2] > (16+(current_player*128))) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4) - 2]) )
     {
       //add a bit of delay before going again to left
-      if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+      if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
       {
-        actor_dx[i*2] = actor_x[i*2];
-        actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-        actor_x[i*2] -= 16;
-        actor_x[(i*2)+1] -= 16;
+        actor_dx[current_player*2] = actor_x[current_player*2];
+        actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+        actor_x[current_player*2] -= 16;
+        actor_x[(current_player*2)+1] -= 16;
       }
     }
-    else if ( pad&PAD_RIGHT && (actor_x[(i*2)+1] < (96+(i*128))) && (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4)]) )
+    else if ( pad&PAD_RIGHT && (actor_x[(current_player*2)+1] < (96+(current_player*128))) && (actor_y[(current_player*2)+1] <= column_height[(actor_x[(current_player*2)+1] >> 4)]) )
     {
-      if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+      if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
-        actor_dx[i*2] = actor_x[i*2];
-        actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-        actor_x[i*2] += 16;
-        actor_x[(i*2)+1] += 16;       
+        actor_dx[current_player*2] = actor_x[current_player*2];
+        actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+        actor_x[current_player*2] += 16;
+        actor_x[(current_player*2)+1] += 16;       
       }
     }
     else
@@ -1867,23 +1870,23 @@ void handle_controler_and_sprites(char i)
     }
     //buttons, the puyo rotating is always the one at the top
     //so with index at 0 (0 p1, 2 p2)
-    if (pad&PAD_B && input_delay_PAD_B[i] == 0)
+    if (pad&PAD_B && input_delay_PAD_B[current_player] == 0)
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //B the puyo will go under the 2nd puyo
       //the delay has to be at 0, because we don't want it to turn automatically
       //you have to press each time        
-      actor_dx[i*2] = actor_x[i*2];
-      actor_y[i*2] += 16;
-      actor_x[i*2] += 16;
+      actor_dx[current_player*2] = actor_x[current_player*2];
+      actor_y[current_player*2] += 16;
+      actor_x[current_player*2] += 16;
     }
-    if (pad&PAD_A && input_delay_PAD_A[i] == 0)
+    if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
-      actor_dx[i*2] = actor_x[i*2];
-      actor_y[i*2] -= 16;
-      actor_x[i*2] += 16;
+      actor_dx[current_player*2] = actor_x[current_player*2];
+      actor_y[current_player*2] -= 16;
+      actor_x[current_player*2] += 16;
     }   
   }
   else
@@ -1891,129 +1894,129 @@ void handle_controler_and_sprites(char i)
 
    // (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 1])
 
-    if (actor_x[i*2] != actor_x[(i*2)+1])
+    if (actor_x[current_player*2] != actor_x[(current_player*2)+1])
     {
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[(i*2)+1] > (16+i*128)) && (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 2]) )
+      if (pad&PAD_LEFT && (actor_x[(current_player*2)+1] > (16+current_player*128)) && (actor_y[(current_player*2)+1] <= column_height[(actor_x[(current_player*2)+1] >> 4) - 2]) )
       {
-        if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+        if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[i*2] = actor_x[i*2];
-          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-          actor_x[i*2] -= 16;
-          actor_x[(i*2)+1] -= 16;
+          actor_dx[current_player*2] = actor_x[current_player*2];
+          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+          actor_x[current_player*2] -= 16;
+          actor_x[(current_player*2)+1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[i*2] < (96+i*128)) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4)]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player*2] < (96+current_player*128)) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4)]) )
       {
-        if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+        if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[i*2] = actor_x[i*2];
-          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-          actor_x[i*2] += 16;
-          actor_x[(i*2)+1] += 16;   
+          actor_dx[current_player*2] = actor_x[current_player*2];
+          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+          actor_x[current_player*2] += 16;
+          actor_x[(current_player*2)+1] += 16;   
         }
       }
 
       //puyo[0] > puyo[1], it's on its right
-      if (pad&PAD_B && input_delay_PAD_B[i] == 0)
+      if (pad&PAD_B && input_delay_PAD_B[current_player] == 0)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go over the 2nd puyo
-        actor_dx[i*2] = actor_x[i*2];
-        actor_y[i*2] -= 16;
-        actor_x[i*2] -= 16;
+        actor_dx[current_player*2] = actor_x[current_player*2];
+        actor_y[current_player*2] -= 16;
+        actor_x[current_player*2] -= 16;
       }
-      if (pad&PAD_A && input_delay_PAD_A[i] == 0)
+      if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go under the 2nd puyo
-        actor_dx[i*2] = actor_x[i*2];
-        actor_y[i*2] += 16;
-        actor_x[i*2] -= 16; 
+        actor_dx[current_player*2] = actor_x[current_player*2];
+        actor_y[current_player*2] += 16;
+        actor_x[current_player*2] -= 16; 
       }   
     }
     else
     {
       //left or right movement with both actor on the same x
-      if (pad&PAD_LEFT && (actor_x[i*2] > (16+i*128)) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4) - 2]) )
+      if (pad&PAD_LEFT && (actor_x[current_player*2] > (16+current_player*128)) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4) - 2]) )
       {
-        if (input_delay_PAD_LEFT[i] == 0 || input_delay_PAD_LEFT[i] > INPUT_DIRECTION_DELAY)
+        if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[i*2] = actor_x[i*2];
-          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-          actor_x[i*2] -= 16;
-          actor_x[(i*2)+1] -= 16;
+          actor_dx[current_player*2] = actor_x[current_player*2];
+          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+          actor_x[current_player*2] -= 16;
+          actor_x[(current_player*2)+1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[i*2] < (96+i*128)) && (actor_y[i*2] <= column_height[(actor_x[i*2] >> 4)]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player*2] < (96+current_player*128)) && (actor_y[current_player*2] <= column_height[(actor_x[current_player*2] >> 4)]) )
       {
-        if (input_delay_PAD_RIGHT[i] == 0 || input_delay_PAD_RIGHT[i] > INPUT_DIRECTION_DELAY)
+        if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[i*2] = actor_x[i*2];
-          actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-          actor_x[i*2] += 16;
-          actor_x[(i*2)+1] += 16;
+          actor_dx[current_player*2] = actor_x[current_player*2];
+          actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+          actor_x[current_player*2] += 16;
+          actor_x[(current_player*2)+1] += 16;
         }
       }
       
       //same x for both puyo
       //B we go on the left, A we go on the right
-      if (pad&PAD_B && input_delay_PAD_B[i] == 0)
+      if (pad&PAD_B && input_delay_PAD_B[current_player] == 0)
       { 
         //we need to know if puyo[0] is above or below puyo[1]
         // the lowest value is higher on the screen !
-        if (actor_y[i*2] < actor_y[(i*2)+1])
+        if (actor_y[current_player*2] < actor_y[(current_player*2)+1])
         {
           //going from up to left
           ///are we on the side left side?
-          if (actor_x[i*2] == (16+i*128))
+          if (actor_x[current_player*2] == (16+current_player*128))
           {
             //wall kick
-            actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-            actor_x[(i*2)+1] += 16;
-            actor_y[i*2] += 16;           
+            actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+            actor_x[(current_player*2)+1] += 16;
+            actor_y[current_player*2] += 16;           
           }
           else
           {
-            actor_dx[i*2] = actor_x[i*2];
-            actor_x[i*2] -= 16;
-            actor_y[i*2] += 16;
+            actor_dx[current_player*2] = actor_x[current_player*2];
+            actor_x[current_player*2] -= 16;
+            actor_y[current_player*2] += 16;
           }
         }
         else
         {  //going down to right
-          if (actor_x[i*2] == (96+i*128))
+          if (actor_x[current_player*2] == (96+current_player*128))
           {
             //wall kick
-            actor_dx[(i*2)+1] = actor_x[(i*2)+1];
-            actor_x[(i*2)+1] -= 16;
-            actor_y[i*2] -= 16;
+            actor_dx[(current_player*2)+1] = actor_x[(current_player*2)+1];
+            actor_x[(current_player*2)+1] -= 16;
+            actor_y[current_player*2] -= 16;
           }
           else
           {
-            actor_dx[i*2] = actor_x[i*2];
-            actor_x[i*2] += 16;
-            actor_y[i*2] -= 16; 
+            actor_dx[current_player*2] = actor_x[current_player*2];
+            actor_x[current_player*2] += 16;
+            actor_y[current_player*2] -= 16; 
           }
         }
       }
-      if (pad&PAD_A && input_delay_PAD_A[i] == 0)
+      if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
-        if (actor_y[i*2] < actor_y[(i*2)+1])
+        if (actor_y[current_player*2] < actor_y[(current_player*2)+1])
         {
           // going from up to right
-          actor_dx[i*2] = actor_x[i*2];
-          actor_x[i*2] += 16;
-          actor_y[i*2] += 16;  
+          actor_dx[current_player*2] = actor_x[current_player*2];
+          actor_x[current_player*2] += 16;
+          actor_y[current_player*2] += 16;  
         }
         else
         {
           //going from down to left
-          actor_dx[i*2] = actor_x[i*2];
-          actor_x[i*2] -= 16;
-          actor_y[i*2] -= 16; 
+          actor_dx[current_player*2] = actor_x[current_player*2];
+          actor_x[current_player*2] -= 16;
+          actor_y[current_player*2] -= 16; 
         }   
       } 
     }
@@ -2029,7 +2032,7 @@ void handle_controler_and_sprites(char i)
     step_ojama_fall[1] = 0;
   }
   
-  previous_pad[i] = pad;
+  previous_pad[current_player] = pad;
 }
 
 void main(void)
@@ -2090,8 +2093,10 @@ void main(void)
   step_p1_counter = 0;
   step_p2_counter = 0;
   //update pairs to come
-  update_next(0);
-  update_next(1);
+  current_player = 0;
+  update_next(/*0*/);
+  current_player = 1;
+  update_next(/*1*/);
   
   //init score at 0
   memset(score,0,sizeof(score));
@@ -2117,12 +2122,14 @@ void main(void)
     ppu_wait_nmi();
     vrambuf_clear();
     
+    current_player = 0;
+    
     if (step_p1 == 32)
       continue;
     
     if (step_p1 == PLAY)
     {
-      handle_controler_and_sprites(0);
+      handle_controler_and_sprites(/*0*/);
       for (i = 0 ; i < 2 ; ++i)
       {
         // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
@@ -2180,28 +2187,17 @@ void main(void)
       step_p1 = SHOW_NEXT;
     }
 
-    if (step_p2 == FALL_OJAMA)
-    {
-      fall_ojama(1);
-    }
-
     if (step_p1 == FALL)
     {
       //execute before destroy to avoid doing destroy and fall consecutively
-      fall_board(0);
+      fall_board(/*0*/);
     }
     
     //update the next pair to come in the middle of the field
     if (step_p1 == SHOW_NEXT)
     {
-      update_next(0);
+      update_next(/*0*/);
       step_p1 = PLAY;
-    }
-    
-    if (step_p2 == SHOW_NEXT)
-    {
-      update_next(1);
-      step_p2 = PLAY;
     }
     
     if (step_p1 == POINT)
@@ -2209,7 +2205,7 @@ void main(void)
       //executed before destroy to avoid doing destroy and fall consecutively
       if (step_p1_counter == 0)
         nb_hit[0] += 1;
-      manage_point(0);
+      manage_point(/*0*/);
       ++step_p1_counter;
       if (step_p1_counter == 2)
       {
@@ -2222,7 +2218,7 @@ void main(void)
     {
       //need to avoid to start check in the same loop
       //need to see if we need to subdivise the work in several pass
-      destroy_board(0);
+      destroy_board(/*0*/);
     }
     
     if (step_p1 == CHECK && step_p1_counter == 0)
@@ -2233,10 +2229,10 @@ void main(void)
       mask_color_destroyed =  mask_color_destroyed & 0xF0; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
       nb_group[0] = 0;//if the group is over 4 puyos add the part over in this variable.
       
-      should_destroy = (check_board(0, ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
+      should_destroy = (check_board(/*0,*/ ((actor_x[0]>>3) - 2) >> 1, ((actor_y[0]>>3)+1)>>1) > 0);
       //if both puyo had the same color it's useless to perform the second check
       if ( (boards[0][((actor_x[1]>>3) - 2) >> 1][((actor_y[1]>>3)+1)>>1] & 8) != 8)
-        should_destroy = (check_board(0, ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
+        should_destroy = (check_board(/*0,*/ ((actor_x[1]>>3) - 2) >> 1, ((actor_y[1]>>3)+1)>>1) > 0) || should_destroy;
       
       if (should_destroy)
       {
@@ -2290,19 +2286,19 @@ void main(void)
         i = step_p1_counter / 13;
         j = 13 - (step_p1_counter % 13);
         if (((boards[0][i][j] & 7) != EMPTY) && ((boards[0][i][j] & 8) != 8))
-          should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
+          should_destroy = (check_board(/*0,*/ i, j) > 0) || should_destroy ;
         ++step_p1_counter;
         
         i = step_p1_counter / 13;
         j = 13 - (step_p1_counter % 13);
         if (((boards[0][i][j] & 7) != EMPTY) && ((boards[0][i][j] & 8) != 8))
-          should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
+          should_destroy = (check_board(/*0,*/ i, j) > 0) || should_destroy ;
         ++step_p1_counter;
         
         i = step_p1_counter / 13;
         j = 13 - (step_p1_counter % 13);
         if (((boards[0][i][j] & 7) != EMPTY) && ((boards[0][i][j] & 8) != 8))
-          should_destroy = (check_board(0, i, j) > 0) || should_destroy ;
+          should_destroy = (check_board(/*0,*/ i, j) > 0) || should_destroy ;
         ++step_p1_counter;
       }
       else
@@ -2330,35 +2326,7 @@ void main(void)
         }
       }    
     }
-   
- 
-    if (step_p2 == PLAY)
-    {
-      handle_controler_and_sprites(1);
-      for (i = 2 ; i < 4 ; ++i)
-      {
-        // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
-        // puyo_list       p1_puyo_list_index
-        // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
-        // ensuite on décale sur le bon élément de l'index 
-        // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
-        // et on fait & 3 pour ne garder que les 2 premiers bits
-        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>((((p2_puyo_list_index%2)*2)+(i-2))*2))&3]);
- 
-        actor_y[i] += (actor_dy[i] + ((previous_pad[1]&PAD_DOWN)? 2 : 0));
-
-        //test relative to column_height
-        /*if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
-        {
-          actor_dy[i] = 0;
-          actor_y[i] = column_height[(actor_x[i]>>4) - 1];
-          column_height[(actor_x[i]>>4) - 1] -= 16;
-        }*/
-      }
-    }
-
-    //put_attr_entries(nt2attraddr(addr));
-
+    
     if ( step_p1 == PLAY && actor_dy[0] == 0 && actor_dy[1] == 0 && actor_dx[0] == 0 && actor_dx[1] == 0 && timer_grace_period[0] == 0 )
     {
       //vrambuf_clear();
@@ -2398,7 +2366,7 @@ void main(void)
       
       //updating the board, if things are done correctly attrbuf contains the color to be used
       //Still need to convert coordinates ! And not overwrite the value for the opponent board !
-      update_boards(0);
+      update_boards(/*0*/);
      
       step_p1 = CHECK;
       //all commented below is now for another state
@@ -2423,6 +2391,45 @@ void main(void)
       
       timer_grace_period[0] = GRACE_PERIOD; 
     }
+   
+    // Let's do player 2
+    current_player = 1;
+    if (step_p2 == PLAY)
+    {
+      handle_controler_and_sprites(/*1*/);
+      for (i = 2 ; i < 4 ; ++i)
+      {
+        // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
+        // puyo_list       p1_puyo_list_index
+        // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
+        // ensuite on décale sur le bon élément de l'index 
+        // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
+        // et on fait & 3 pour ne garder que les 2 premiers bits
+        oam_id = oam_meta_spr(actor_x[i], actor_y[i], oam_id, puyoSeq[(puyo_list[(p2_puyo_list_index>>1)]>>((((p2_puyo_list_index%2)*2)+(i-2))*2))&3]);
+ 
+        actor_y[i] += (actor_dy[i] + ((previous_pad[1]&PAD_DOWN)? 2 : 0));
+
+        //test relative to column_height
+        /*if (actor_dy[i] != 0 && column_height[(actor_x[i]>>4) - 1] < actor_y[i])
+        {
+          actor_dy[i] = 0;
+          actor_y[i] = column_height[(actor_x[i]>>4) - 1];
+          column_height[(actor_x[i]>>4) - 1] -= 16;
+        }*/
+      }
+    }
+
+    //put_attr_entries(nt2attraddr(addr));
+    if (step_p2 == FALL_OJAMA)
+    {
+      fall_ojama(/*1*/);
+    }
+    
+    if (step_p2 == SHOW_NEXT)
+    {
+      update_next(/*1*/);
+      step_p2 = PLAY;
+    }
     
     if (false && step_p2 == PLAY && actor_dy[2] == 0 && actor_dy[3] == 0)
     {/*
@@ -2442,7 +2449,7 @@ void main(void)
       vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
       vrambuf_put(nt2attraddr(addr), &attrbuf[3], 1);
       
-      //update_boards(2); //see the function to know why "2" in parameter
+      //update_boards();
  
       actor_x[2] = 11*16;
       actor_y[2] = 0;
