@@ -2162,7 +2162,7 @@ void main(void)
     ppu_wait_nmi();
     vrambuf_clear();
     
-    for (current_player = 0; current_player <2 ; ++current_player)
+    for (current_player = 0 ; current_player < 2 ; ++current_player)
     {
       if (step_p[current_player] == 32)
         continue;
@@ -2180,7 +2180,7 @@ void main(void)
           // et on fait & 3 pour ne garder que les 2 premiers bits    
           oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
 
-          if ( actor_dy[current_player][i] != 0) 
+          if (actor_dy[current_player][i] != 0) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
           //test relative to column_height
@@ -2367,7 +2367,7 @@ void main(void)
         }    
       }
 
-      if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 && timer_grace_period[0] == 0 )
+      if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 && timer_grace_period[current_player] == 0 )
       {
         //vrambuf_clear();
         memset(ntbuf1, 0, sizeof(ntbuf1));
@@ -2429,7 +2429,7 @@ void main(void)
         //play sound of puyo hitting the ground
         play_puyo_fix();
 
-        timer_grace_period[0] = GRACE_PERIOD; 
+        timer_grace_period[current_player] = GRACE_PERIOD; 
       }
     }
     
