@@ -1230,22 +1230,20 @@ byte fall_board()
  
   if (fall == 1)
   {
-    //If we got a fall we reset the counter, then 
+    //If we got a fall we reset the counter, then ...?
+    step_p_counter[current_player] = tmp_counter;
+    //As it fall the height of the column must be lowered:
+    if (column_height[current_player][tmp_counter] < 190) //let's avoid going under the floor
+      column_height[current_player][tmp_counter] +=16;
     if (current_player != 0)
     {
-      //step_p2_counter = tmp_counter;
-      step_p_counter[current_player] = tmp_counter;
-      //As it fall the height of the column must be lowered:
-      column_height[current_player][tmp_counter] +=16;
       tmp_counter_2 = tmp_counter + /*6*/8;
     }
     else
     {
-      //step_p1_counter = tmp_counter;
-      step_p_counter[current_player] = tmp_counter;
-      column_height[current_player][tmp_counter] +=16;
       tmp_counter_2 = tmp_counter;
     }
+    
     //redraw the column through buffer
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
@@ -1307,7 +1305,7 @@ byte fall_board()
     }
     else
     {
-      //if puyo_found kept the height of the first puyo found, with no fall
+      //if puyo_found keep the height of the first puyo found, with no fall
       //this is the heighest in the stack.
       column_height[current_player][tmp_counter] = ((puyo_found-1)*16) - 2;
     }
@@ -1882,7 +1880,7 @@ void handle_controler_and_sprites()
   if (actor_x[current_player][0] < actor_x[current_player][1])
   {
     //left/right
-    if ( pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player*128))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player]]) )
+    if ( pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player*128))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
     {
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
@@ -1893,7 +1891,7 @@ void handle_controler_and_sprites()
         actor_x[current_player][1] -= 16;
       }
     }
-    else if ( pad&PAD_RIGHT && (actor_x[current_player][1] < (96+(current_player*128))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player]]) )
+    else if ( pad&PAD_RIGHT && (actor_x[current_player][1] < (96+(current_player*128))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] + 1]) )
     {
       if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
@@ -1938,7 +1936,7 @@ void handle_controler_and_sprites()
     {
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+current_player*128)) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player]]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+current_player*128)) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -1948,7 +1946,7 @@ void handle_controler_and_sprites()
           actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4- pos_x_offset[current_player])]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -1980,7 +1978,7 @@ void handle_controler_and_sprites()
     else
     {
       //left or right movement with both actor on the same x
-      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player]]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -1990,7 +1988,7 @@ void handle_controler_and_sprites()
           actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player]]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2079,7 +2077,7 @@ void handle_controler_and_sprites()
 void main(void)
 {
   char i,j;	// actor index
-  char str[32];
+  //char str[32];
   register word addr;
 
   setup_graphics();
@@ -2194,10 +2192,11 @@ void main(void)
           //test relative to column_height
           if (actor_dy[current_player][i] != 0 && column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] < actor_y[current_player][i])
           {
-            //actor_dx indicates if the x of the puyo has changed, and the column where it was
+            //actor_dx indicates if the x of the puyo has changed, and the column where it was in pixel
             if (actor_dx[current_player][i] != 0)
             {
-              column_height[current_player][actor_dx[current_player][i]] += 16;
+              if ( column_height[current_player][(actor_dx[current_player][i] >> 4) - pos_x_offset[current_player]] < 190 )
+                column_height[current_player][(actor_dx[current_player][i] >> 4) - pos_x_offset[current_player]] += 16; // the column height is lowered
               actor_dx[current_player][i] = 0;
             }
             actor_dy[current_player][i] = 0;        
@@ -2212,9 +2211,9 @@ void main(void)
             timer_grace_period[current_player] = 0;
           else
             --timer_grace_period[current_player];
-
-          if (actor_x[current_player][1] == 0 && timer_grace_period[current_player] == 0)
-            column_height[current_player][(actor_x[current_player][1]>>4) - pos_x_offset[current_player]] = actor_y[current_player][1];
+         //commenté pas sûr que ce soit utile....
+         // if (actor_x[current_player][1] == 0 && timer_grace_period[current_player] == 0)
+           // column_height[current_player][(actor_x[current_player][1]>>4) - pos_x_offset[current_player]] = actor_y[current_player][1];
         }
 
       }
@@ -2290,10 +2289,11 @@ void main(void)
           step_p_counter[current_player] = 0;
           step_p[current_player] = DESTROY;
           //let's move sprites to not have them on screen when things explode
-          actor_x[current_player][0] = 255;
-          actor_y[current_player][0] = 255;
-          actor_x[current_player][1] = 255;
-          actor_y[current_player][1] = 255;
+          //according to https://wiki.nesdev.com/w/index.php/PPU_OAM, we have to put them between EF and FF on Y and F9 anf FF on X
+          actor_x[current_player][0] = 254;
+          actor_y[current_player][0] = 254;
+          actor_x[current_player][1] = 254;
+          actor_y[current_player][1] = 254;
           should_destroy = 0;
         }
         else
@@ -2444,9 +2444,9 @@ void main(void)
       }
     }
     
-    sprintf(str,"S1:%d, %d", step_p[0], step_p_counter[0]);
+    /*sprintf(str,"S1:%d, %d", step_p[0], step_p_counter[0]);
     addr = NTADR_A(20,15);
-    vrambuf_put(addr,str,10);
+    vrambuf_put(addr,str,10);*/
     
     /*if (oam_id!=0) 
       oam_hide_rest(oam_id);
