@@ -1,4 +1,5 @@
 //custom config file, explained there http://8bitworkshop.com/blog/docs/ide.md.html#8bitworkshopideusermanual/managingfiles/cc65customconfigfiles
+//it's only purpose is to allocated/defined/whatever room for the audio sample (by default DMC/SAMPLE size is too short)
 #define CFGFILE puyovnes.cfg
 //#resource "puyovnes.cfg"
 
@@ -173,6 +174,7 @@ char input_delay_PAD_A[2]; //to avoid multiple input on one press
 char input_delay_PAD_B[2]; //to avoid multiple input on one press
 //char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy =>indeed, changing for double table
 char column_height[2][6];
+char column_height_offset;
 //constant for puyo physics
 #define GRACE_PERIOD 32
 #define MAX_FALLING_BACK_UP 8
@@ -1885,8 +1887,8 @@ void handle_controler_and_sprites()
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
       {
-        actor_dx[current_player][0] = actor_x[current_player][0];
-        actor_dx[current_player][1] = actor_x[current_player][1];
+        /*actor_dx[current_player][0] = actor_x[current_player][0];
+        actor_dx[current_player][1] = actor_x[current_player][1];*/
         actor_x[current_player][0] -= 16;
         actor_x[current_player][1] -= 16;
       }
@@ -1895,8 +1897,8 @@ void handle_controler_and_sprites()
     {
       if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
-        actor_dx[current_player][0] = actor_x[current_player][0];
-        actor_dx[current_player][1] = actor_x[current_player][1];
+        /*actor_dx[current_player][0] = actor_x[current_player][0];
+        actor_dx[current_player][1] = actor_x[current_player][1];*/
         actor_x[current_player][0] += 16;
         actor_x[current_player][1] += 16;       
       }
@@ -1914,7 +1916,7 @@ void handle_controler_and_sprites()
       //B the puyo will go under the 2nd puyo
       //the delay has to be at 0, because we don't want it to turn automatically
       //you have to press each time        
-      actor_dx[current_player][0] = actor_x[current_player][0];
+      /*actor_dx[current_player][0] = actor_x[current_player][0];*/
       actor_y[current_player][0] += 16;
       actor_x[current_player][0] += 16;
     }
@@ -1922,7 +1924,7 @@ void handle_controler_and_sprites()
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
-      actor_dx[current_player][0] = actor_x[current_player][0];
+      /*actor_dx[current_player][0] = actor_x[current_player][0];*/
       actor_y[current_player][0] -= 16;
       actor_x[current_player][0] += 16;
     }   
@@ -1940,8 +1942,8 @@ void handle_controler_and_sprites()
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];
+         /* actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];*/
           actor_x[current_player][0] -= 16;
           actor_x[current_player][1] -= 16;
         }
@@ -1950,8 +1952,8 @@ void handle_controler_and_sprites()
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];
+         /* actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];*/
           actor_x[current_player][0] += 16;
           actor_x[current_player][1] += 16;   
         }
@@ -1962,7 +1964,7 @@ void handle_controler_and_sprites()
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go over the 2nd puyo
-        actor_dx[current_player][0] = actor_x[current_player][0];
+       /* actor_dx[current_player][0] = actor_x[current_player][0];*/
         actor_y[current_player][0] -= 16;
         actor_x[current_player][0] -= 16;
       }
@@ -1970,7 +1972,7 @@ void handle_controler_and_sprites()
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go under the 2nd puyo
-        actor_dx[current_player][0] = actor_x[current_player][0];
+        /*actor_dx[current_player][0] = actor_x[current_player][0];*/
         actor_y[current_player][0] += 16;
         actor_x[current_player][0] -= 16; 
       }   
@@ -1982,8 +1984,8 @@ void handle_controler_and_sprites()
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];
+          /*actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];*/
           actor_x[current_player][0] -= 16;
           actor_x[current_player][1] -= 16;
         }
@@ -1992,8 +1994,8 @@ void handle_controler_and_sprites()
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
-          actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];
+          /*actor_dx[current_player][0] = actor_x[current_player][0];
+          actor_dx[current_player][1] = actor_x[current_player][1];*/
           actor_x[current_player][0] += 16;
           actor_x[current_player][1] += 16;
         }
@@ -2012,13 +2014,13 @@ void handle_controler_and_sprites()
           if (actor_x[current_player][0] == (16+current_player*128))
           {
             //wall kick
-            actor_dx[current_player][1] = actor_x[current_player][1];
+            /*actor_dx[current_player][1] = actor_x[current_player][1];*/
             actor_x[current_player][1] += 16;
             actor_y[current_player][0] += 16;           
           }
           else
           {
-            actor_dx[current_player][0] = actor_x[current_player][0];
+            /*actor_dx[current_player][0] = actor_x[current_player][0];*/
             actor_x[current_player][0] -= 16;
             actor_y[current_player][0] += 16;
           }
@@ -2028,13 +2030,13 @@ void handle_controler_and_sprites()
           if (actor_x[current_player][0] == (96+current_player*128))
           {
             //wall kick
-            actor_dx[current_player][1] = actor_x[current_player][1];
+            /*actor_dx[current_player][1] = actor_x[current_player][1];*/
             actor_x[current_player][1] -= 16;
             actor_y[current_player][0] -= 16;
           }
           else
           {
-            actor_dx[current_player][0] = actor_x[current_player][0];
+            /*actor_dx[current_player][0] = actor_x[current_player][0];*/
             actor_x[current_player][0] += 16;
             actor_y[current_player][0] -= 16; 
           }
@@ -2045,14 +2047,14 @@ void handle_controler_and_sprites()
         if (actor_y[current_player][0] < actor_y[current_player][1])
         {
           // going from up to right
-          actor_dx[current_player][0] = actor_x[current_player][0];
+          /*actor_dx[current_player][0] = actor_x[current_player][0];*/
           actor_x[current_player][0] += 16;
           actor_y[current_player][0] += 16;  
         }
         else
         {
           //going from down to left
-          actor_dx[current_player][0] = actor_x[current_player][0];
+          /*actor_dx[current_player][0] = actor_x[current_player][0];*/
           actor_x[current_player][0] -= 16;
           actor_y[current_player][0] -= 16; 
         }   
@@ -2190,9 +2192,9 @@ void main(void)
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
           //test relative to column_height
-          if (actor_dy[current_player][i] != 0 && column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] < actor_y[current_player][i])
+          /*if (actor_dy[current_player][i] != 0 && column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] < actor_y[current_player][i])
           {
-            //actor_dx indicates if the x of the puyo has changed, and the column where it was in pixel
+            //actor_dx indicates if the x of the puyo has changed, and the position where it was in pixel, to be converted in column nb
             if (actor_dx[current_player][i] != 0)
             {
               if ( column_height[current_player][(actor_dx[current_player][i] >> 4) - pos_x_offset[current_player]] < 190 )
@@ -2202,7 +2204,32 @@ void main(void)
             actor_dy[current_player][i] = 0;        
             actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]];
             column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] -= 16;
+          }*/
+          //we will replace that by managing the only cases where column height may be different from "normal"
+          //ie when puyos are on the same X but different y, and only when the puyo considered is on top of the other
+          //it will give us an offset that we can apply later in our test
+          column_height_offset = 0;
+          if (actor_x[current_player][0] == actor_x[current_player][1])
+          {
+            if (i == 0)
+            {
+              if (actor_y[current_player][i] < actor_y[current_player][1])
+                column_height_offset = -16;
+            } 
+            else
+            {
+              if (actor_y[current_player][i] < actor_y[current_player][0])
+                column_height_offset = -16;
+            }    
           }
+          
+          if (actor_dy[current_player][i] != 0 && (column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset) < actor_y[current_player][i])
+          {
+            actor_dy[current_player][i] = 0; 
+            actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset;
+            column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] -= 16;
+          }
+          
         }
 
         if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0))
@@ -2378,7 +2405,7 @@ void main(void)
         }    
       }
 
-      if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 && timer_grace_period[current_player] == 0 )
+      if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && /*actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 &&*/ timer_grace_period[current_player] == 0 )
       {
         //vrambuf_clear();
         memset(ntbuf1, 0, sizeof(ntbuf1));
