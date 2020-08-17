@@ -284,6 +284,7 @@ void play_rotation_sound(void);
 void play_hit(byte hit); //pitch get higher with byte until reaching "bayoen !"
 void play_puyo_fix(void); //when puyo is hitting ground, to be changed a bit tamed currently
 void play_bayoen(void); // play bayoen sample
+void play_flush(void); // flush sound when a player lose
 byte fall_ojama(void); //fall ojama damage on the player field
 void flush(byte i); // flush loser screen into under the play field
 
@@ -404,6 +405,17 @@ void play_bayoen()
   APU_DMC_address(SAMPLE_TEST);
   APU_DMC_length(0x75/*0xf*/);
 }
+
+void play_flush()
+{
+  APU_PULSE_DECAY(PULSE_CH1, 963, 128, 10, 1);
+  APU_PULSE_SWEEP(PULSE_CH1,6,3,0);
+  //APU_PULSE_DECAY(PULSE_CH1, 476, 192, 10, 12);
+  //APU_PULSE_SWEEP(PULSE_CH1,2,0,1);
+  APU_TRIANGLE_LENGTH(1735,4);
+  APU_NOISE_DECAY(10,7,128);
+}
+
 //end of music bloc
 
 // convert from nametable address to attribute table address
@@ -2069,9 +2081,10 @@ void handle_controler_and_sprites()
   if (pad&PAD_START)
   {
     //step_p2 = FALL_OJAMA;
-    step_p[1] = FALL_OJAMA;
+    /*step_p[1] = FALL_OJAMA;
     step_ojama_fall[1] = 0;
-    step_p_counter[1] = 0;
+    step_p_counter[1] = 0;*/
+    play_flush();
   }
   
   previous_pad[current_player] = pad;
