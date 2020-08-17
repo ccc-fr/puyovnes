@@ -1400,9 +1400,9 @@ void manage_point()
     tmp_score = (nb_hit[current_player] <= 3) ? ((nb_hit[current_player]-1) << 3) : ((nb_hit[current_player]-3) << 5);
 
     //color_bonus
-    //first get colors for current player
-    tmp_mask = mask_color_destroyed & ((current_player == 0) ? 0xf : 0xf0);
-
+    //first get colors for current player, don't forget to shift it !
+    tmp_mask = ((current_player == 0) ? mask_color_destroyed : mask_color_destroyed >> 4) & 0xf;
+        
     //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
     tmp_score += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
 
