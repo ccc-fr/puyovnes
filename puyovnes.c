@@ -1060,7 +1060,7 @@ byte destroy_board(/*byte board_index*/)
 {
   byte i, j/*, current_color*/;
   byte counter = 0, tmp_line = 0;
-  byte mask = 15, invmask = 240, flag = 8, shift = 0;
+  byte mask = 15, invmask = 240, flag = 8, shift = 0, offset = 2;
   byte destruction = 0;
   byte tmp_counter;
   register word addr;
@@ -1074,6 +1074,7 @@ byte destroy_board(/*byte board_index*/)
     invmask >>= shift;
     //flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
     tmp_counter = step_p_counter[current_player];/*step_p2_counter;*/
+    offset = 18;// 2 for p1 will be 18 for p2, 4 ->20, 6-> 22 etc 
   }
   else
     tmp_counter = step_p_counter[current_player];/*step_p1_counter;*/
@@ -1086,15 +1087,14 @@ byte destroy_board(/*byte board_index*/)
     memset(attrbuf, 0, sizeof(attrbuf));
 
     set_metatile(0,0xe0); //0xe0 == puyo_pop
-    /*for (i = 0; i < 6 ; ++i)
-    {*/
+
     for (j = 0; j < 13 ; ++j)
     {
       if ((boards[current_player][tmp_counter][j] & flag) > 0)
       {
         //(i+1)<<1 à l'air ok, y on y est pas encore
         //addr = NTADR_A((i+1)<<1, j *2 );//?????
-        addr = NTADR_A(((tmp_counter)*2)+2, j *2 );//?????
+        addr = NTADR_A(((tmp_counter)*2) + offset, j * 2 );//?????
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         /*addr = NTADR_A(i, (j)+2);
@@ -1112,7 +1112,6 @@ byte destroy_board(/*byte board_index*/)
         /*sprintf(str,"%d", j);
           vrambuf_put(NTADR_A(18,j*2),str,2);*/
       }
-      //}
     }
     
   }
@@ -1132,7 +1131,7 @@ byte destroy_board(/*byte board_index*/)
     {
       if ((boards[current_player][i][j] & flag) > 0)
       {
-        addr = NTADR_A(((i)*2)+2, j *2 );
+        addr = NTADR_A(((i)*2) + offset, j * 2 );
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         //sujet traité, on zappe le flag
