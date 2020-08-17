@@ -1364,7 +1364,8 @@ void fall_board()
       {
         //FALL_OJAMA case, we go to show_next,
         step_p[current_player] = SHOW_NEXT;
-        step_p_counter[current_player] = 255;
+        //we set 0 because the show_next at with that counter at 1 will update ojama display list with manage_point
+        step_p_counter[current_player] = 0;
         step_ojama_fall[current_player] = 0;
       }
     }
@@ -1381,9 +1382,9 @@ void fall_board()
 }
 
 // Calculate the point and update the score plus the ojama on top of opponent board
-// 2 steps : first score calculation plus display under player board
-// 2 tile calculation base on ojamas[] and display
-//doing both at the same time makes the screen jump...
+// 2 steps: first score calculation plus display under player board
+// 2nd: tile calculation based on ojamas[] and display
+// doing both at the same time makes the screen jump...
 void manage_point()
 {
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
@@ -1459,7 +1460,7 @@ void manage_point()
   else
   {
     //display damages
-    //note :at some point we will have to deal with to much things updated simultaneously
+    //note: at some point we will have to deal with too much things updated simultaneously
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
     memset(attrbuf, 0, sizeof(attrbuf));
@@ -1578,16 +1579,6 @@ byte fall_ojama()
   if ((step_ojama_fall[current_player] == 0 && opponent_status != PLAY) /*|| ojama[board_index<<1] == 0 || tmp_counter == 5*/)
   {
     //inutile de continuer on passe à SHOW_NEXT
-    /*if (current_player == 0)
-    {
-      step_p1 = SHOW_NEXT;
-      step_p1_counter = 0;
-    }
-    else
-    {
-      step_p2 = SHOW_NEXT;
-      step_p2_counter = 0;
-    }   */
     step_p[current_player] = SHOW_NEXT;
     step_p_counter[current_player] = 0;
     return 0; //as we return 0 the ojama won't fall
@@ -1601,7 +1592,7 @@ byte fall_ojama()
     return 1;
   }
   
-  //add a line max of ojama on row 
+  //add a line max of ojama on one row 
   if ( (step_ojama_fall[current_player] < 5) && (ojamas[current_player<<1] >= 70))
   {
     if ( ojamas[current_player<<1] >= 420)
@@ -1684,7 +1675,7 @@ void flush(byte board_index)
 }
 
 //update the color of the next pair to come between fields
-void update_next(/*byte i*/)
+void update_next()
 {
   // current position is p1_puyo_list_index, 
   //We have to remember that one byte contains 4 colors/puyo (2 bits per color)
@@ -2285,8 +2276,18 @@ void main(void)
       //update the next pair to come in the middle of the field
       if (step_p[current_player] == SHOW_NEXT)
       {
-        update_next();
-        step_p[current_player] = PLAY;
+        //if we came from fall_board after a fall_ojama, we have to update the ojama display list first
+        //(a bit of a hack for show_next initial purpose...)
+        if( step_p_counter[current_player] == 1) 
+        {
+          manage_point();
+          step_p_counter[current_player] = 0;
+        }
+        else
+        {
+          update_next();
+          step_p[current_player] = PLAY;
+        }
       }
 
       if (step_p[current_player] == POINT)
