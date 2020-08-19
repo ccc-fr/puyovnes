@@ -160,7 +160,9 @@ byte nb_puyos_destroyed[2]; //how many puyos are destroyed on that hit
 byte nb_hit[2];// hit combo counter
 byte mask_color_destroyed; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
 byte nb_group[2];//if the group is over 4 puyos add the part over in this variable.
-unsigned long int score[2];
+unsigned long int score[2]; //current score of the round
+byte wins[2]; // number of round won by each player. 
+byte ready[2]; //indicates if a player is ok to play the next round
 unsigned long int ojamas[4];// 2 pockets of ojama per player, but what is displayed is always the sum of both. Warikomi rule.
 byte step_ojama_fall[2];
 byte should_destroy;
@@ -288,6 +290,7 @@ void play_bayoen(void); // play bayoen sample
 void play_flush(void); // flush sound when a player lose
 byte fall_ojama(void); //fall ojama damage on the player field
 void flush(void); // flush loser screen into under the play field
+void init_round(void); //set actors, column_height and other things before a round
 
 //music bloc definition
 byte next_music_byte() {
@@ -1928,6 +1931,64 @@ void build_field()
   vram_write(attribute_table, sizeof(attribute_table));
 }
 
+void init_round()
+{
+  byte i;
+  // initialize actors
+  //P1
+  actor_x[0][0] = start_pos_x[0]/*3*16*/;
+  actor_y[0][0] = start_pos_y[0][0]/*0*16*/;
+  actor_dx[0][0] = 0;
+  actor_dy[0][0] = 1;
+  actor_x[0][1] = start_pos_x[0]/*3*16*/;
+  actor_y[0][1] = start_pos_y[0][1]/*1*16*/;
+  actor_dx[0][1] = 0;
+  actor_dy[0][1] = 1;
+  p_puyo_list_index[0] = 0;
+  //P2
+  actor_x[1][0] = start_pos_x[1]/*11*16*/;
+  actor_y[1][0] = start_pos_y[1][0] /*0*16*/;
+  actor_dx[1][0] = 0;
+  actor_dy[1][0] = 1;
+  actor_x[1][1] = start_pos_x[1]/*11*16*/;
+  actor_y[1][1] = start_pos_y[1][1]/*1*16*/;
+  actor_dx[1][1] = 0; //put 1 to avoid new pair
+  actor_dy[1][1] = 1;
+  p_puyo_list_index[1] = 0;
+    
+  previous_pad[0] = 0;
+  previous_pad[1] = 0;
+  input_delay_PAD_A[0] = 0;
+  input_delay_PAD_A[1] = 0;
+  input_delay_PAD_B[0] = 0;
+  input_delay_PAD_B[1] = 0;
+  input_delay_PAD_LEFT[0] = 0;
+  input_delay_PAD_LEFT[1] = 0;
+  input_delay_PAD_RIGHT[0] = 0;
+  input_delay_PAD_RIGHT[1] = 0;
+  timer_grace_period[0] = GRACE_PERIOD; 
+  timer_grace_period[1] = GRACE_PERIOD;
+  counter_falling_back_up[0] = MAX_FALLING_BACK_UP;
+  counter_falling_back_up[1] = MAX_FALLING_BACK_UP;
+  
+  //setting column heights for both players
+  for (i = 0; i < 6 ; ++i)
+    column_height[0][i] = 190;
+  for (i = 0; i < 6 ; ++i)
+    column_height[1][i] = 190;
+
+  step_p[0] = PLAY;
+  step_p[1] = PLAY;
+  step_p_counter[0] = 0;
+  step_p_counter[1] = 0;
+  //update pairs to come
+  current_player = 0;
+  update_next(/*0*/);
+  current_player = 1;
+  update_next(/*1*/);
+  return;
+}
+
 // setup PPU and tables
 void setup_graphics() {
   // clear sprites
@@ -2174,75 +2235,27 @@ void handle_controler_and_sprites()
 void main(void)
 {
   char i,j;	// actor index
-  //char str[32];
+  char str[32];
   register word addr;
 
   setup_graphics();
   // draw message  
-  vram_adr(NTADR_A(2,3));
-  vram_write("HELLO BAYOEN", 12);
+  /*vram_adr(NTADR_A(2,3));
+  vram_write("HELLO BAYOEN", 12);*/
   build_field();
   generate_rng();
-    
-  // initialize actors
-  //P1
-  actor_x[0][0] = start_pos_x[0]/*3*16*/;
-  actor_y[0][0] = start_pos_y[0][0]/*0*16*/;
-  actor_dx[0][0] = 0;
-  actor_dy[0][0] = 1;
-  actor_x[0][1] = start_pos_x[0]/*3*16*/;
-  actor_y[0][1] = start_pos_y[0][1]/*1*16*/;
-  actor_dx[0][1] = 0;
-  actor_dy[0][1] = 1;
-  p_puyo_list_index[0] = 0;
-  //P2
-  actor_x[1][0] = start_pos_x[1]/*11*16*/;
-  actor_y[1][0] = start_pos_y[1][0] /*0*16*/;
-  actor_dx[1][0] = 0;
-  actor_dy[1][0] = 1;
-  actor_x[1][1] = start_pos_x[1]/*11*16*/;
-  actor_y[1][1] = start_pos_y[1][1]/*1*16*/;
-  actor_dx[1][1] = 0; //put 1 to avoid new pair
-  actor_dy[1][1] = 1;
-  p_puyo_list_index[1] = 0;
-    
-  previous_pad[0] = 0;
-  previous_pad[1] = 0;
-  input_delay_PAD_A[0] = 0;
-  input_delay_PAD_A[1] = 0;
-  input_delay_PAD_B[0] = 0;
-  input_delay_PAD_B[1] = 0;
-  input_delay_PAD_LEFT[0] = 0;
-  input_delay_PAD_LEFT[1] = 0;
-  input_delay_PAD_RIGHT[0] = 0;
-  input_delay_PAD_RIGHT[1] = 0;
-  timer_grace_period[0] = GRACE_PERIOD; 
-  timer_grace_period[1] = GRACE_PERIOD;
-  counter_falling_back_up[0] = MAX_FALLING_BACK_UP;
-  counter_falling_back_up[1] = MAX_FALLING_BACK_UP;
-  
-  //setting column heights for both players
-  for (i = 0; i < 6 ; ++i)
-    column_height[0][i] = 190;
-  for (i = 0; i < 6 ; ++i)
-    column_height[1][i] = 190;
 
-  /*step_p1 = PLAY;
-  step_p2 = PLAY;
-  step_p1_counter = 0;
-  step_p2_counter = 0;*/
-  step_p[0] = PLAY;
-  step_p[1] = PLAY;
+  //we start by waiting each player to be ready
+  //the wait state also build the board and things like that 
+  step_p[0] = WAIT;
+  step_p[1] = WAIT;
   step_p_counter[0] = 0;
   step_p_counter[1] = 0;
-  //update pairs to come
-  current_player = 0;
-  update_next(/*0*/);
-  current_player = 1;
-  update_next(/*1*/);
   
-  //init score at 0
+  //init score and wins at 0
   memset(score,0,sizeof(score));
+  memset(wins,0,sizeof(wins));
+  memset(ready,0,sizeof(ready));
 
   //init sound & music
   apu_init();
@@ -2256,6 +2269,9 @@ void main(void)
     
     //set sound
     if (!music_ptr) start_music(music1);
+    //next music 
+    play_music();
+    
     //get input
     oam_id = 0;
 
@@ -2272,7 +2288,7 @@ void main(void)
 
       if (step_p[current_player] == PLAY)
       {
-        handle_controler_and_sprites(/*0*/);
+        handle_controler_and_sprites();
         for (i = 0 ; i < 2 ; ++i)
         {
           // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
@@ -2386,15 +2402,108 @@ void main(void)
           step_p[current_player] = WAIT;
           step_p_counter[current_player] = 0;
         }
+        continue;
       }
       
       //wait for next round to start, each player must press A button
       if (step_p[current_player] == WAIT)
       {
-        //here reset the boards
-        //reset the graphics
-        //randomize new pairs
-        //wait for player to press the start or A button and switch to PLAY state.
+        if (step_p[0] == step_p[1] && current_player == 0) //both are waiting
+        {
+          switch (step_p_counter[0])
+          {
+            case 0:
+              //here reset the boards
+              memset(boards, EMPTY, sizeof(boards));
+              memset(tmp_boards, 0, sizeof(tmp_boards));
+              //reset the score
+              memset(score,0,sizeof(score));
+              step_p_counter[0] = 1;
+              break;
+            case 1:
+              //reset the graphics
+              ppu_off();
+              build_field();
+              ppu_on_all();
+              step_p_counter[0] = 2;
+              break;
+            case 2:
+               //randomize new pairs
+              //generate_rng(); 
+              step_p_counter[0] = 3;
+              break;
+            case 3:
+               //print score, hit counter, wins and message
+              sprintf(str,"Hit:%2d", nb_hit[0]);
+              addr = NTADR_A(/*2 + tile_offset*/2,26);
+              vrambuf_put(addr,str,6);
+              
+              sprintf(str,"%6lu", score[0]);
+              addr = NTADR_A(/*8 + tile_offset*/8,27);
+              vrambuf_put(addr,str,6);
+              
+              sprintf(str,"%2d", wins[0]);
+              addr = NTADR_A(14,26);
+              vrambuf_put(addr,str,2);
+              
+              sprintf(str,"Press A");
+              addr = NTADR_A(4,10);
+              vrambuf_put(addr,str,7);
+              step_p_counter[0] = 4;
+              break;
+            case 4:
+              sprintf(str,"%2d", wins[1]);
+              addr = NTADR_A(16,27);
+              vrambuf_put(addr,str,2);
+              
+              sprintf(str,"Hit:%2d", nb_hit[0]);
+              addr = NTADR_A(18,26);
+              vrambuf_put(addr,str,6);
+              
+              sprintf(str,"%6lu", score[0]);
+              addr = NTADR_A(24,27);
+              vrambuf_put(addr,str,6);
+   
+              sprintf(str,"Press A");
+              addr = NTADR_A(20,10);
+              vrambuf_put(addr,str,7);
+              step_p_counter[0] = 5;
+              break;
+            case 5:
+              rand();// to force rng to change by waiting player to start
+              //wait for player to press the start or A button and switch to PLAY state.
+              for (i = 0; i< 2; ++i)
+              {
+                if (ready[i] != 1 )
+                {
+                  pad = pad_poll(i);
+                  if (pad&PAD_A)
+                  {
+                    ready[i] = 1;
+                    sprintf(str,"       ");
+                    addr = NTADR_A((i==0)?4:20,10);
+                    vrambuf_put(addr,str,7);
+                  }
+                }
+              }
+              if (ready[0] == 1 && ready[1] == 1)
+              {
+                step_p_counter[0] = 6;
+              }
+              break;
+            case 6:
+              generate_rng();
+              step_p_counter[0] = 7;
+              break;
+            case 7:  
+              init_round();
+              continue;//we want to avoid the step_p_counter_increment
+              break;
+            default:
+              break;
+          }    
+          //++step_p_counter[0];
+        }
         continue;//no need to evaluate the other possibilities
       }
       
@@ -2410,12 +2519,14 @@ void main(void)
           fall_board();
         }
         //step_p[current_player] = SHOW_NEXT;
+        continue;
       }
 
       if (step_p[current_player] == FALL)
       {
         //execute before destroy to avoid doing destroy and fall consecutively
         fall_board();
+        continue;
       }
 
       //update the next pair to come in the middle of the field
@@ -2433,6 +2544,7 @@ void main(void)
           update_next();
           step_p[current_player] = PLAY;
         }
+        continue;
       }
 
       if (step_p[current_player] == POINT)
@@ -2449,6 +2561,7 @@ void main(void)
           step_p[current_player] = FALL;
           step_p_counter[current_player] = 0;
         }
+        continue;
       }
 
       if (step_p[current_player] == DESTROY)
@@ -2456,6 +2569,7 @@ void main(void)
         //need to avoid to start check in the same loop
         //need to see if we need to subdivise the work in several pass
         destroy_board();
+        continue;
       }
 
       if (step_p[current_player] == CHECK && step_p_counter[current_player] == 0)
@@ -2502,9 +2616,11 @@ void main(void)
           // step_p1 = DESTROY;
           // Need to reset the boards flag to 0 after destroy!
         }
+        continue;
       } else if (step_p[current_player] == CHECK && step_p_counter[current_player] != 0)
       {
         step_p_counter[current_player] = 0;
+        continue;
       }
 
       //after fall (and so destroy) we need to recheck all the board
@@ -2565,7 +2681,8 @@ void main(void)
             step_p_counter[current_player] = 0;
             nb_hit[current_player] = 0;// hit combo counter
           }
-        }    
+        }
+        continue;
       }
 
       if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 && timer_grace_period[current_player] == 0 )
@@ -2633,7 +2750,7 @@ void main(void)
         timer_grace_period[current_player] = GRACE_PERIOD; 
       }
     }
-    current_player = 0;
+    //current_player = 0;
     
     /*sprintf(str,"S1:%d, %d", step_p[0], step_p_counter[0]);
     addr = NTADR_A(20,15);
@@ -2646,8 +2763,6 @@ void main(void)
     vrambuf_clear();*/
     
     //scroll(0,0);
-    //next music 
-    play_music();
   }
 }
 
