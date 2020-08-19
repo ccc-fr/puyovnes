@@ -73,7 +73,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT, FALL_OJAMA, FLUSH};
+typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT, FALL_OJAMA, FLUSH, WAIT};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -113,7 +113,8 @@ byte boards[2][6][13];
 
 //for sake of simplicity keeping the same table type for tmp
 //but we may look for something less huge in size later.
-byte tmp_boards[6][13];
+//we bump tmp_boards to 15 for the flush step, will contain what was the floor before
+byte tmp_boards[6][15];
 
 // buffers that hold vertical slices of nametable data
 char ntbuf1[PLAYROWS];	// left side
@@ -286,7 +287,7 @@ void play_puyo_fix(void); //when puyo is hitting ground, to be changed a bit tam
 void play_bayoen(void); // play bayoen sample
 void play_flush(void); // flush sound when a player lose
 byte fall_ojama(void); //fall ojama damage on the player field
-void flush(byte i); // flush loser screen into under the play field
+void flush(void); // flush loser screen into under the play field
 
 //music bloc definition
 byte next_music_byte() {
@@ -1078,7 +1079,6 @@ byte destroy_board(/*byte board_index*/)
   register word addr;
   //char str[32];
   
-  //memset(tmp_boards,0,sizeof(tmp_boards));
   if (current_player != 0)
   {
     shift = 4;
@@ -1187,7 +1187,6 @@ void fall_board()
   register word addr;
   //char str[32];
   
-  //memset(tmp_boards,0,sizeof(tmp_boards));
   if (current_player == 0)
   {
     /*shift = 4;
@@ -1569,7 +1568,6 @@ byte fall_ojama()
   //register word addr;
   //char str[32];
   
-  //memset(tmp_boards,0,sizeof(tmp_boards));
   if (current_player != 0)
   {
     shift = 4;
@@ -1679,9 +1677,88 @@ byte fall_ojama()
 }
 
 // flush loser screen into under the play field
-void flush(byte board_index)
+void flush()
 {
-  board_index++;
+  byte tmp_counter = step_p_counter[current_player]%6;
+  byte tmp_counter_2, tmp_counter_3, j;
+  register word addr;
+
+  if (current_player != 0)
+  {
+    tmp_counter_2 = (tmp_counter + 9) << 1;
+    tmp_counter_3 = tmp_counter + 8;
+  }
+  else
+  {
+    tmp_counter_2 = (tmp_counter + 1) << 1;
+    tmp_counter_3 = tmp_counter;
+  }
+  
+   //tmp_boards contains the information we need
+  //we start from the bottom, each cell will receive the one above itself
+  tmp_boards[tmp_counter][14] = tmp_boards[tmp_counter][13];
+  tmp_boards[tmp_counter][13] = tmp_boards[tmp_counter][12];
+  tmp_boards[tmp_counter][12] = tmp_boards[tmp_counter][11];
+  tmp_boards[tmp_counter][11] = tmp_boards[tmp_counter][10];
+  tmp_boards[tmp_counter][10] = tmp_boards[tmp_counter][9];
+  tmp_boards[tmp_counter][9] = tmp_boards[tmp_counter][8];
+  tmp_boards[tmp_counter][8] = tmp_boards[tmp_counter][7];
+  tmp_boards[tmp_counter][7] = tmp_boards[tmp_counter][6];
+  tmp_boards[tmp_counter][6] = tmp_boards[tmp_counter][5];
+  tmp_boards[tmp_counter][5] = tmp_boards[tmp_counter][4];
+  tmp_boards[tmp_counter][4] = tmp_boards[tmp_counter][3];
+  tmp_boards[tmp_counter][3] = tmp_boards[tmp_counter][2];
+  tmp_boards[tmp_counter][2] = tmp_boards[tmp_counter][1];
+  tmp_boards[tmp_counter][1] = tmp_boards[tmp_counter][0];
+  tmp_boards[tmp_counter][0] = EMPTY;  //last one receive empty
+
+  
+  
+  //redraw the column through buffer
+  memset(ntbuf1, 0, sizeof(ntbuf1));
+  memset(ntbuf2, 0, sizeof(ntbuf2));
+  memset(attrbuf, 0, sizeof(attrbuf));
+  //we start at 1 as we don't want to modify the ceiling
+  for (j = 1; j < 15 ; ++j)
+  {
+    switch (tmp_boards[tmp_counter][j])
+    {
+      case EMPTY:
+        clear_metatile(j-1);
+        attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter_2,j*2);
+        break;
+      case OJAMA:
+        set_metatile(j-1,0xdc);
+        attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
+        break;
+      case PUYO_RED:
+        set_metatile(j-1,0xd8);
+        attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
+        break;
+      case PUYO_BLUE:
+        set_metatile(j-1,0xd8);
+        attrbuf[j>>1] = return_tile_attribute_color(1,tmp_counter_2,j*2);
+        break;
+      case PUYO_GREEN:
+        set_metatile(j-1,0xd8);
+        attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter_2,j*2);
+        break;
+      case PUYO_YELLOW:
+        set_metatile(j-1,0xd8);
+        attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter_2,j*2);
+        break;
+      case 255:
+        set_metatile(j-1, 0xc4);
+        attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
+    }
+  } 
+
+  //remplir les buffers nt et attr et ensuite faire le put !
+  addr = NTADR_A(((tmp_counter_3)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+  vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 28);
+  vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 28);
+  put_attr_entries((nt2attraddr(addr)), 7);
+  
   return;
 }
 
@@ -2084,7 +2161,11 @@ void handle_controler_and_sprites()
     /*step_p[1] = FALL_OJAMA;
     step_ojama_fall[1] = 0;
     step_p_counter[1] = 0;*/
+    //debug
     play_flush();
+    step_p[0] = FLUSH;
+    step_p_counter[0] = 255;
+    actor_dx[1][0] = -1;
   }
   
   previous_pad[current_player] = pad;
@@ -2265,6 +2346,58 @@ void main(void)
         oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+1)*2))&3]);
       }
 
+      //flush step, that's supposing one opponent has lost
+      //we are unsing tmp_boards, which is slightly larger than boards table.
+      //the two extra lines are for storing what will be display on the floor
+      if (step_p[current_player] == FLUSH)
+      {
+        //memset(tmp_boards,0,sizeof(tmp_boards));
+        //init step, we copy current boards into tmp_boards, and set the floor tiles too
+        if (step_p_counter[current_player] == 255)
+        {
+          for ( i = 0; i < 6; ++i)
+          {
+            tmp_boards[i][0] = boards[current_player][i][0];
+            tmp_boards[i][1] = boards[current_player][i][1];
+            tmp_boards[i][2] = boards[current_player][i][2];
+            tmp_boards[i][3] = boards[current_player][i][3];
+            tmp_boards[i][4] = boards[current_player][i][4];
+            tmp_boards[i][5] = boards[current_player][i][5];
+            tmp_boards[i][6] = boards[current_player][i][6];
+            tmp_boards[i][7] = boards[current_player][i][7];
+            tmp_boards[i][8] = boards[current_player][i][8];
+            tmp_boards[i][9] = boards[current_player][i][9];
+            tmp_boards[i][10] = boards[current_player][i][10];
+            tmp_boards[i][11] = boards[current_player][i][11];
+            tmp_boards[i][12] = boards[current_player][i][12];
+            tmp_boards[i][13] = 255; // we use 255 as a way to identify a floor tile
+            tmp_boards[i][14] = 255;
+          }
+        }
+        else
+        {
+          flush();
+        }
+        
+        ++step_p_counter[current_player];
+        
+        if (step_p_counter[current_player] > 90) // 15 * 6 == 90
+        {
+          step_p[current_player] = WAIT;
+          step_p_counter[current_player] = 0;
+        }
+      }
+      
+      //wait for next round to start, each player must press A button
+      if (step_p[current_player] == WAIT)
+      {
+        //here reset the boards
+        //reset the graphics
+        //randomize new pairs
+        //wait for player to press the start or A button and switch to PLAY state.
+        continue;//no need to evaluate the other possibilities
+      }
+      
       // ojama fall, only when opponent is in step "PLAY" when counter  is at 0
       // only 5 rows at a time, which will translate to 5*6 columns in our case
       // only if ojama[x], the damage score, is superior to 0
