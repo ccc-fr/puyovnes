@@ -270,7 +270,7 @@ void generate_rng(void);
 byte return_sprite_color(byte spr_index);
 byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y);
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
-byte update_boards(void); //return if a puyo has been placed on x = 2 and y = 1, then flush
+void update_boards(void); //return if a puyo has been placed on x = 2 and y = 1, then flush
 byte check_board(/*byte board_index,*/ byte x, byte y);
 byte destroy_board(void /*byte board_index*/);
 void fall_board(void);
@@ -641,7 +641,7 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 
 //Update the boards table, once the puyos have stop moving, not  optimized :-S
 //board_index must take 0 or 2=>Not anymore, changed to match current_player elsewhere !
-byte update_boards()
+void update_boards()
 {
   byte x,y;
   //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
@@ -654,8 +654,7 @@ byte update_boards()
   //get the column number right
   x = ((actor_x[current_player][0]>>3) - offset) >> 1;
   y = ((actor_y[current_player][0]>>3)+1)>>1;
-  if (x == 2 && y == 1)
-    return 1;
+
   //sprintf(str,"%d",(boards[x][y]&240));
   //vrambuf_put(NTADR_A(20,13),str,3);
   boards[current_player][x][y] = /*(boards[board_index][x][y] & 240) +*/ return_sprite_color(current_player<<1);
@@ -663,8 +662,7 @@ byte update_boards()
     vrambuf_put(NTADR_A(1,26),str,24);*/
   x = ((actor_x[current_player][1]>>3) - offset) >> 1;
   y = ((actor_y[current_player][1]>>3)+1)>>1;
-  if (x == 2 && y == 1)
-    return 1;
+  
   /*sprintf(str,"x:%d y:%d",x,y);
     vrambuf_put(NTADR_A(20,11),str,10);*/
   // sprintf(str,"%d",(boards[x][y]&240));
@@ -672,7 +670,7 @@ byte update_boards()
   boards[current_player][x][y] = /*(boards[board_index][x][y] &240) +*/ return_sprite_color((current_player<<1)+1);
   /*sprintf(str,"x:%d y:%d val:%d buf:%da", x, y, boards[x][y], return_sprite_color(1));
     vrambuf_put(NTADR_A(1,27),str,24);*/
-  return 0;
+  return;
 }
 
 // Look for puyo to destroy and flag them as such
@@ -2548,7 +2546,7 @@ void main(void)
 
       //update the next pair to come in the middle of the field
       if (step_p[current_player] == SHOW_NEXT)
-      {
+      { 
         //if we came from fall_board after a fall_ojama, we have to update the ojama display list first
         //(a bit of a hack for show_next initial purpose...)
         if( step_p_counter[current_player] == 1) 
@@ -2558,8 +2556,47 @@ void main(void)
         }
         else
         {
-          update_next();
-          step_p[current_player] = PLAY;
+          //either the screen is filled and party is over, or we just continue
+          if ( boards[current_player][2][1] == EMPTY)
+          {
+            update_next();
+            step_p[current_player] = PLAY;
+          }
+          else
+          {
+            //end of the road...
+            //that player lose !
+            step_p[current_player] = FLUSH;
+            step_p_counter[current_player] = 255;
+            //hide sprites
+            actor_x[0][0] = 254;
+            actor_x[0][1] = 254;
+            actor_x[1][0] = 254;
+            actor_x[1][1] = 254;
+            actor_y[0][0] = 254;
+            actor_y[0][1] = 254;
+            actor_y[1][0] = 254;
+            actor_y[1][1] = 254;
+            play_flush(); // play sound of flush
+            if (current_player == 0)          
+            { 
+              actor_dx[0][0] = 1;// stop action of the other player
+              actor_dx[0][1] = 1;
+              actor_dy[0][0] = 0;
+              actor_dy[0][1] = 0;
+              step_p[1] = WAIT;
+              ++wins[1];
+            }
+            else
+            {
+              actor_dx[1][0] = 1;// stop action of the other player
+              actor_dx[1][1] = 1;
+              actor_dy[1][0] = 0;
+              actor_dy[1][1] = 0;
+              step_p[0] = WAIT;
+              ++wins[0];
+            }
+          }   
         }
         continue;
       }
@@ -2741,46 +2778,11 @@ void main(void)
 
         //updating the board, if things are done correctly attrbuf contains the color to be used
         //Still need to convert coordinates ! And not overwrite the value for the opponent board !
-        if (update_boards() == 0)
-        { 
-          step_p[current_player] = CHECK;
-          play_puyo_fix(); //play sound of puyo fixing on position
-          timer_grace_period[current_player] = GRACE_PERIOD; 
-        }
-        else
-        {
-          //that player lose !
-          step_p[current_player] = FLUSH;
-          step_p_counter[current_player] = 255;
-          //hide sprites
-          actor_x[0][0] = 254;
-          actor_x[0][1] = 254;
-          actor_x[1][0] = 254;
-          actor_x[1][1] = 254;
-          actor_y[0][0] = 254;
-          actor_y[0][1] = 254;
-          actor_y[1][0] = 254;
-          actor_y[1][1] = 254;
-          play_flush(); // play sound of flush
-          if (current_player == 0)          
-          { 
-            actor_dx[0][0] = 1;// stop action of the other player
-            actor_dx[0][1] = 1;
-            actor_dy[0][0] = 0;
-            actor_dy[0][1] = 0;
-            step_p[1] = WAIT;
-            ++wins[1];
-          }
-          else
-          {
-            actor_dx[1][0] = 1;// stop action of the other player
-            actor_dx[1][1] = 1;
-            actor_dy[1][0] = 0;
-            actor_dy[1][1] = 0;
-            step_p[0] = WAIT;
-            ++wins[0];
-          }
-        }
+        update_boards();
+        step_p[current_player] = CHECK;
+        play_puyo_fix(); //play sound of puyo fixing on position
+        timer_grace_period[current_player] = GRACE_PERIOD; 
+
         //all commented below is now for another state
         /*
         if (check_board(0) > 0)
