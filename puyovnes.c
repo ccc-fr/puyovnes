@@ -1380,7 +1380,7 @@ void fall_board()
       {
         //FALL_OJAMA case, we go to show_next,
         step_p[current_player] = SHOW_NEXT;
-        //we set 0 because the show_next at with that counter at 1 will update ojama display list with manage_point
+        //we set 0 because the show_next with that counter at 1 will update ojama display list with manage_point
         step_p_counter[current_player] = 0;
         step_ojama_fall[current_player] = 0;
       }
@@ -1514,46 +1514,52 @@ void manage_point()
       tmp_score %= damageList[i];     
     }
 
+    //test without modifying attributes, because no reason to to so.
     set_metatile(0,str[0]);
-    attrbuf[0] = return_tile_attribute_color(0,20,0);
+    //attrbuf[0] = return_tile_attribute_color(0,18-tile_offset,0);
     addr = NTADR_A(18-tile_offset, 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
     //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
     //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
     //plus profondément à un moment.
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+    //put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[1]);
-    attrbuf[0] = return_tile_attribute_color(0,20,0);
+    //attrbuf[0] = return_tile_attribute_color(0,20-tile_offset,0);
     addr = NTADR_A(20-tile_offset, 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+   // put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[2]);
-    attrbuf[0] = return_tile_attribute_color(0,20,0);
+    //attrbuf[0] = return_tile_attribute_color(0,22-tile_offset,0);
     addr = NTADR_A(22-tile_offset, 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+    //put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[3]);
-    attrbuf[0] = return_tile_attribute_color(0,20,0);
+   // attrbuf[0] = return_tile_attribute_color(0,24-tile_offset,0);
     addr = NTADR_A(24-tile_offset, 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+   // put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[4]);
-    attrbuf[0] = return_tile_attribute_color(0,20,0);
+   // attrbuf[0] = return_tile_attribute_color(0,26-tile_offset,0);
     addr = NTADR_A(26-tile_offset, 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+    //put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[5]);
-    attrbuf[0] = return_tile_attribute_color(0,20,0);
+   // attrbuf[0] = return_tile_attribute_color(0,28-tile_offset,0);
     addr = NTADR_A(28-tile_offset, 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
 
-    put_attr_entries((nt2attraddr(addr)),6);
+   // put_attr_entries((nt2attraddr(addr)),2);
   }
 }
 
@@ -2296,8 +2302,6 @@ void main(void)
     
     for (current_player = 0 ; current_player < 2 ; ++current_player)
     {
-      if (step_p[current_player] == 32)
-        continue;
 
       if (step_p[current_player] == PLAY)
       {
