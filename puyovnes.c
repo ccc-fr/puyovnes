@@ -1159,7 +1159,7 @@ byte destroy_board(/*byte board_index*/)
       }
     }
    // }
-    if (tmp_counter == 18)
+    if (tmp_counter == 17)
     {
       //TODO à corriger pour P2 !
       //step_p1 = POINT;
@@ -2313,9 +2313,15 @@ void main(void)
           // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
           // ensuite on décale sur le bon élément de l'index 
           // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
-          // et on fait & 3 pour ne garder que les 2 premiers bits    
-          oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
-
+          // et on fait & 3 pour ne garder que les 2 premiers bits  
+          //Debug => on bloque p2
+          if (current_player == 1)
+            oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
+          else
+          {
+            --actor_y[current_player][i];
+            oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
+          }
           if (actor_dy[current_player][i] != 0) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
