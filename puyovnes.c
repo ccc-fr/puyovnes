@@ -73,7 +73,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT, FALL_OJAMA, FLUSH, WAIT};
+typedef enum Step {SETUP, PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT, FALL_OJAMA, FLUSH, WAIT};
 word x_scroll;		// X scroll amount in pixels
 byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles
@@ -2266,10 +2266,13 @@ void main(void)
 
   //we start by waiting each player to be ready
   //the wait state also build the board and things like that 
-  step_p[0] = WAIT;
-  step_p[1] = WAIT;
-  step_p_counter[0] = 0;
-  step_p_counter[1] = 0;
+  /*step_p[0] = WAIT;
+  step_p[1] = WAIT;*/
+  //No let's try starting by a menu
+  step_p[0] = SETUP;
+  step_p[1] = SETUP;
+  step_p_counter[0] = 255;
+  step_p_counter[1] = 255;
   
   //init score and wins at 0
   memset(score,0,sizeof(score));
@@ -2300,6 +2303,37 @@ void main(void)
     ppu_wait_nmi();
     vrambuf_clear();
     
+    //maybe put that in another while loop at the beginning to avoid a useless test
+    //good for testing only here
+    if (step_p[0] == SETUP)
+    {
+      if (step_p_counter[0] == 255)
+      {
+        scroll(0,255);//y==256 bottom screen,0 top 
+        sprintf(str,"press start");
+        addr = NTADR_C(10,15);
+        vrambuf_put(addr,str,11);
+        pad = pad_poll(0);
+        if (pad&PAD_START)
+          --step_p_counter[0];
+      }
+      else if (step_p_counter[0] == 0)
+      {
+        scroll(0,0);
+        step_p[0] = WAIT;
+        step_p[1] = WAIT;
+        step_p_counter[0] = 0;
+        step_p_counter[1] = 0;
+      }
+      else
+      {
+        scroll(0,step_p_counter[0]);
+        --step_p_counter[0];
+      }
+      
+      continue;
+    }
+
     for (current_player = 0 ; current_player < 2 ; ++current_player)
     {
 
@@ -2826,7 +2860,7 @@ void main(void)
     ppu_wait_nmi();
     vrambuf_clear();*/
     
-    //scroll(0,0);
+    //scroll(0,256);//y==256 bottom screen,0 top 
   }
 }
 
