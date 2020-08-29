@@ -128,6 +128,10 @@ DEF_METASPRITE_2x2(puyo_red, 0xd8, 0);//red
 DEF_METASPRITE_2x2(puyo_blue, 0xd8, 1);//blue
 DEF_METASPRITE_2x2(puyo_green, 0xd8, 2);//green
 DEF_METASPRITE_2x2(puyo_yellow, 0xd8, 3);//yellow
+DEF_METASPRITE_2x2(puyo_heart, 0xcc, 0);//red
+DEF_METASPRITE_2x2(puyo_rabbit_ghost, 0xd4, 1);//blue
+DEF_METASPRITE_2x2(puyo_angry, 0xd0, 2);//green
+DEF_METASPRITE_2x2(puyo_yellow_bis, 0xd8, 3);//yellow
 DEF_METASPRITE_2x2(ojama, 0xdc, 0);
 DEF_METASPRITE_2x2(puyo_pop, 0xe0, 0);
 
@@ -166,6 +170,8 @@ byte ready[2]; //indicates if a player is ok to play the next round
 unsigned long int ojamas[4];// 2 pockets of ojama per player, but what is displayed is always the sum of both. Warikomi rule.
 byte step_ojama_fall[2];
 byte should_destroy;
+byte blind_offset; //offset to apply to get the correct sprite
+byte sprite_addr[2][2]; //keep track of the addr of the sprite tile to convert from sprite to tile
 
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
@@ -226,8 +232,8 @@ const byte* music_ptr = music1;
 //end of music bloc
 
 //le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
-const unsigned char* const puyoSeq[6] = {
-  puyo_red, puyo_blue, puyo_green, puyo_yellow, ojama, puyo_pop
+const unsigned char* const puyoSeq[10] = {
+  puyo_red, puyo_blue, puyo_green, puyo_yellow, puyo_heart, puyo_rabbit_ghost, puyo_angry, puyo_yellow_bis, ojama, puyo_pop
 };
 //1:    0xfc   ojama
 //6:    0xf8   big ojama
@@ -291,6 +297,7 @@ void play_flush(void); // flush sound when a player lose
 byte fall_ojama(void); //fall ojama damage on the player field
 void flush(void); // flush loser screen into under the play field
 void init_round(void); //set actors, column_height and other things before a round
+void put_str(unsigned int adr, const char *str);
 
 //music bloc definition
 byte next_music_byte() {
@@ -472,6 +479,12 @@ void put_attr_entries(word addr, byte length) {
     addr += 8;
   }
   vrambuf_end();
+}
+
+void put_str(unsigned int adr, const char *str)
+{
+  vram_adr(adr); //set PPU read/write address
+  vram_write(str, strlen(str));//write bytes to PPU
 }
 
 /*{pal:"nes",layout:"nes"}*/
@@ -1948,6 +1961,17 @@ void build_field()
   
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
+  
+  //only draw menu if necessary
+  if (step_p[0] == SETUP)
+  {
+    put_str(NTADR_C(11,10), "Puyo VNES");
+    put_str(NTADR_C(4,15), "Border style \t1  2  3  4");
+    put_str(NTADR_C(4,17), "Border color \t1  2  3  4");
+    put_str(NTADR_C(4,19), "Color Blind Mode \tOff  On");
+    put_str(NTADR_C(4,21), "Music \tOff  1  3");
+    put_str(NTADR_C(6,24), "Press start to begin!");
+  }
 }
 
 void init_round()
@@ -2274,6 +2298,8 @@ void main(void)
   step_p_counter[0] = 255;
   step_p_counter[1] = 255;
   
+  blind_offset = 4;
+  
   //init score and wins at 0
   memset(score,0,sizeof(score));
   memset(wins,0,sizeof(wins));
@@ -2310,9 +2336,9 @@ void main(void)
       if (step_p_counter[0] == 255)
       {
         scroll(0,255);//y==256 bottom screen,0 top 
-        sprintf(str,"press start");
+        /*sprintf(str,"press start");
         addr = NTADR_C(10,15);
-        vrambuf_put(addr,str,11);
+        vrambuf_put(addr,str,11);*/
         pad = pad_poll(0);
         if (pad&PAD_START)
           --step_p_counter[0];
@@ -2349,12 +2375,17 @@ void main(void)
           // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
           // et on fait & 3 pour ne garder que les 2 premiers bits  
           //Debug => on bloque p2
-          if (current_player == 1)
-            oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
+          if (current_player == 0)
+          {
+            sprite_addr[current_player][i] = ((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset;
+            oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
+          }
           else
           {
             --actor_y[current_player][i];
-            oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3]);
+            sprite_addr[current_player][i] = ((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset;
+            oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
+            //oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset]);
           }
           if (actor_dy[current_player][i] != 0) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
@@ -2415,8 +2446,8 @@ void main(void)
       else
       {
         //we need to move oam_id to not have an offset, should be a better way though...
-        oam_id = oam_meta_spr(actor_x[current_player][0], actor_y[current_player][0], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+0)*2))&3]);
-        oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[(puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+1)*2))&3]);
+        oam_id = oam_meta_spr(actor_x[current_player][0], actor_y[current_player][0], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+0)*2))&3) + blind_offset]);
+        oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+1)*2))&3) + blind_offset]);
       }
 
       //flush step, that's supposing one opponent has lost
@@ -2793,6 +2824,10 @@ void main(void)
         column_height[(actor_x[1]>>4) - 1] -= 16;*/
 
         set_metatile(0,0xd8);
+        //test !
+        //puyoSeq contient l'adresse des data du sprite, et l'adresse de la tile est à cette adresse +2
+        //set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
+          
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
         attrbuf[0] = return_attribute_color(current_player << 1, actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1);
@@ -2824,35 +2859,11 @@ void main(void)
         //Still need to convert coordinates ! And not overwrite the value for the opponent board !
         update_boards();
         step_p[current_player] = CHECK;
-        play_puyo_fix(); //play sound of puyo fixing on position
+        play_puyo_fix(); //play sound of puyo fixing into position
         timer_grace_period[current_player] = GRACE_PERIOD; 
-
-        //all commented below is now for another state
-        /*
-        if (check_board(0) > 0)
-        {
-          sprintf(str,"BOOM");
-          addr = NTADR_A(20,15);
-          vrambuf_put(addr,str,4);
-        }
-
-        actor_x[0] = 3*16;
-        actor_y[0] = 0;
-        actor_x[1] = 3*16;
-        actor_y[1] = 16;
-        actor_dy[0] = 1;
-        actor_dy[1] = 1;
-        p1_puyo_list_index++;*/
-
-        //play sound of puyo hitting the ground
         
       }
     }
-    //current_player = 0;
-    
-    /*sprintf(str,"S1:%d, %d", step_p[0], step_p_counter[0]);
-    addr = NTADR_A(20,15);
-    vrambuf_put(addr,str,10);*/
     
     /*if (oam_id!=0) 
       oam_hide_rest(oam_id);
