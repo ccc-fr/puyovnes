@@ -264,7 +264,6 @@ void set_attr_entry(byte x, byte y, byte pal);
 void put_attr_entries(word addr, byte length);
 void generate_rng(void);
 byte return_sprite_color(byte spr_index);
-byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y);
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
 void update_boards(void); //return if a puyo has been placed on x = 2 and y = 1, then flush
 byte check_board(byte x, byte y);
@@ -560,44 +559,7 @@ byte return_sprite_color(byte spr_index)
 }
 
 //based on sprite x/y position look for the bg attributes related to it
-//find color value based on sprite index and returned the byte with the 4 tiles
-//updated with sprite color
-byte return_attribute_color(byte spr_index, byte spr_x, byte spr_y)
-{
-  //word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
-  byte attr_x = spr_x&0xfc;
-  byte attr_y = spr_y&0xfc;
-  byte attr;
-  byte index;
-  byte sprite_color = return_sprite_color(spr_index);
-  byte mask = 3;
-  //we must not override colors of the tiles around the one we change
-  //We must determine were our meta sprite is located in the 4*4 metatile attributes
-  //if x is odd it will be on the right, even left
-  //if y is odd it will be on the bottom, even top
-  //LSB is top left, MSB bottom right
-  if (attr_y < spr_y)
-  {
-    mask <<= 4;
-    sprite_color <<= 4;
-  }
-  if (attr_x < spr_x) 
-  {
-    mask <<= 2;
-    sprite_color <<= 2;
-  }
-  // attribute position is y/2 + x/4 where y 2 LSB are 0
-  index = (attr_y<<1) + (spr_x>>2);
-
-  attr = attribute_table[index];
-  //let's erase the previous attributes for the intended position
-  attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
-  attr += sprite_color;
-  attribute_table[index] = attr;
-  return attr;
-}
-
-/* same as return_attribute_color but the color is in parameter, not get from sprite*/
+//then update the attributes with the color passes in parameter
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 {
  //word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
@@ -664,7 +626,7 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
 {
   static byte i, j, k, current_color; //static are faster, but they are keeping there value outside of context
   byte counter = 0, tmp_counter = 0;
-  byte /*mask = 15,*/ flag = 8/*, shift = 0*/;
+  /*byte mask = 15, flag = 8, shift = 0;*/
   byte destruction = 0;
   //char str[32];
   
@@ -687,22 +649,22 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
   current_color = ((boards[current_player][x][y]));
 
   //tmp_boards contains flag of the currently looked color 
-  tmp_boards[x][y] = flag;
+  tmp_boards[x][y] = FLAG;
   i = (x - 1); //byte are unsigned, so -1 = 255, we will not enter in the while if i < 0
   while ( i < 6 )
   {
-    if ( tmp_boards[i][y] != flag)
+    if ( tmp_boards[i][y] != FLAG)
     {
       if (current_color == ((boards[current_player][i][y]) ))
       {     
-        tmp_boards[i][y] = flag;
+        tmp_boards[i][y] = FLAG;
         ++counter;
       }
       else
       {  
        /* i = 7; //no need to continue if not found
         continue;*/
-        break;
+        break; //sort du while
       }
     }
     --i;
@@ -711,11 +673,11 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
   i = (x + 1);
   while ( i < 6 )
   {
-    if ( tmp_boards[i][y] != flag)
+    if ( tmp_boards[i][y] != FLAG)
     {
       if (current_color == ((boards[current_player][i][y]) ))
       {     
-        tmp_boards[i][y] = flag;
+        tmp_boards[i][y] = FLAG;
         ++counter;
       }
       else
@@ -731,11 +693,11 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
   i = (y - 1);
   while ( i < 13 )
   {
-    if ( tmp_boards[x][i] != flag)
+    if ( tmp_boards[x][i] != FLAG)
     {
       if (current_color == ((boards[current_player][x][i]) ))
       {     
-        tmp_boards[x][i] = flag;
+        tmp_boards[x][i] = FLAG;
         ++counter;
       } 
       else
@@ -750,11 +712,11 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
   i = (y + 1);
   while ( i < 13 )
   {
-    if ( tmp_boards[x][i] != flag)
+    if ( tmp_boards[x][i] != FLAG)
     {
       if (current_color == ((boards[current_player][x][i]) ))
       {     
-        tmp_boards[x][i] = flag;
+        tmp_boards[x][i] = FLAG;
         ++counter;
       } 
       else
@@ -779,65 +741,65 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
     k = j+1;
     //unlooped version
     //0
-    if (tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j]) )) && 
-        ( ((k!=13) ? (tmp_boards[0][k] == flag) : false) ||
-         (tmp_boards[1][j] == flag)) )
+    if (tmp_boards[0][j] != FLAG && (current_color == ((boards[current_player][0][j]) )) && 
+        ( ((k!=13) ? (tmp_boards[0][k] == FLAG) : false) ||
+         (tmp_boards[1][j] == FLAG)) )
     {
-      tmp_boards[0][j] = flag;
+      tmp_boards[0][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //1
-    if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j]) )) && 
-        ( ((k!=13) ? (tmp_boards[1][k] == flag) : false) ||
-         (tmp_boards[0][j] == flag) ||
-         (tmp_boards[2][j] == flag)) )
+    if ( tmp_boards[1][j] != FLAG && (current_color == ((boards[current_player][1][j]) )) && 
+        ( ((k!=13) ? (tmp_boards[1][k] == FLAG) : false) ||
+         (tmp_boards[0][j] == FLAG) ||
+         (tmp_boards[2][j] == FLAG)) )
     {
-      tmp_boards[1][j] = flag;
+      tmp_boards[1][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //2
-    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[current_player][2][j]))) && 
-        ( ((k!=13) ? (tmp_boards[2][k] == flag) : false) ||
-         (tmp_boards[1][j] == flag) ||
-         (tmp_boards[3][j] == flag)) )
+    if ( tmp_boards[2][j] != FLAG &&  (current_color == ((boards[current_player][2][j]))) && 
+        ( ((k!=13) ? (tmp_boards[2][k] == FLAG) : false) ||
+         (tmp_boards[1][j] == FLAG) ||
+         (tmp_boards[3][j] == FLAG)) )
     {
-      tmp_boards[2][j] = flag;
+      tmp_boards[2][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //3
-    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[current_player][3][j] ) )) && 
-        ( ((k!=13) ? (tmp_boards[3][k] == flag) : false) ||
-         (tmp_boards[2][j] == flag) ||
-         (tmp_boards[4][j] == flag)) )
+    if ( tmp_boards[3][j] != FLAG &&  (current_color == ((boards[current_player][3][j] ) )) && 
+        ( ((k!=13) ? (tmp_boards[3][k] == FLAG) : false) ||
+         (tmp_boards[2][j] == FLAG) ||
+         (tmp_boards[4][j] == FLAG)) )
     {
-      tmp_boards[3][j] = flag;
+      tmp_boards[3][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //4
-    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[current_player][4][j]))) && 
-        ( ((k!=13) ? (tmp_boards[4][k] == flag) : false) ||
-         (tmp_boards[3][j] == flag) ||
-         (tmp_boards[5][j] == flag)) )
+    if ( tmp_boards[4][j] != FLAG &&  (current_color == ((boards[current_player][4][j]))) && 
+        ( ((k!=13) ? (tmp_boards[4][k] == FLAG) : false) ||
+         (tmp_boards[3][j] == FLAG) ||
+         (tmp_boards[5][j] == FLAG)) )
     {
-      tmp_boards[4][j] = flag;
+      tmp_boards[4][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //5
-    if ( tmp_boards[5][j] != flag && (current_color == ((boards[current_player][5][j] ))) && 
-        ( ((k!=13) ? (tmp_boards[5][k] == flag) : false) ||
-         (tmp_boards[4][j] == flag)))
+    if ( tmp_boards[5][j] != FLAG && (current_color == ((boards[current_player][5][j] ))) && 
+        ( ((k!=13) ? (tmp_boards[5][k] == FLAG) : false) ||
+         (tmp_boards[4][j] == FLAG)))
     {
-      tmp_boards[5][j] = flag;
+      tmp_boards[5][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
@@ -847,46 +809,46 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
     {
       
       //4
-      if ( tmp_boards[4][j] != flag && (current_color == ((boards[current_player][4][j]))) && 
-           ((tmp_boards[3][j] == flag) ||
-            (tmp_boards[5][j] == flag)) )
+      if ( tmp_boards[4][j] != FLAG && (current_color == ((boards[current_player][4][j]))) && 
+           ((tmp_boards[3][j] == FLAG) ||
+            (tmp_boards[5][j] == FLAG)) )
       {
-        tmp_boards[4][j] = flag;
+        tmp_boards[4][j] = FLAG;
         ++counter;
       }
       
       //3
-      if ( tmp_boards[3][j] != flag && (current_color == ((boards[current_player][3][j] ) )) && 
-           ((tmp_boards[2][j] == flag) ||
-            (tmp_boards[4][j] == flag)) )
+      if ( tmp_boards[3][j] != FLAG && (current_color == ((boards[current_player][3][j] ) )) && 
+           ((tmp_boards[2][j] == FLAG) ||
+            (tmp_boards[4][j] == FLAG)) )
       {
-        tmp_boards[3][j] = flag;
+        tmp_boards[3][j] = FLAG;
         ++counter;
       }
       
       //2
-      if ( tmp_boards[2][j] != flag && (current_color == ((boards[current_player][2][j] ) )) && 
-           ((tmp_boards[1][j] == flag) ||
-            (tmp_boards[3][j] == flag)) )
+      if ( tmp_boards[2][j] != FLAG && (current_color == ((boards[current_player][2][j] ) )) && 
+           ((tmp_boards[1][j] == FLAG) ||
+            (tmp_boards[3][j] == FLAG)) )
       {
-        tmp_boards[2][j] = flag;
+        tmp_boards[2][j] = FLAG;
         ++counter;
       }
       
       //1
-      if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j] ) )) && 
-           ((tmp_boards[0][j] == flag) ||
-            (tmp_boards[2][j] == flag)) )
+      if ( tmp_boards[1][j] != FLAG && (current_color == ((boards[current_player][1][j] ) )) && 
+           ((tmp_boards[0][j] == FLAG) ||
+            (tmp_boards[2][j] == FLAG)) )
       {
-        tmp_boards[1][j] = flag;
+        tmp_boards[1][j] = FLAG;
         ++counter;
       }
       
        //0
-      if ( tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j] ) )) && 
-           ((tmp_boards[1][j] == flag)) )
+      if ( tmp_boards[0][j] != FLAG && (current_color == ((boards[current_player][0][j] ) )) && 
+           ((tmp_boards[1][j] == FLAG)) )
       {
-        tmp_boards[0][j] = flag;
+        tmp_boards[0][j] = FLAG;
         ++counter;
       } 
       
@@ -905,65 +867,65 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
     
     //unlooped version
     //0
-    if (tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j]) )) && 
-        (((k<13) ? (tmp_boards[0][k] == flag) : false) ||
-         (tmp_boards[1][j] == flag)) )
+    if (tmp_boards[0][j] != FLAG && (current_color == ((boards[current_player][0][j]) )) && 
+        (((k<13) ? (tmp_boards[0][k] == FLAG) : false) ||
+         (tmp_boards[1][j] == FLAG)) )
     {
-      tmp_boards[0][j] = flag;
+      tmp_boards[0][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //1
-    if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j] ) )) && 
-        (((k<13) ? (tmp_boards[1][k] == flag) : false) ||
-         (tmp_boards[0][j] == flag) ||
-         (tmp_boards[2][j] == flag)) )
+    if ( tmp_boards[1][j] != FLAG && (current_color == ((boards[current_player][1][j] ) )) && 
+        (((k<13) ? (tmp_boards[1][k] == FLAG) : false) ||
+         (tmp_boards[0][j] == FLAG) ||
+         (tmp_boards[2][j] == FLAG)) )
     {
-      tmp_boards[1][j] = flag;
+      tmp_boards[1][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //2
-    if ( tmp_boards[2][j] != flag &&  (current_color == ((boards[current_player][2][j] ) )) && 
-        (((k<13) ? (tmp_boards[2][k] == flag) : false) ||
-         (tmp_boards[1][j] == flag) ||
-         (tmp_boards[3][j] == flag)) )
+    if ( tmp_boards[2][j] != FLAG &&  (current_color == ((boards[current_player][2][j] ) )) && 
+        (((k<13) ? (tmp_boards[2][k] == FLAG) : false) ||
+         (tmp_boards[1][j] == FLAG) ||
+         (tmp_boards[3][j] == FLAG)) )
     {
-      tmp_boards[2][j] = flag;
+      tmp_boards[2][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //3
-    if ( tmp_boards[3][j] != flag &&  (current_color == ((boards[current_player][3][j] ) )) && 
-        (((k<13) ? (tmp_boards[3][k] == flag) : false) ||
-         (tmp_boards[2][j] == flag) ||
-         (tmp_boards[4][j] == flag)) )
+    if ( tmp_boards[3][j] != FLAG &&  (current_color == ((boards[current_player][3][j] ) )) && 
+        (((k<13) ? (tmp_boards[3][k] == FLAG) : false) ||
+         (tmp_boards[2][j] == FLAG) ||
+         (tmp_boards[4][j] == FLAG)) )
     {
-      tmp_boards[3][j] = flag;
+      tmp_boards[3][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //4
-    if ( tmp_boards[4][j] != flag &&  (current_color == ((boards[current_player][4][j]) )) && 
-        (((k<13) ? (tmp_boards[4][k] == flag) : false) ||
-         (tmp_boards[3][j] == flag) ||
-         (tmp_boards[5][j] == flag)) )
+    if ( tmp_boards[4][j] != FLAG &&  (current_color == ((boards[current_player][4][j]) )) && 
+        (((k<13) ? (tmp_boards[4][k] == FLAG) : false) ||
+         (tmp_boards[3][j] == FLAG) ||
+         (tmp_boards[5][j] == FLAG)) )
     {
-      tmp_boards[4][j] = flag;
+      tmp_boards[4][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
 
     //5
-    if ( tmp_boards[5][j] != flag && (current_color == ((boards[current_player][5][j]) )) && 
-        ( ((k<13) ? (tmp_boards[5][k] == flag) : false) ||
-         (tmp_boards[4][j] == flag)))
+    if ( tmp_boards[5][j] != FLAG && (current_color == ((boards[current_player][5][j]) )) && 
+        ( ((k<13) ? (tmp_boards[5][k] == FLAG) : false) ||
+         (tmp_boards[4][j] == FLAG)))
     {
-      tmp_boards[5][j] = flag;
+      tmp_boards[5][j] = FLAG;
       ++counter;
       ++tmp_counter;
     }
@@ -980,46 +942,46 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
       }*/
       
       //4
-      if ( tmp_boards[4][j] != flag && (current_color == ((boards[current_player][4][j]) )) && 
-           ((tmp_boards[3][j] == flag) ||
-            (tmp_boards[5][j] == flag)) )
+      if ( tmp_boards[4][j] != FLAG && (current_color == ((boards[current_player][4][j]) )) && 
+           ((tmp_boards[3][j] == FLAG) ||
+            (tmp_boards[5][j] == FLAG)) )
       {
-        tmp_boards[4][j] = flag;
+        tmp_boards[4][j] = FLAG;
         ++counter;
       }
       
       //3
-      if ( tmp_boards[3][j] != flag && (current_color == ((boards[current_player][3][j] ) )) && 
-           ((tmp_boards[2][j] == flag) ||
-            (tmp_boards[4][j] == flag)) )
+      if ( tmp_boards[3][j] != FLAG && (current_color == ((boards[current_player][3][j] ) )) && 
+           ((tmp_boards[2][j] == FLAG) ||
+            (tmp_boards[4][j] == FLAG)) )
       {
-        tmp_boards[3][j] = flag;
+        tmp_boards[3][j] = FLAG;
         ++counter;
       }
       
       //2
-      if ( tmp_boards[2][j] != flag && (current_color == ((boards[current_player][2][j]) )) && 
-           ((tmp_boards[1][j] == flag) ||
-            (tmp_boards[3][j] == flag)) )
+      if ( tmp_boards[2][j] != FLAG && (current_color == ((boards[current_player][2][j]) )) && 
+           ((tmp_boards[1][j] == FLAG) ||
+            (tmp_boards[3][j] == FLAG)) )
       {
-        tmp_boards[2][j] = flag;
+        tmp_boards[2][j] = FLAG;
         ++counter;
       }
       
       //1
-      if ( tmp_boards[1][j] != flag && (current_color == ((boards[current_player][1][j]))) && 
-           ((tmp_boards[0][j] == flag) ||
-            (tmp_boards[2][j] == flag)) )
+      if ( tmp_boards[1][j] != FLAG && (current_color == ((boards[current_player][1][j]))) && 
+           ((tmp_boards[0][j] == FLAG) ||
+            (tmp_boards[2][j] == FLAG)) )
       {
-        tmp_boards[1][j] = flag;
+        tmp_boards[1][j] = FLAG;
         ++counter;
       }
       
        //0
-      if ( tmp_boards[0][j] != flag && (current_color == ((boards[current_player][0][j]))) && 
-           ((tmp_boards[1][j] == flag)) )
+      if ( tmp_boards[0][j] != FLAG && (current_color == ((boards[current_player][0][j]))) && 
+           ((tmp_boards[1][j] == FLAG)) )
       {
-        tmp_boards[0][j] = flag;
+        tmp_boards[0][j] = FLAG;
         ++counter;
       } 
     }
@@ -1041,9 +1003,9 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
     {
       for (j = 12 ; j <= 12 ; --j)
       {
-        if ( tmp_boards[i][j] == flag)
+        if ( tmp_boards[i][j] == FLAG)
         {
-          boards[current_player][i][j] |= flag;
+          boards[current_player][i][j] |= FLAG;
           ++destruction;
         }
       }
@@ -1063,14 +1025,14 @@ byte destroy_board()
  
   //char str[32];
   
-  tmp_counter = step_p_counter[current_player];/*step_p1_counter;*/
+  tmp_counter = step_p_counter[current_player];
   
   //step 0 we change the puyo to puyo_pop => e0
   if (tmp_counter < 6)
   {
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
-    memset(attrbuf, 0, sizeof(attrbuf));
+    //memset(attrbuf, 0, sizeof(attrbuf)); // no need to reset the attributes, they are not changed !
 
     set_metatile(0,0xe0); //0xe0 == puyo_pop
 
@@ -1106,7 +1068,7 @@ byte destroy_board()
   {
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
-    memset(attrbuf, 0, sizeof(attrbuf));
+    //memset(attrbuf, 0, sizeof(attrbuf));
 
     clear_metatile(0);
     i = tmp_counter%12;
@@ -1309,10 +1271,10 @@ void manage_point()
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
   char str[6];
-  byte tmp_mask = 0, i = 0, j = 0;
-  const byte tile_offset = (current_player == 0 ? 0 : 16);
-  unsigned long int tmp_score = 0;
   register word addr;
+  byte tmp_mask = 0, i = 0, j = 0;
+  //const byte tile_offset = (current_player == 0 ? 0 : 16);
+  unsigned long int tmp_score = 0;
   
   if (step_p_counter[current_player] == 0/*(current_player == 0)  ? (step_p1_counter == 0):(step_p2_counter == 0)*/)
   {
@@ -1362,10 +1324,10 @@ void manage_point()
 
     //TODO warikomi not handled yet
     sprintf(str,"Hit:%2d", nb_hit[current_player]);
-    addr = NTADR_A(2 + tile_offset,26);
+    addr = NTADR_A(nt_x_offset[current_player],26);
     vrambuf_put(addr,str,6);
     sprintf(str,"%6lu", score[current_player]);
-    addr = NTADR_A(8 + tile_offset,27);
+    addr = NTADR_A(6 + nt_x_offset[current_player],27);
     vrambuf_put(addr,str,6);
     
     //play hit sound
@@ -1382,7 +1344,6 @@ void manage_point()
     //note: at some point we will have to deal with too much things updated simultaneously
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
-    memset(attrbuf, 0, sizeof(attrbuf));
     //the number of ojama depends of the score
     //see https://www.bayoen.fr/wiki/Tableau_des_dommages
     //would be neater to put addresses into an enum...
@@ -1417,52 +1378,39 @@ void manage_point()
       tmp_score %= damageList[i];     
     }
 
-    //test without modifying attributes, because no reason to to so.
     set_metatile(0,str[0]);
-    //attrbuf[0] = return_tile_attribute_color(0,18-tile_offset,0);
-    addr = NTADR_A(18-tile_offset, 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+    addr = NTADR_A(20-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
     //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
     //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
     //plus profondément à un moment.
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-    //put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[1]);
-    //attrbuf[0] = return_tile_attribute_color(0,20-tile_offset,0);
-    addr = NTADR_A(20-tile_offset, 0);
+    addr = NTADR_A(22-nt_x_offset[current_player], 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-   // put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[2]);
-    //attrbuf[0] = return_tile_attribute_color(0,22-tile_offset,0);
-    addr = NTADR_A(22-tile_offset, 0);
+    addr = NTADR_A(24-nt_x_offset[current_player], 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-    //put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[3]);
-   // attrbuf[0] = return_tile_attribute_color(0,24-tile_offset,0);
-    addr = NTADR_A(24-tile_offset, 0);
+    addr = NTADR_A(26-nt_x_offset[current_player], 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-   // put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[4]);
-   // attrbuf[0] = return_tile_attribute_color(0,26-tile_offset,0);
-    addr = NTADR_A(26-tile_offset, 0);
+    addr = NTADR_A(28-nt_x_offset[current_player], 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-    //put_attr_entries((nt2attraddr(addr)),2);
 
     set_metatile(0,str[5]);
-   // attrbuf[0] = return_tile_attribute_color(0,28-tile_offset,0);
-    addr = NTADR_A(28-tile_offset, 0);
+    addr = NTADR_A(30-nt_x_offset[current_player], 0);
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
 
-   // put_attr_entries((nt2attraddr(addr)),2);
   }
 }
 
@@ -1475,32 +1423,13 @@ byte fall_ojama()
   The cell [2][1] must be free, if not game over
   The ojama score should be superior to 0
   */
-  
-  byte smask = 7, sinvmask = 112, mask = 15, invmask=240, flag = 8, shift = 0; /*on ne veut pas du flag pour les masques*/
-  byte attr_x_shift = 1;
+  byte tmp_counter = step_p_counter[current_player];
+  byte opponent_status = step_p[~current_player & 1]; //~0 & 1 donne 1 et ~1 & 1 donne 0;
   byte fall = 0, i = 0, top_line_space = 0;
-  byte tmp_counter, opponent_status, player_status;
-  //register word addr;
+  
   //char str[32];
-  
-  if (current_player != 0)
-  {
-    shift = 4;
-    mask <<= shift;
-    invmask >>= shift;
-    flag <<= shift; //the 8th bit unused by color will serve as flag to check colors.
-    attr_x_shift = 9;
-    tmp_counter = step_p_counter[current_player]/*step_p2_counter*/;
-    opponent_status = step_p[0]/*step_p1*/;
-    player_status = step_p[current_player]/*step_p2*/;
-  }
-  else
-  { 
-    tmp_counter = step_p_counter[current_player]/*step_p1_counter*/;
-    opponent_status = step_p[1];/*step_p2;*/
-  }
-  
-  if ((step_ojama_fall[current_player] == 0 && opponent_status != PLAY) /*|| ojama[board_index<<1] == 0 || tmp_counter == 5*/)
+
+  if ((step_ojama_fall[current_player] == 0 && opponent_status != PLAY) )
   {
     //inutile de continuer on passe à SHOW_NEXT
     step_p[current_player] = SHOW_NEXT;
@@ -1526,7 +1455,7 @@ byte fall_ojama()
       {
         if ( (boards[current_player][i][0]/* & mask >> shift*/) == EMPTY)
         {
-          boards[current_player][i][0] = OJAMA /*(boards[board_index][i][0] & invmask) + (OJAMA << shift)*/;
+          boards[current_player][i][0] = OJAMA;
           if ( (ojamas[current_player<<1] - 70) < ojamas[current_player<<1]) //if not inferior then less than 70 !
           { 
             ojamas[current_player<<1] -= 70;
@@ -1546,7 +1475,7 @@ byte fall_ojama()
       top_line_space = 0;
       for (i = 0; i < 6; ++i )
       {
-        if ((boards[current_player][i][0]/* & mask >> shift*/) == EMPTY)
+        if ((boards[current_player][i][0]) == EMPTY)
         {
           ++top_line_space;
         } 
@@ -1559,10 +1488,10 @@ byte fall_ojama()
           //more space than ojama, we randomize the fall
           while (ojamas[current_player<<1] >= 70)
           {
-            if ((boards[current_player][i][0] /*& mask >> shift*/) == EMPTY && (rand8() & 1))
+            if ((boards[current_player][i][0]) == EMPTY && (rand8() & 1))
             {
               //boards[i][0] |= (OJAMA << shift);
-              boards[current_player][i][0] = OJAMA; /*(boards[board_index][i][0] & invmask) + (OJAMA << shift);*/
+              boards[current_player][i][0] = OJAMA;
               ojamas[current_player<<1] -= 70;
             }
             ++i;
@@ -1574,10 +1503,10 @@ byte fall_ojama()
           //less space than ojama, we fill every holes, the remaining ojamas will fall at next step
           for (i = 0; i < 6; ++i )
           {
-            if ((boards[current_player][i][0] /*& mask >> shift*/) == EMPTY)
+            if ((boards[current_player][i][0]) == EMPTY)
             {
               //boards[i][0] |= (OJAMA << shift);
-              boards[current_player][i][0] = OJAMA; /*(boards[board_index][i][0] & invmask) + (OJAMA << shift);*/
+              boards[current_player][i][0] = OJAMA;
               ojamas[current_player<<1] -= 70;
             } 
           }
@@ -1594,9 +1523,9 @@ byte fall_ojama()
 // flush loser screen into under the play field
 void flush()
 {
-  byte tmp_counter = step_p_counter[current_player]%6;
   byte tmp_counter_2, tmp_counter_3, j;
   register word addr;
+  byte tmp_counter = step_p_counter[current_player]%6;
 
   if (current_player != 0)
   {
@@ -1721,15 +1650,8 @@ void build_field()
     for (y = 0; y < 13; ++y)
     {
       boards[0][x][y] = EMPTY/* + (EMPTY << 4)*/;
-      tmp_boards[x][y] = 0;
-    }
-  }
-  for (x = 0; x < 6; ++x)
-  {
-    for (y = 0; y < 13; ++y)
-    {
       boards[1][x][y] = EMPTY/* + (EMPTY << 4)*/;
-      //tmp_boards[x][y] = 0;
+      tmp_boards[x][y] = 0;
     }
   }
   
@@ -1749,35 +1671,11 @@ void build_field()
         vram_put(0xc7);
       }
     }
-    else if (/* x == 8 ||x == 9 || x == 10 ||x == 11 || x == 12 || x == 13 ||*/ x == 14 /*|| x == 15*/) //14 et 15
+    else if (x == 14 || x == 16) //14 et 16
     {/* il faudra ici mettre les puyo à venir !*/
       for (y = 0; y < PLAYROWS; y+=2)
       {
         if ( (y >= 4 && y <= 6) || (y >= 10 && y <= 12) )
-        {
-          vram_adr(NTADR_A(x,y));
-          vram_put(0xc8);
-          vram_put(0xca);
-          vram_adr(NTADR_A(x,y+1));
-          vram_put(0xc9);
-          vram_put(0xcb);
-        }
-        else
-        {
-          vram_adr(NTADR_A(x,y));
-          vram_put(0xc4);
-          vram_put(0xc6);
-          vram_adr(NTADR_A(x,y+1));
-          vram_put(0xc5);
-          vram_put(0xc7);
-        }
-      }
-    }
-    else if (x == 16 /*|| x == 17*//* || x == 18 || x == 19 || x == 20*/) // 16 et 17
-    {
-      for (y = 0; y < PLAYROWS; y+=2)
-      {
-       if ( (y >= 4 && y <= 6) || (y >= 10 && y <= 12) )
         {
           vram_adr(NTADR_A(x,y));
           vram_put(0xc8);
@@ -1830,24 +1728,6 @@ void build_field()
     }
     
   }
-  //colonne 0 et 31 sont pleines 
-  //On peut pas mettre plus de 3 colonnes dans le buffer...
-  /*
-  vrambuf_clear();
-  memset(ntbuf1, 0, sizeof(ntbuf1));
-  memset(ntbuf2, 0, sizeof(ntbuf2));
-  for (i = 0; i < PLAYROWS/2 - 1; i++)
-  {
-    set_metatile(i,0xc4);
-  }
-  addr = NTADR_A(0, 0);
-  vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, PLAYROWS);
-  vrambuf_put((addr+1)|VRAMBUF_VERT, ntbuf2, PLAYROWS);
-  //vrambuf_flush();
-  addr = NTADR_A(2, 0);
-  vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, PLAYROWS);
-  //vrambuf_put((addr+1)|VRAMBUF_VERT, ntbuf2, PLAYROWS);
-  */
   
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
@@ -1868,57 +1748,39 @@ void init_round()
 {
   byte i;
   // initialize actors
-  //P1
-  actor_x[0][0] = start_pos_x[0]/*3*16*/;
-  actor_y[0][0] = start_pos_y[0][0]/*0*16*/;
-  actor_dx[0][0] = 0;
-  actor_dy[0][0] = 1;
-  actor_x[0][1] = start_pos_x[0]/*3*16*/;
-  actor_y[0][1] = start_pos_y[0][1]/*1*16*/;
-  actor_dx[0][1] = 0;
-  actor_dy[0][1] = 1;
-  p_puyo_list_index[0] = 0;
-  //P2
-  actor_x[1][0] = start_pos_x[1]/*11*16*/;
-  actor_y[1][0] = start_pos_y[1][0] /*0*16*/;
-  actor_dx[1][0] = 0;
-  actor_dy[1][0] = 1;
-  actor_x[1][1] = start_pos_x[1]/*11*16*/;
-  actor_y[1][1] = start_pos_y[1][1]/*1*16*/;
-  actor_dx[1][1] = 0; //put 1 to avoid new pair
-  actor_dy[1][1] = 1;
-  p_puyo_list_index[1] = 0;
+  for ( i = 0; i < 2; ++i)
+  {
+    actor_x[i][0] = start_pos_x[i]/*3*16 ou 11*16*/;
+    actor_y[i][0] = start_pos_y[i][0]/*0*16*/;
+    actor_dx[i][0] = 0;
+    actor_dy[i][0] = 1;
+    actor_x[i][1] = start_pos_x[i]/*3*16 ou 11*16*/;
+    actor_y[i][1] = start_pos_y[i][1]/*1*16*/;
+    actor_dx[i][1] = 0;
+    actor_dy[i][1] = 1;
+    p_puyo_list_index[i] = 0;
     
-  previous_pad[0] = 0;
-  previous_pad[1] = 0;
-  input_delay_PAD_A[0] = 0;
-  input_delay_PAD_A[1] = 0;
-  input_delay_PAD_B[0] = 0;
-  input_delay_PAD_B[1] = 0;
-  input_delay_PAD_LEFT[0] = 0;
-  input_delay_PAD_LEFT[1] = 0;
-  input_delay_PAD_RIGHT[0] = 0;
-  input_delay_PAD_RIGHT[1] = 0;
-  timer_grace_period[0] = GRACE_PERIOD; 
-  timer_grace_period[1] = GRACE_PERIOD;
-  counter_falling_back_up[0] = MAX_FALLING_BACK_UP;
-  counter_falling_back_up[1] = MAX_FALLING_BACK_UP;
-  
+    previous_pad[i] = 0;
+    input_delay_PAD_A[i] = 0;
+    input_delay_PAD_B[i] = 0;
+    input_delay_PAD_LEFT[i] = 0;
+    input_delay_PAD_RIGHT[i] = 0;
+    timer_grace_period[i] = GRACE_PERIOD; 
+    counter_falling_back_up[i] = MAX_FALLING_BACK_UP;
+    
+    step_p[i] = PLAY;
+    step_p_counter[i] = 0;
+    current_player = i;
+    update_next();
+  }
+
   //setting column heights for both players
   for (i = 0; i < 6 ; ++i)
+  {
     column_height[0][i] = 190;
-  for (i = 0; i < 6 ; ++i)
     column_height[1][i] = 190;
+  }
 
-  step_p[0] = PLAY;
-  step_p[1] = PLAY;
-  step_p_counter[0] = 0;
-  step_p_counter[1] = 0;
-  //update pairs to come
-  current_player = 0;
-  update_next(/*0*/);
-  current_player = 1;
-  update_next(/*1*/);
   return;
 }
 
@@ -2720,7 +2582,7 @@ void main(void)
           
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
-        attrbuf[0] = return_attribute_color(current_player << 1, actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1);
+        attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1);
         //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
         //like here
         //attribute_table[(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2)] = attrbuf[0];
@@ -2730,7 +2592,7 @@ void main(void)
         vrambuf_put(addr,str,20);*/
 
         //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
-        attrbuf[1] = return_attribute_color(/*1*/ (current_player<<1) + 1, actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
         /*sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
         addr = NTADR_A(1,27);
         vrambuf_put(addr,str,20);*/
