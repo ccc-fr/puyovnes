@@ -258,6 +258,7 @@ const byte const pos_x_offset[2] = {1,9};
 const byte const nt_x_offset[2] = {2,18};
 //shift for color table
 const byte const shift[2] = {0,4};
+const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
 
 
 //declaration des fonctions, il parait que ça aide
@@ -1363,7 +1364,7 @@ void manage_point()
     tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
     j = 0;
     //let's cheat, setup everything as ojamaless tile
-    memset(str,0xc4, sizeof(str));
+    memset(str,bg_tile, sizeof(str));
     
     for ( i = 0; i < 7  && j < 6 ; ++i)
     {
@@ -1664,7 +1665,7 @@ void build_field()
   //85 color palette 1 (4 couleur par octets, 0b01010101)
   //170 color palette 2 0b10101010
   //255 color palette 3 0b11111111
-  memset(attribute_table,255,sizeof(attribute_table));
+  memset(attribute_table,bg_pal,sizeof(attribute_table));
   for (x = 0; x < PLAYCOLUMNS; x+=2)
   {
     if (x == 0 || x == 30)
@@ -1672,11 +1673,11 @@ void build_field()
       for (y = 0; y < PLAYROWS; y+=2)
       {
         vram_adr(NTADR_A(x,y));
-        vram_put(0xc4);
-        vram_put(0xc6);
+        vram_put(bg_tile);
+        vram_put(bg_tile+2);
         vram_adr(NTADR_A(x,y+1));
-        vram_put(0xc5);
-        vram_put(0xc7);
+        vram_put(bg_tile+1);
+        vram_put(bg_tile+3);
       }
     }
     else if (x == 14 || x == 16) //14 et 16
@@ -1695,34 +1696,34 @@ void build_field()
         else
         {
           vram_adr(NTADR_A(x,y));
-          vram_put(0xc4);
-          vram_put(0xc6);
+          vram_put(bg_tile);
+          vram_put(bg_tile+2);
           vram_adr(NTADR_A(x,y+1));
-          vram_put(0xc5);
-          vram_put(0xc7);
+          vram_put(bg_tile+1);
+          vram_put(bg_tile+3);
         }
       }
     }
     else
     {//le haut/ bas de l'air de jeu
       vram_adr(NTADR_A(x,0));
-      vram_put(0xc4);
-      vram_put(0xc6);
+      vram_put(bg_tile);
+      vram_put(bg_tile+2);
       vram_adr(NTADR_A(x,1));
-      vram_put(0xc5);
-      vram_put(0xc7);
+      vram_put(bg_tile+1);
+      vram_put(bg_tile+3);
       vram_adr(NTADR_A(x,PLAYROWS-4));
-      vram_put(0xc4);
-      vram_put(0xc6);
+      vram_put(bg_tile);
+      vram_put(bg_tile+2);
       vram_adr(NTADR_A(x,PLAYROWS-3));
-      vram_put(0xc5);
-      vram_put(0xc7);
+      vram_put(bg_tile+1);
+      vram_put(bg_tile+3);
       vram_adr(NTADR_A(x,PLAYROWS-2));
-      vram_put(0xc4);
-      vram_put(0xc6);
+      vram_put(bg_tile);
+      vram_put(bg_tile+2);
       vram_adr(NTADR_A(x,PLAYROWS-1));
-      vram_put(0xc5);
-      vram_put(0xc7);
+      vram_put(bg_tile+1);
+      vram_put(bg_tile+3);
       //les deux terrains de jeu
       for (y = 2; y < PLAYROWS - 4; y+=2)
       {
@@ -2059,7 +2060,11 @@ void main(void)
   step_p_counter[1] = 255;
   //only for menu navigation
   menu_pos_x = 0;
-  memset(menu_pos_y,0,sizeof(menu_pos_y));
+  //memset(menu_pos_y,0,sizeof(menu_pos_y));
+  menu_pos_y[0] = 0;
+  menu_pos_y[1] = 0;
+  menu_pos_y[2] = 0;
+  menu_pos_y[3] = 0;
   actor_x[0][0] = 135;
   actor_x[0][1] = 135;
   actor_x[1][0] = 135;
@@ -2069,8 +2074,9 @@ void main(void)
   actor_y[1][0] = 136;
   actor_y[1][1] = 152;
   input_delay_PAD_LEFT[0] = 0; //to prevent multiple inputs
-    
-  blind_offset = 4;
+  bg_tile = bg_tile_addr[0];
+  bg_pal = 0;
+  blind_offset = 0;
   
   //init score and wins at 0
   memset(score,0,sizeof(score));
@@ -2088,7 +2094,7 @@ void main(void)
   while(1) {
     
     //set sound
-    if (!music_ptr) start_music(music1);
+    //if (!music_ptr) start_music(music1);=> ne boucle pas si on l'active pas !
     //next music 
     play_music();
     
@@ -2113,7 +2119,12 @@ void main(void)
         vrambuf_put(addr,str,11);*/
         pad = pad_poll(0);
         if (pad&PAD_START)
+        {
           --step_p_counter[0];
+          play_bayoen();
+          oam_clear();
+          continue;
+        }
         if (pad& PAD_DOWN && menu_pos_x < 3 && input_delay_PAD_LEFT[0] == 0)
         {  
            ++menu_pos_x;
@@ -2129,12 +2140,44 @@ void main(void)
           ++menu_pos_y[menu_pos_x];
           actor_x[menu_pos_x/2][menu_pos_x%2] += 24;
           input_delay_PAD_LEFT[0] = 8;
+          switch (menu_pos_x)
+          {
+            case 0: //style
+              bg_tile = bg_tile_addr[menu_pos_y[menu_pos_x]];
+              break;
+            case 1: //palette
+              bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
+              break;
+            case 2: //music
+              music_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              cur_duration = 0;
+              break;
+            case 3: //color blind
+              blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
+              break;
+          }
         }
         if (pad& PAD_LEFT && menu_pos_y[menu_pos_x] > 0 && input_delay_PAD_LEFT[0] == 0)
         {
           --menu_pos_y[menu_pos_x];
           actor_x[menu_pos_x/2][menu_pos_x%2] -= 24;
           input_delay_PAD_LEFT[0] = 8;
+          switch (menu_pos_x)
+          {
+            case 0: //style
+              bg_tile = bg_tile_addr[menu_pos_y[menu_pos_x]];
+              break;
+            case 1: //palette
+              bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
+              break;
+            case 2: //music
+              music_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              cur_duration = 0;
+              break;
+            case 3: //color blind
+              blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
+              break;
+          }
         }
         //menu sprites
         // set sprite in OAM buffer, chrnum is tile, attr is attribute, sprid is offset in OAM in bytes
