@@ -177,6 +177,10 @@ char column_height_offset;
 byte timer_grace_period[2];
 byte counter_falling_back_up[2];
 #define FLAG 8
+byte bg_tile;//address of top left, bottom left+1, top right+2, bottom right+4
+byte bg_pal;//0 color palette 0, 85 color palette 1 (4 couleur par octets, 0b01010101), 170 color palette 2 0b10101010, 255 color palette 3 0b11111111
+byte menu_pos_x;
+byte menu_pos_y[4];
 
 //
 // MUSIC ROUTINES
@@ -1656,7 +1660,11 @@ void build_field()
   }
   
   //initialize attribute table to 0;
-  memset(attribute_table,0,sizeof(attribute_table));
+  //0 color palette 0
+  //85 color palette 1 (4 couleur par octets, 0b01010101)
+  //170 color palette 2 0b10101010
+  //255 color palette 3 0b11111111
+  memset(attribute_table,255,sizeof(attribute_table));
   for (x = 0; x < PLAYCOLUMNS; x+=2)
   {
     if (x == 0 || x == 30)
@@ -1736,10 +1744,10 @@ void build_field()
   if (step_p[0] == SETUP)
   {
     put_str(NTADR_C(11,10), "Puyo VNES");
-    put_str(NTADR_C(4,15), "Border style \t1  2  3  4");
-    put_str(NTADR_C(4,17), "Border color \t1  2  3  4");
-    put_str(NTADR_C(4,19), "Color Blind Mode \tOff  On");
-    put_str(NTADR_C(4,21), "Music \tOff  1  3");
+    put_str(NTADR_C(4,15), "Border style  1  2  3  4");
+    put_str(NTADR_C(4,17), "Border color  1  2  3  4");
+    put_str(NTADR_C(4,19), "Music         O  1  2  3");
+    put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
     put_str(NTADR_C(6,24), "Press start to begin!");
   }
 }
@@ -2049,7 +2057,19 @@ void main(void)
   step_p[1] = SETUP;
   step_p_counter[0] = 255;
   step_p_counter[1] = 255;
-  
+  //only for menu navigation
+  menu_pos_x = 0;
+  memset(menu_pos_y,0,sizeof(menu_pos_y));
+  actor_x[0][0] = 135;
+  actor_x[0][1] = 135;
+  actor_x[1][0] = 135;
+  actor_x[1][1] = 165;
+  actor_y[0][0] = 104;
+  actor_y[0][1] = 120;
+  actor_y[1][0] = 136;
+  actor_y[1][1] = 152;
+  input_delay_PAD_LEFT[0] = 0; //to prevent multiple inputs
+    
   blind_offset = 4;
   
   //init score and wins at 0
@@ -2094,6 +2114,43 @@ void main(void)
         pad = pad_poll(0);
         if (pad&PAD_START)
           --step_p_counter[0];
+        if (pad& PAD_DOWN && menu_pos_x < 3 && input_delay_PAD_LEFT[0] == 0)
+        {  
+           ++menu_pos_x;
+           input_delay_PAD_LEFT[0] = 8;
+        }
+        if (pad& PAD_UP && menu_pos_x > 0 && input_delay_PAD_LEFT[0] == 0)
+        {
+          --menu_pos_x;
+          input_delay_PAD_LEFT[0] = 8;
+        }
+        if (pad& PAD_RIGHT && menu_pos_y[menu_pos_x] < 3 && input_delay_PAD_LEFT[0] == 0)
+        {
+          ++menu_pos_y[menu_pos_x];
+          actor_x[menu_pos_x/2][menu_pos_x%2] += 24;
+          input_delay_PAD_LEFT[0] = 8;
+        }
+        if (pad& PAD_LEFT && menu_pos_y[menu_pos_x] > 0 && input_delay_PAD_LEFT[0] == 0)
+        {
+          --menu_pos_y[menu_pos_x];
+          actor_x[menu_pos_x/2][menu_pos_x%2] -= 24;
+          input_delay_PAD_LEFT[0] = 8;
+        }
+        //menu sprites
+        // set sprite in OAM buffer, chrnum is tile, attr is attribute, sprid is offset in OAM in bytes
+        // returns sprid+4, which is offset for a next sprite
+        /*unsigned char __fastcall__ oam_spr(unsigned char x, unsigned char y,
+					unsigned char chrnum, unsigned char attr,
+					unsigned char sprid);*/
+        oam_id = oam_spr(16, 104+16*menu_pos_x, 0xAE, 0, oam_id );
+        oam_id = oam_spr(actor_x[0][0], actor_y[0][0], 0xAF, 0, oam_id);
+        oam_id = oam_spr(actor_x[0][1], actor_y[0][1], 0xAF, 0, oam_id);
+        oam_id = oam_spr(actor_x[1][0], actor_y[1][0], 0xAF, 0, oam_id);
+        oam_id = oam_spr(actor_x[1][1], actor_y[1][1], 0xAF, 0, oam_id);
+          
+        if (input_delay_PAD_LEFT[0] > 0)
+          --input_delay_PAD_LEFT[0];
+
       }
       else if (step_p_counter[0] == 0)
       {
