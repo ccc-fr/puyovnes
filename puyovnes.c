@@ -1771,7 +1771,7 @@ void init_round()
     step_p[i] = PLAY;
     step_p_counter[i] = 0;
     current_player = i;
-    update_next();
+    //update_next();
   }
 
   //setting column heights for both players
@@ -2432,8 +2432,12 @@ void main(void)
               break;
             case 7:  
               init_round();
-              continue;//we want to avoid the step_p_counter_increment
+              step_p_counter[0] = 8;
               break;
+            case 8:
+              //the new update_next with a loop takes too much time to be started in init_round, so moved here!
+              update_next();
+              continue;//we want to avoid the step_p_counter_increment
             default:
               break;
           }    
