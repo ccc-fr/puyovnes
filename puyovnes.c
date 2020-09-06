@@ -356,44 +356,53 @@ void play_hit(byte hit)
   //PULSE_CH0 is used by music, the sweep can be an issue
   //as it won't be deactivated automatically
   //so we use PULSE_CH1 for the moment
+  if (hit < 8)
+  {
+    APU_PULSE_DECAY(PULSE_CH1, 2250-(hit*250), 192, 8, 1);
+    //APU_PULSE_DECAY(PULSE_CH1, /*1121*/750+((hit-1)<<7), 192, 8, 1);
+    APU_PULSE_SWEEP(PULSE_CH1,4,2,1);
+    APU_NOISE_DECAY(0,8,3);
+    //APU_PULSE_SWEEP_DISABLE(PULSE_CH0);
+  }
+  else
+  {
+    play_bayoen();
+  } 
+  /*
   switch (hit)
   {
     case 0:
-      APU_PULSE_DECAY(PULSE_CH1, 2000, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1,2250, 192, 8, 1);
       break;
     case 1:
-      APU_PULSE_DECAY(PULSE_CH1, 1750, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 2000, 192, 8, 1);
       break;
     case 2:
-      APU_PULSE_DECAY(PULSE_CH1, 1200, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 1750, 192, 8, 1);
       break;
     case 3:
-      APU_PULSE_DECAY(PULSE_CH1, 900, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 1500, 192, 8, 1);
       break;
     case 4:
-      APU_PULSE_DECAY(PULSE_CH1, 600, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 1250, 192, 8, 1);
       break;
     case 5:
-      APU_PULSE_DECAY(PULSE_CH1, 450, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 1000, 192, 8, 1);
       break;
     case 6:
-      APU_PULSE_DECAY(PULSE_CH1, 200, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 750, 192, 8, 1);
       break;
     case 7:
-      APU_PULSE_DECAY(PULSE_CH1, 150, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 500, 192, 8, 1);
       break;
     case 8:
-      APU_PULSE_DECAY(PULSE_CH1, 100, 192, 8, 1);
+      APU_PULSE_DECAY(PULSE_CH1, 250, 192, 8, 1);
       break;
     default:
       play_bayoen();
       return;
-  }
-  
-  //APU_PULSE_DECAY(PULSE_CH1, /*1121*/750+((hit-1)<<7), 192, 8, 1);
-  APU_PULSE_SWEEP(PULSE_CH1,4,2,1);
-  APU_NOISE_DECAY(0,8,3);
-  //APU_PULSE_SWEEP_DISABLE(PULSE_CH0);
+  }*/
+
 }
 
 void play_puyo_fix()
@@ -489,11 +498,7 @@ const char PALETTE[32] = {
 //generates the puyo that will be used during gameplay, they will be stock into puyo_list
 void generate_rng()
 {
-  byte nb_red = NBCOLORPOOL; // palette 0
-  byte nb_blue = NBCOLORPOOL; // palette 1
-  byte nb_green = NBCOLORPOOL; // palette 2 
-  byte nb_yellow = NBCOLORPOOL; // palette 3
-  //Let's use a table to simplify the loop code
+  //Let's use a table to simplify the loop code, [0] red, [1] : blue, [2], : green [3] : yellow
   byte nb_color[4] = {NBCOLORPOOL,NBCOLORPOOL,NBCOLORPOOL,NBCOLORPOOL};
   char tmp;
   byte i, j, redo;
@@ -509,7 +514,7 @@ void generate_rng()
     puyo_list[i] = 0; //reinit
     redo = 1; // loop until we get what we want;
     //get a number between 0 and 3
-    for (j = 0 ; j < 4; ++j)
+    for (j = 0 ; j < 4 ; ++j)
     {
       do
       {
@@ -1611,29 +1616,22 @@ void update_next()
 
   //I still quite don't get how this tile buffering fuctions works
   //So I do it like..that, and it's ugly.
-  
-  byte tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1)>>1)]>>(((((p_puyo_list_index[current_player]+1)%2)*2)+0)*2))&3;
-  
+  byte i;
+  byte tmp_color; 
+  register word addr;
+  byte y[4] = {4,6,10,12};
   memset(attrbuf, 0, sizeof(attrbuf));
   
-  set_metatile(0,*(puyoSeq[tmp_color+blind_offset]+0x2));
-  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),4); 
-  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 4 ))), 1);
-  
-  tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1)>>1)]>>(((((p_puyo_list_index[current_player]+1)%2)*2)+1)*2))&3;
-  set_metatile(1,*(puyoSeq[tmp_color+blind_offset]+0x2));
-  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),6); 
-  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 6 ))), 1);
-
-  tmp_color = (puyo_list[((p_puyo_list_index[current_player]+2)>>1)]>>(((((p_puyo_list_index[current_player]+2)%2)*2)+0)*2))&3;
-  set_metatile(2,*(puyoSeq[tmp_color+blind_offset]+0x2));
-  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),10);
-  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 10 ))), 1);
-  
-  tmp_color = (puyo_list[((p_puyo_list_index[current_player]+2)>>1)]>>(((((p_puyo_list_index[current_player]+2)%2)*2)+1)*2))&3;
-  set_metatile(3,*(puyoSeq[tmp_color+blind_offset]+0x2));
-  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),12);
-  put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 12 ))), 1);; 
+  for ( i = 0; i < 4; ++i)
+  {
+    tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(i/2))%2)*2)+i%2)*2))&3;
+    addr = NTADR_A(14+(current_player<<1), y[i]) ;
+    set_metatile(0,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
+    attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),y[i]); 
+    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+    put_attr_entries((nt2attraddr(addr)), 1);
+  }
   return;
 }
 
@@ -2080,6 +2078,8 @@ void main(void)
   //init sound & music
   apu_init();
   music_ptr = 0;
+  play_bayoen();//play only to initialize dmc as on first play the sample doesn't play...
+  
   // enable rendering
   ppu_on_all();
   //ppu_wait_frame();
