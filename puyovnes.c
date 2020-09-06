@@ -493,6 +493,8 @@ void generate_rng()
   byte nb_blue = NBCOLORPOOL; // palette 1
   byte nb_green = NBCOLORPOOL; // palette 2 
   byte nb_yellow = NBCOLORPOOL; // palette 3
+  //Let's use a table to simplify the loop code
+  byte nb_color[4] = {NBCOLORPOOL,NBCOLORPOOL,NBCOLORPOOL,NBCOLORPOOL};
   char tmp;
   byte i, j, redo;
   // puyo_list contains 64 (PUYOLISTLENGTH) char/8 bits info
@@ -500,7 +502,7 @@ void generate_rng()
   // as we have 4 colors palettes
   // the method used here is probably attrocious in term of optimization
   // but it should works.
-  // we will be using rand8(), which is fast but...not very random
+  // we will be using rand8(), which is fast but...not very random =>nope using rand() finally
   rand();
   for (i = 0 ; i < PUYOLISTLENGTH ; ++i)
   {
@@ -512,40 +514,11 @@ void generate_rng()
       do
       {
         tmp = rand() & 3;
-        switch (tmp)
+        if (nb_color[tmp] > 0)
         {
-          case 0:
-            if (nb_red > 0)
-            {
-              --nb_red;
-              redo = 0;
-              puyo_list[i] += (tmp);
-            }
-            break;
-          case 1:
-            if (nb_blue > 0)
-            {
-              --nb_blue;
-              redo = 0;
-              puyo_list[i] += (tmp << j*2);
-            }
-            break;
-          case 2:
-            if (nb_green > 0)
-            {
-              --nb_green;
-              redo = 0;
-              puyo_list[i] += (tmp << j*2);
-            }
-            break;
-          case 3:
-            if (nb_yellow > 0)
-            {
-              --nb_yellow;
-              redo = 0;
-              puyo_list[i] += (tmp << j*2);
-            }
-            break;
+          --nb_color[tmp];
+          redo = 0;
+          puyo_list[i] += (tmp << j*2);
         }
       }while (redo);
     } 
@@ -1194,8 +1167,13 @@ void fall_board()
         case OJAMA:
           set_metatile(j-1,0xdc);
           attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
+          break;//          
+        default:
+          set_metatile(j-1,*(puyoSeq[boards[current_player][tmp_counter][j]+blind_offset]+0x2));
+          attrbuf[j>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][j],tmp_counter_2,j*2);
           break;
-        case PUYO_RED:
+        break;
+        /*case PUYO_RED:
           set_metatile(j-1,0xd8);
           attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
           break;
@@ -1210,7 +1188,7 @@ void fall_board()
         case PUYO_YELLOW:
           set_metatile(j-1,0xd8);
           attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter_2,j*2);
-          break;
+          break;*/
       }
     } 
    
@@ -1580,7 +1558,7 @@ void flush()
         set_metatile(j-1,0xdc);
         attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
         break;
-      case PUYO_RED:
+      /*case PUYO_RED:
         set_metatile(j-1,0xd8);
         attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
         break;
@@ -1595,10 +1573,15 @@ void flush()
       case PUYO_YELLOW:
         set_metatile(j-1,0xd8);
         attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter_2,j*2);
-        break;
-      case 255:
-        set_metatile(j-1, 0xc4);
+        break;*/
+      case 255: //the wall tile
+        set_metatile(j-1, bg_tile);
         attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
+        break;
+      default:
+        set_metatile(j-1,*(puyoSeq[tmp_boards[tmp_counter][j]+blind_offset]+0x2));
+        attrbuf[j>>1] = return_tile_attribute_color(tmp_boards[tmp_counter][j],tmp_counter_2,j*2);
+        break;
     }
   } 
 
@@ -1629,16 +1612,27 @@ void update_next()
   //I still quite don't get how this tile buffering fuctions works
   //So I do it like..that, and it's ugly.
   
+  byte tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1)>>1)]>>(((((p_puyo_list_index[current_player]+1)%2)*2)+0)*2))&3;
+  
   memset(attrbuf, 0, sizeof(attrbuf));
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p_puyo_list_index[current_player]+1)>>1)]>>(((((p_puyo_list_index[current_player]+1)%2)*2)+0)*2))&3,14+(current_player<<1),4); 
+  
+  set_metatile(0,*(puyoSeq[tmp_color+blind_offset]+0x2));
+  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),4); 
   put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 4 ))), 1);
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p_puyo_list_index[current_player]+1)>>1)]>>(((((p_puyo_list_index[current_player]+1)%2)*2)+1)*2))&3,14+(current_player<<1),6); 
+  
+  tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1)>>1)]>>(((((p_puyo_list_index[current_player]+1)%2)*2)+1)*2))&3;
+  set_metatile(1,*(puyoSeq[tmp_color+blind_offset]+0x2));
+  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),6); 
   put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 6 ))), 1);
-  //attrbuf[0] = return_tile_attribute_color(0,14+(i<<1),8); 
-  //put_attr_entries((nt2attraddr( NTADR_A(14+(i<<1), 8 ))), 1);
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p_puyo_list_index[current_player]+2)>>1)]>>(((((p_puyo_list_index[current_player]+2)%2)*2)+0)*2))&3,14+(current_player<<1),10);
+
+  tmp_color = (puyo_list[((p_puyo_list_index[current_player]+2)>>1)]>>(((((p_puyo_list_index[current_player]+2)%2)*2)+0)*2))&3;
+  set_metatile(2,*(puyoSeq[tmp_color+blind_offset]+0x2));
+  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),10);
   put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 10 ))), 1);
-  attrbuf[0] = return_tile_attribute_color((puyo_list[((p_puyo_list_index[current_player]+2)>>1)]>>(((((p_puyo_list_index[current_player]+2)%2)*2)+1)*2))&3,14+(current_player<<1),12);
+  
+  tmp_color = (puyo_list[((p_puyo_list_index[current_player]+2)>>1)]>>(((((p_puyo_list_index[current_player]+2)%2)*2)+1)*2))&3;
+  set_metatile(3,*(puyoSeq[tmp_color+blind_offset]+0x2));
+  attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),12);
   put_attr_entries((nt2attraddr( NTADR_A(14+(current_player<<1), 12 ))), 1);; 
   return;
 }
@@ -2179,8 +2173,8 @@ void main(void)
               break;
           }
         }
-        //menu sprites
-        // set sprite in OAM buffer, chrnum is tile, attr is attribute, sprid is offset in OAM in bytes
+        // menu's sprites
+        //  set sprite in OAM buffer, chrnum is tile, attr is attribute, sprid is offset in OAM in bytes
         // returns sprid+4, which is offset for a next sprite
         /*unsigned char __fastcall__ oam_spr(unsigned char x, unsigned char y,
 					unsigned char chrnum, unsigned char attr,
@@ -2675,18 +2669,18 @@ void main(void)
         /*column_height[(actor_x[0]>>4) - 1] -= 16;
         column_height[(actor_x[1]>>4) - 1] -= 16;*/
 
-        set_metatile(0,0xd8);
+        //set_metatile(0,0xd8);
         //test !
         //puyoSeq contient l'adresse des data du sprite, et l'adresse de la tile est à cette adresse +2
-        //set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
-          
+         set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
         attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1);
         //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
         //like here
         //attribute_table[(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2)] = attrbuf[0];
-        set_metatile(1,0xd8);
+        //set_metatile(1,0xd8);
+        set_metatile(1,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
         /*sprintf(str,"table:%d %d %d %d",attrbuf[0],actor_x[0]>>3,(actor_y[0]>>3)+1,(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2));
         addr = NTADR_A(1,26);
         vrambuf_put(addr,str,20);*/
