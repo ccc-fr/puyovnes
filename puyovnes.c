@@ -2431,12 +2431,12 @@ void main(void)
               step_p_counter[0] = 7;
               break;
             case 7:  
-              init_round();
+               //the new update_next with a loop takes too much time to be started in init_round, so moved here!
+              update_next();
               step_p_counter[0] = 8;
               break;
             case 8:
-              //the new update_next with a loop takes too much time to be started in init_round, so moved here!
-              update_next();
+             init_round();
               continue;//we want to avoid the step_p_counter_increment
             default:
               break;
