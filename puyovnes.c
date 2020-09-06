@@ -410,7 +410,6 @@ void play_puyo_fix()
   APU_TRIANGLE_LENGTH(497,13);
 }
 
-
 void play_bayoen()
 {
   APU_ENABLE(0x1f);//DMC channel must be enabled each time a sample is played, because...
@@ -2672,30 +2671,23 @@ void main(void)
         //set_metatile(0,0xd8);
         //test !
         //puyoSeq contient l'adresse des data du sprite, et l'adresse de la tile est à cette adresse +2
-         set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
+        set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
         attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1);
-        //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
-        //like here
-        //attribute_table[(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2)] = attrbuf[0];
-        //set_metatile(1,0xd8);
-        set_metatile(1,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
-        /*sprintf(str,"table:%d %d %d %d",attrbuf[0],actor_x[0]>>3,(actor_y[0]>>3)+1,(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2));
-        addr = NTADR_A(1,26);
-        vrambuf_put(addr,str,20);*/
-
-        //set_attr_entry((((actor_x[1]/8)+32) & 63)/2,1,return_sprite_color(1));
-        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
-        /*sprintf(str,"table:%d %d %d %d",attrbuf[1],actor_x[1]>>3,(actor_y[1]>>3)+1,(((actor_y[1]>>3)+1)<<1) + ((actor_x[1]>>3)>>2));
-        addr = NTADR_A(1,27);
-        vrambuf_put(addr,str,20);*/
-
+        
         addr = NTADR_A((actor_x[current_player][0]>>3), (actor_y[current_player][0]>>3)+1);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
-
+        //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
+        //like here
+        //attribute_table[(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2)] = attrbuf[0];
+        //set_metatile(1,0xd8);
+        set_metatile(0,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
+    
+        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+        
         addr = NTADR_A((actor_x[current_player][1]>>3), (actor_y[current_player][1]>>3)+1);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
@@ -2710,14 +2702,6 @@ void main(void)
         
       }
     }
-    
-    /*if (oam_id!=0) 
-      oam_hide_rest(oam_id);
-    // ensure VRAM buffer is cleared
-    ppu_wait_nmi();
-    vrambuf_clear();*/
-    
-    //scroll(0,256);//y==256 bottom screen,0 top 
   }
 }
 
