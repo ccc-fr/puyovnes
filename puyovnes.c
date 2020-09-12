@@ -65,7 +65,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //with 8 bits we have 2 pairs
 //So we need an array length of 64 bytes/char to stock everything, amazing !
 #define PUYOLISTLENGTH 64
-
+#define DEBUG 1
 /// GLOBAL VARIABLES
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
@@ -604,7 +604,7 @@ void update_boards()
 }
 
 // Look for puyo to destroy and flag them as such
-byte check_board(/*byte board_index,*/ byte x, byte y)
+byte check_board(byte x, byte y)
 {
   static byte i, j, k, current_color; //static are faster, but they are keeping there value outside of context
   byte counter = 0, tmp_counter = 0;
@@ -629,6 +629,9 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
   memset(tmp_boards,0,sizeof(tmp_boards));
 
   current_color = ((boards[current_player][x][y]));
+  //OJAMA are not destroyed by being linked by 4 !
+  if (current_color == OJAMA)
+    return 0;
 
   //tmp_boards contains flag of the currently looked color 
   tmp_boards[x][y] = FLAG;
@@ -642,6 +645,12 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
         tmp_boards[i][y] = FLAG;
         ++counter;
       }
+      /*else if (OJAMA == ((boards[current_player][i][y]) ))
+      {
+        tmp_boards[i][y] = FLAG;
+        //counter is not incremented for ojamas
+        break;//if we met an ojama, then the chain is simply broken !
+      }*/
       else
       {  
        /* i = 7; //no need to continue if not found
@@ -662,6 +671,12 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
         tmp_boards[i][y] = FLAG;
         ++counter;
       }
+      /*else if (OJAMA == ((boards[current_player][i][y]) ))
+      {
+        tmp_boards[i][y] = FLAG;
+        //counter is not incremented for ojamas
+        break;//if we met an ojama, then the chain is simply broken !
+      }*/
       else
       {
         /*i = 7; //no need to continue if not found
@@ -681,7 +696,13 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
       {     
         tmp_boards[x][i] = FLAG;
         ++counter;
-      } 
+      }
+      /*else if (OJAMA == ((boards[current_player][x][i]) ))
+      {
+        tmp_boards[x][i] = FLAG;
+        //counter is not incremented for ojamas
+        break;//if we met an ojama, then the chain is simply broken !
+      }*/
       else
       {
         //i = 14; //no need to continue if not found
@@ -700,7 +721,13 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
       {     
         tmp_boards[x][i] = FLAG;
         ++counter;
-      } 
+      }
+     /* else if (OJAMA == ((boards[current_player][x][i]) ))
+      {
+        tmp_boards[x][i] = FLAG;
+        //counter is not incremented for ojamas
+        break;//if we met an ojama, then the chain is simply broken ! no need to look the next
+      }*/
       else
       {
         //i = 14; //no need to continue if not found
@@ -786,7 +813,7 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
       ++tmp_counter;
     }
     
-    //no need to go backward if nothing has been foun in the first loop
+    //no need to go backward if nothing has been found in the first loop
     if (tmp_counter != 0) 
     {
       
@@ -989,6 +1016,20 @@ byte check_board(/*byte board_index,*/ byte x, byte y)
         {
           boards[current_player][i][j] |= FLAG;
           ++destruction;
+          //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
+          //note : it will probably slow done things a lot do do that :-s
+          //look left
+          if (i>0 && boards[current_player][i-1][j] == OJAMA)
+            boards[current_player][i-1][j] |= FLAG;
+          //look right
+          if (i<5 && boards[current_player][i+1][j] == OJAMA)
+            boards[current_player][i+1][j] |= FLAG;
+          //look up
+          if (j>0 && boards[current_player][i][j-1] == OJAMA)
+            boards[current_player][i][j-1] |= FLAG;
+          //look down
+          if (j<12 && boards[current_player][i][j+1] == OJAMA)
+            boards[current_player][i][j+1] |= FLAG;
         }
       }
     }
@@ -1640,16 +1681,16 @@ void build_field()
   //register word addr;
   //byte i, x, y;
   byte x, y;
-  //Filling up boards with EMPTY
-  for (x = 0; x < 6; ++x)
+  //Filling up boards with EMPTY => done on wait now
+  /*for (x = 0; x < 6; ++x)
   {
     for (y = 0; y < 13; ++y)
     {
-      boards[0][x][y] = EMPTY/* + (EMPTY << 4)*/;
-      boards[1][x][y] = EMPTY/* + (EMPTY << 4)*/;
+      boards[0][x][y] = EMPTY;
+      boards[1][x][y] = EMPTY;
       tmp_boards[x][y] = 0;
     }
-  }
+  }*/
   
   //initialize attribute table to 0;
   //0 color palette 0
@@ -2227,7 +2268,8 @@ void main(void)
           }
           else
           {
-            --actor_y[current_player][i];
+            if (DEBUG)
+              --actor_y[current_player][i];
             sprite_addr[current_player][i] = ((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset;
             oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
             //oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset]);
@@ -2351,6 +2393,12 @@ void main(void)
               memset(tmp_boards, 0, sizeof(tmp_boards));
               //reset the score
               memset(score,0,sizeof(score));
+              if (DEBUG)
+              {
+                /*boards[0][10][1]=OJAMA;
+                score[1] = 1000;*/
+                ojamas[0] = 1550;
+              }
               step_p_counter[0] = 1;
               break;
             case 1:
@@ -2389,11 +2437,11 @@ void main(void)
               addr = NTADR_A(16,27);
               vrambuf_put(addr,str,2);
               
-              sprintf(str,"Hit:%2d", nb_hit[0]);
+              sprintf(str,"Hit:%2d", nb_hit[1]);
               addr = NTADR_A(18,26);
               vrambuf_put(addr,str,6);
               
-              sprintf(str,"%6lu", score[0]);
+              sprintf(str,"%6lu", score[1]);
               addr = NTADR_A(24,27);
               vrambuf_put(addr,str,6);
    
