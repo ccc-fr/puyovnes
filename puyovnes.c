@@ -1629,9 +1629,10 @@ void update_next()
   //we move only by 2 however
   
   // puyo_list       p1_puyo_list_index
-  // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
+  // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 puyos par index soit 2 paires
+  // donc si p1_puyo_list_index est 1 ou 0 on pointe sur 0 dans puyo_list, 2 et 3 sur 1, 4 et 5 sur 2 etc
   // ensuite on décale sur le bon élément de l'index 
-  // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
+  // 2 bits pour chaque puyo=> on décale à droite (0>>0, 1>>2, 2>>4,3>>6)
   // et on fait & 3 pour ne garder que les 2 premiers bits
   
   //puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
@@ -1647,7 +1648,7 @@ void update_next()
   for ( i = 0; i < 4; ++i)
   {
     tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(i/2))%2)*2)+i%2)*2))&3;
-    addr = NTADR_A(14+(current_player<<1), y[i]) ;
+    addr = NTADR_A(14+(current_player<<1), y[i]);
     set_metatile(0,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
     attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),y[i]); 
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -2237,9 +2238,10 @@ void main(void)
         {
           // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
           // puyo_list       p1_puyo_list_index
-          // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 paires par index
+          // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 puyos par index, soit 2 paires
           // ensuite on décale sur le bon élément de l'index 
-          // 2 bits pour chaque puyo=> on décale à droite (0<<0, 1<<2, 2<<4,3<<6)
+          // 2 bits pour chaque puyo=> on décale à droite (0>>0, 1>>2, 2>>4,3>>6)
+          // Donc si p_puyo_list_index est pair on décale déjà de 4, sinon de 0, et si i est à 0 on décale encore de 2
           // et on fait & 3 pour ne garder que les 2 premiers bits  
           //Debug => on bloque p2
           if (current_player == 0)
@@ -2253,7 +2255,6 @@ void main(void)
               --actor_y[current_player][i];
             sprite_addr[current_player][i] = ((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset;
             oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
-            //oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset]);
           }
           if (actor_dy[current_player][i] != 0) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
@@ -2290,7 +2291,10 @@ void main(void)
             }    
           }
           
-          if (actor_dy[current_player][i] != 0 && (column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset) < actor_y[current_player][i])
+          if (actor_dy[current_player][i] != 0 &&
+              (((column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset) < actor_y[current_player][i]) /*||
+              (((column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset) > 190 ))*/)
+             )
           {
             actor_dy[current_player][i] = 0; 
             actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset;
@@ -2615,7 +2619,7 @@ void main(void)
           actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
           actor_dy[current_player][0] = 1;
           actor_dy[current_player][1] = 1;
-          ++p_puyo_list_index[current_player];
+          p_puyo_list_index[current_player] = (++p_puyo_list_index[current_player])%64;
           /*
           step_p1 = SHOW_NEXT;*/
           step_p[current_player] = FALL_OJAMA;
@@ -2682,7 +2686,7 @@ void main(void)
             actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
             actor_dy[current_player][0] = 1;
             actor_dy[current_player][1] = 1;
-            ++p_puyo_list_index[current_player];
+            p_puyo_list_index[current_player] = (++p_puyo_list_index[current_player])%64;
             //step_p1 = SHOW_NEXT;
             step_p[current_player] = FALL_OJAMA;
             step_p_counter[current_player] = 0;
