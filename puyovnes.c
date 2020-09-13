@@ -67,6 +67,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 #define PUYOLISTLENGTH 64
 #define DEBUG 1
 /// GLOBAL VARIABLES
+byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
@@ -181,6 +182,7 @@ byte bg_tile;//address of top left, bottom left+1, top right+2, bottom right+4
 byte bg_pal;//0 color palette 0, 85 color palette 1 (4 couleur par octets, 0b01010101), 170 color palette 2 0b10101010, 255 color palette 3 0b11111111
 byte menu_pos_x;
 byte menu_pos_y[4];
+char str[32];
 
 //
 // MUSIC ROUTINES
@@ -368,41 +370,6 @@ void play_hit(byte hit)
   {
     play_bayoen();
   } 
-  /*
-  switch (hit)
-  {
-    case 0:
-      APU_PULSE_DECAY(PULSE_CH1,2250, 192, 8, 1);
-      break;
-    case 1:
-      APU_PULSE_DECAY(PULSE_CH1, 2000, 192, 8, 1);
-      break;
-    case 2:
-      APU_PULSE_DECAY(PULSE_CH1, 1750, 192, 8, 1);
-      break;
-    case 3:
-      APU_PULSE_DECAY(PULSE_CH1, 1500, 192, 8, 1);
-      break;
-    case 4:
-      APU_PULSE_DECAY(PULSE_CH1, 1250, 192, 8, 1);
-      break;
-    case 5:
-      APU_PULSE_DECAY(PULSE_CH1, 1000, 192, 8, 1);
-      break;
-    case 6:
-      APU_PULSE_DECAY(PULSE_CH1, 750, 192, 8, 1);
-      break;
-    case 7:
-      APU_PULSE_DECAY(PULSE_CH1, 500, 192, 8, 1);
-      break;
-    case 8:
-      APU_PULSE_DECAY(PULSE_CH1, 250, 192, 8, 1);
-      break;
-    default:
-      play_bayoen();
-      return;
-  }*/
-
 }
 
 void play_puyo_fix()
@@ -610,7 +577,6 @@ byte check_board(byte x, byte y)
   byte counter = 0, tmp_counter = 0;
   /*byte mask = 15, flag = 8, shift = 0;*/
   byte destruction = 0;
-  //char str[32];
   
   //to gain time we start from position of the last placed puyos
   //actor_x[board_index], actor_y[board_index],actor_x[board_index+1], actor_y[board_index+1],
@@ -1045,9 +1011,7 @@ byte destroy_board()
   register word addr;
   byte counter = 0, tmp_line = 0;
   byte destruction = 0;
- 
-  //char str[32];
-  
+   
   tmp_counter = step_p_counter[current_player];
   
   //step 0 we change the puyo to puyo_pop => e0
@@ -1138,11 +1102,9 @@ void fall_board()
   byte attr_x_shift = 1;
   byte fall = 0;
   byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
-  //char str[32];
    
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/
 
-  
   for (j = 0 ; j < 13 ; ++j)
   {
     if (can_fall != 1 && ( (boards[current_player][tmp_counter][j] & smask)) != EMPTY)
@@ -1271,6 +1233,48 @@ void fall_board()
     {
       if (step_p[current_player] == FALL)
       {
+        if (boards[current_player][0][12] == EMPTY &&
+            boards[current_player][1][12] == EMPTY &&
+            boards[current_player][2][12] == EMPTY &&
+            boards[current_player][3][12] == EMPTY &&
+            boards[current_player][4][12] == EMPTY &&
+            boards[current_player][5][12] == EMPTY )
+        { 
+          //all clear !
+          score[current_player] += 2100;
+
+          //WIP add the opponent ojama removal from current player stack !
+          if (current_player == 0)
+          {
+            ojamas[2] += 2100;
+            if (ojamas[0] > 0)
+            {  
+              ojamas[0] = (ojamas[0] - 2100 > ojamas[0] ) ? 0 : ojamas[0] - 2100 ;
+            }
+          }
+          else
+          {
+            ojamas[0] += 2100;
+            if (ojamas[2] > 0)
+            {  
+              ojamas[2] = (ojamas[2] - 2100 > ojamas[2] ) ? 0 : ojamas[2] - 2100 ;
+            }
+          }
+
+          //TODO warikomi not handled yet
+          sprintf(str,"Hit:AC");
+          addr = NTADR_A(nt_x_offset[current_player],26);
+          vrambuf_put(addr,str,6);
+          sprintf(str,"%6lu", score[current_player]);
+          addr = NTADR_A(6 + nt_x_offset[current_player],27);
+          vrambuf_put(addr,str,6);
+
+          //play hit sound
+          play_bayoen();
+          
+          step_p_counter[current_player] = 1;
+          manage_point();
+        }
         step_p[current_player] = CHECK_ALL;
         step_p_counter[current_player] = 255;
       }
@@ -1298,7 +1302,6 @@ void manage_point()
 {
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
-  char str[6];
   register word addr;
   byte tmp_mask = 0, i = 0, j = 0;
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
@@ -1406,39 +1409,16 @@ void manage_point()
       tmp_score %= damageList[i];     
     }
 
-    set_metatile(0,str[0]);
-    addr = NTADR_A(20-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
-    //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
-    //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
-    //plus profondément à un moment.
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-
-    set_metatile(0,str[1]);
-    addr = NTADR_A(22-nt_x_offset[current_player], 0);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-
-    set_metatile(0,str[2]);
-    addr = NTADR_A(24-nt_x_offset[current_player], 0);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-
-    set_metatile(0,str[3]);
-    addr = NTADR_A(26-nt_x_offset[current_player], 0);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-
-    set_metatile(0,str[4]);
-    addr = NTADR_A(28-nt_x_offset[current_player], 0);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-
-    set_metatile(0,str[5]);
-    addr = NTADR_A(30-nt_x_offset[current_player], 0);
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-
+    for (j = 0; j < 6; ++j)
+    {
+      set_metatile(0,str[j]);
+      addr = NTADR_A((20+(j*2))-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+      //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
+      //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
+      //plus profondément à un moment.
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+    }
   }
 }
 
@@ -1455,8 +1435,6 @@ byte fall_ojama()
   byte opponent_status = step_p[~current_player & 1]; //~0 & 1 donne 1 et ~1 & 1 donne 0;
   byte fall = 0, i = 0, top_line_space = 0;
   
-  //char str[32];
-
   if ((step_ojama_fall[current_player] == 0 && opponent_status != PLAY) )
   {
     //inutile de continuer on passe à SHOW_NEXT
@@ -1568,7 +1546,11 @@ void flush()
   
    //tmp_boards contains the information we need
   //we start from the bottom, each cell will receive the one above itself
-  tmp_boards[tmp_counter][14] = tmp_boards[tmp_counter][13];
+  for (j = 14 ; j > 0 ; --j)
+  {
+    tmp_boards[tmp_counter][j] = tmp_boards[tmp_counter][j-1];
+  }
+  /*tmp_boards[tmp_counter][14] = tmp_boards[tmp_counter][13];
   tmp_boards[tmp_counter][13] = tmp_boards[tmp_counter][12];
   tmp_boards[tmp_counter][12] = tmp_boards[tmp_counter][11];
   tmp_boards[tmp_counter][11] = tmp_boards[tmp_counter][10];
@@ -1581,7 +1563,7 @@ void flush()
   tmp_boards[tmp_counter][4] = tmp_boards[tmp_counter][3];
   tmp_boards[tmp_counter][3] = tmp_boards[tmp_counter][2];
   tmp_boards[tmp_counter][2] = tmp_boards[tmp_counter][1];
-  tmp_boards[tmp_counter][1] = tmp_boards[tmp_counter][0];
+  tmp_boards[tmp_counter][1] = tmp_boards[tmp_counter][0];*/
   tmp_boards[tmp_counter][0] = EMPTY;  //last one receive empty
 
   
@@ -2071,7 +2053,6 @@ void handle_controler_and_sprites()
 void main(void)
 {
   char i,j;	// actor index
-  char str[32];
   register word addr;
 
   setup_graphics();
@@ -2080,7 +2061,7 @@ void main(void)
   vram_write("HELLO BAYOEN", 12);*/
   build_field();
   generate_rng();
-
+  debug = DEBUG;
   //we start by waiting each player to be ready
   //the wait state also build the board and things like that 
   /*step_p[0] = WAIT;
@@ -2268,7 +2249,7 @@ void main(void)
           }
           else
           {
-            if (DEBUG)
+            if (debug)
               --actor_y[current_player][i];
             sprite_addr[current_player][i] = ((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset;
             oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
@@ -2393,11 +2374,11 @@ void main(void)
               memset(tmp_boards, 0, sizeof(tmp_boards));
               //reset the score
               memset(score,0,sizeof(score));
-              if (DEBUG)
+              if (debug)
               {
                 /*boards[0][10][1]=OJAMA;
                 score[1] = 1000;*/
-                ojamas[0] = 1550;
+                ojamas[0] = /*1500*/0;
               }
               step_p_counter[0] = 1;
               break;
