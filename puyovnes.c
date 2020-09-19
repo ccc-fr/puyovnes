@@ -186,8 +186,10 @@ char str[32];
 
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
-byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3;
+byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y;
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
+  //const byte tile_offset = (current_player == 0 ? 0 : 16);
+unsigned long int tmp_score;
 
 //
 // MUSIC ROUTINES
@@ -438,9 +440,8 @@ void set_attr_entry(byte x, byte y, byte pal) {
 }
 
 void put_attr_entries(word addr, byte length) {
-  //byte i;
-  for (gp_i=0; gp_i<length; ++gp_i) {
-    VRAMBUF_PUT(addr, attrbuf[gp_i], 0);
+  for (gp_k=0; gp_k<length; ++gp_k) {
+    VRAMBUF_PUT(addr, attrbuf[gp_k], 0);
     addr += 8;
   }
   vrambuf_end();
@@ -520,11 +521,12 @@ byte return_sprite_color(byte spr_index)
 //then update the attributes with the color passes in parameter
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 {
-  //byte attr; // now gp_i
-  //byte index; // now gp_j
-  byte attr_x = spr_x&0xfc;
-  byte attr_y = spr_y&0xfc;
-  byte mask = 3;
+  //byte attr; // now tmp_attr
+  //byte index; // now tmp_index
+  attr_x = spr_x&0xfc;
+  attr_y = spr_y&0xfc;
+  //byte mask = 3;
+  tmp_mask = 3;
   //we must not override colors of the tiles around the one we change
   //We must determine were our meta sprite is located in the 4*4 metatile attributes
   //if x is odd it will be on the right, even left
@@ -532,23 +534,23 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
   //LSB is top left, MSB bottom right
   if (attr_y < spr_y)
   {
-    mask <<= 4;
+    tmp_mask <<= 4;
     color <<= 4;
   }
   if (attr_x < spr_x) 
   {
-    mask <<= 2;
+    tmp_mask <<= 2;
     color <<= 2;
   }
   // attribute position is y/2 + x/4 where y 2 LSB are 0
-  gp_j = (attr_y<<1) + (spr_x>>2);
+  tmp_index = (attr_y<<1) + (spr_x>>2);
 
-  gp_i = attribute_table[gp_j];
+  tmp_attr = attribute_table[tmp_index];
   //let's erase the previous attributes for the intended position
-  gp_i &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
-  gp_i += color;
-  attribute_table[gp_j] = gp_i;
-  return gp_i;
+  tmp_attr &= ~tmp_mask; //~ bitwise not, so we keep only bit outside of mask from attr
+  tmp_attr += color;
+  attribute_table[tmp_index] = tmp_attr;
+  return tmp_attr;
 }
 
 //Update the boards table, once the puyos have stop moving, not optimized :-S
@@ -582,10 +584,12 @@ void update_boards()
 byte check_board(byte x, byte y)
 {
   static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
-  byte counter = 0/*, tmp_counter = 0*/; //tmp_counter is a global variable now
-  /*byte mask = 15, flag = 8, shift = 0;*/
-  byte destruction = 0;
+  /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
+  /*byte mask = 15, flag = 8, shift = 0;*/ 
+  //byte destruction = 0;//tmp_coutner_3 !
+  tmp_counter_2 = 0; // counter
   tmp_counter = 0;
+  tmp_counter_3 = 0; //destruction
   //to gain time we start from position of the last placed puyos
   //actor_x[board_index], actor_y[board_index],actor_x[board_index+1], actor_y[board_index+1],
   //x,y for each last puyo should be save somehere to gain time
@@ -617,7 +621,7 @@ byte check_board(byte x, byte y)
       if (current_color == ((boards[current_player][gp_i][y]) ))
       {     
         tmp_boards[gp_i][y] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       /*else if (OJAMA == ((boards[current_player][i][y]) ))
       {
@@ -643,7 +647,7 @@ byte check_board(byte x, byte y)
       if (current_color == ((boards[current_player][gp_i][y]) ))
       {     
         tmp_boards[gp_i][y] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       /*else if (OJAMA == ((boards[current_player][i][y]) ))
       {
@@ -669,7 +673,7 @@ byte check_board(byte x, byte y)
       if (current_color == ((boards[current_player][x][gp_i]) ))
       {     
         tmp_boards[x][gp_i] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       /*else if (OJAMA == ((boards[current_player][x][i]) ))
       {
@@ -694,7 +698,7 @@ byte check_board(byte x, byte y)
       if (current_color == ((boards[current_player][x][gp_i]) ))
       {     
         tmp_boards[x][gp_i] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
      /* else if (OJAMA == ((boards[current_player][x][i]) ))
       {
@@ -711,7 +715,7 @@ byte check_board(byte x, byte y)
     ++gp_i;
   }
   //nothing found ? exit !
-  if (counter == 0)
+  if (tmp_counter_2 == 0)
     return 0;
   
   //ok so we got something, now looking for more
@@ -729,7 +733,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[1][gp_j] == FLAG)) )
     {
       tmp_boards[0][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -740,7 +744,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[2][gp_j] == FLAG)) )
     {
       tmp_boards[1][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -751,7 +755,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[3][gp_j] == FLAG)) )
     {
       tmp_boards[2][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -762,7 +766,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[4][gp_j] == FLAG)) )
     {
       tmp_boards[3][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -773,7 +777,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[5][gp_j] == FLAG)) )
     {
       tmp_boards[4][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -783,7 +787,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[4][gp_j] == FLAG)))
     {
       tmp_boards[5][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
     
@@ -797,7 +801,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[5][gp_j] == FLAG)) )
       {
         tmp_boards[4][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
       //3
@@ -806,7 +810,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[4][gp_j] == FLAG)) )
       {
         tmp_boards[3][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
       //2
@@ -815,7 +819,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[3][gp_j] == FLAG)) )
       {
         tmp_boards[2][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
       //1
@@ -824,7 +828,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[2][gp_j] == FLAG)) )
       {
         tmp_boards[1][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
        //0
@@ -832,7 +836,7 @@ byte check_board(byte x, byte y)
            ((tmp_boards[1][gp_j] == FLAG)) )
       {
         tmp_boards[0][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       } 
       
     }
@@ -855,7 +859,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[1][gp_j] == FLAG)) )
     {
       tmp_boards[0][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -866,7 +870,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[2][gp_j] == FLAG)) )
     {
       tmp_boards[1][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -877,7 +881,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[3][gp_j] == FLAG)) )
     {
       tmp_boards[2][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -888,7 +892,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[4][gp_j] == FLAG)) )
     {
       tmp_boards[3][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -899,7 +903,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[5][gp_j] == FLAG)) )
     {
       tmp_boards[4][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -909,7 +913,7 @@ byte check_board(byte x, byte y)
          (tmp_boards[4][gp_j] == FLAG)))
     {
       tmp_boards[5][gp_j] = FLAG;
-      ++counter;
+      ++tmp_counter_2;
       ++tmp_counter;
     }
 
@@ -930,7 +934,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[5][gp_j] == FLAG)) )
       {
         tmp_boards[4][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
       //3
@@ -939,7 +943,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[4][gp_j] == FLAG)) )
       {
         tmp_boards[3][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
       //2
@@ -948,7 +952,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[3][gp_j] == FLAG)) )
       {
         tmp_boards[2][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
       //1
@@ -957,7 +961,7 @@ byte check_board(byte x, byte y)
             (tmp_boards[2][gp_j] == FLAG)) )
       {
         tmp_boards[1][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       }
       
        //0
@@ -965,7 +969,7 @@ byte check_board(byte x, byte y)
            ((tmp_boards[1][gp_j] == FLAG)) )
       {
         tmp_boards[0][gp_j] = FLAG;
-        ++counter;
+        ++tmp_counter_2;
       } 
     }
     tmp_counter = 0;
@@ -973,13 +977,13 @@ byte check_board(byte x, byte y)
   }
   
   //we started from 0, so at 3 we have 4 to erase
-  if (counter >= 3)
+  if (tmp_counter_2 >= 3)
   {
     //update the variable for point counting
-    nb_puyos_destroyed[current_player] += (counter + 1); //how many puyos are destroyed on that hit
+    nb_puyos_destroyed[current_player] += (tmp_counter_2 + 1); //how many puyos are destroyed on that hit
     // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow
     mask_color_destroyed |= (1 << shift[current_player]) << current_color;  
-    nb_group[current_player] += (counter + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
+    nb_group[current_player] += (tmp_counter_2 + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
 
     //copy flag to boards
     for (gp_i = 0; gp_i < 6; ++gp_i)
@@ -989,7 +993,7 @@ byte check_board(byte x, byte y)
         if ( tmp_boards[gp_i][gp_j] == FLAG)
         {
           boards[current_player][gp_i][gp_j] |= FLAG;
-          ++destruction;
+          ++tmp_counter_3;
           //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
           //note : it will probably slow done things a lot do do that :-s
           //look left
@@ -1008,7 +1012,7 @@ byte check_board(byte x, byte y)
       }
     }
   }
-  return destruction;
+  return tmp_counter_3;
 }
 
 //puyo visual destroying after check_board
@@ -1102,7 +1106,7 @@ void fall_board()
   //on reconstruit d'abord la colonne sans trou dans boards[x][y]
   //ensuite on redessine toute la colonne dans le buffer.
   //si pas de changement on ne fait rien pour gagner en temps de calcul !
-  byte j, j2;
+  //byte j, j2; replaced by  gp_i and gp_j
   //register word addr;
   byte can_fall = 0, previous_empty = 0, puyo_found = 0;
   byte smask = 7;
@@ -1114,27 +1118,27 @@ void fall_board()
   
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/
 
-  for (j = 0 ; j < 13 ; ++j)
+  for (gp_j = 0 ; gp_j < 13 ; ++gp_j)
   {
-    if (can_fall != 1 && ( (boards[current_player][tmp_counter][j] & smask)) != EMPTY)
+    if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & smask)) != EMPTY)
     {
-      puyo_found = j;// if no puyo are found then the column is empty=> need to reset height
+      puyo_found = gp_j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
-      if (j+1 < 13)
-        ++j;  
+      if (gp_j+1 < 13)
+        ++gp_j;  
     }
 
-    if (can_fall == 1 && ( (boards[current_player][tmp_counter][j] & smask)) == EMPTY)
+    if (can_fall == 1 && ( (boards[current_player][tmp_counter][gp_j] & smask)) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
-      for (j2 = j ; j2 >= previous_empty && j2 < 255 ; --j2)
+      for (gp_i = gp_j ; gp_i >= previous_empty && gp_i < 255 ; --gp_i)
       {
-        if (j2 == 0) 
-          boards[current_player][tmp_counter][j2] = EMPTY; /*(boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);*/
+        if (gp_i == 0) 
+          boards[current_player][tmp_counter][gp_i] = EMPTY; /*(boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);*/
         else
-          boards[current_player][tmp_counter][j2] = boards[current_player][tmp_counter][j2-1]; /*(boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  */
+          boards[current_player][tmp_counter][gp_i] = boards[current_player][tmp_counter][gp_i-1]; /*(boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  */
       }
       fall = 1;
       /*sprintf(str,"F %d", tmp_counter);
@@ -1142,7 +1146,7 @@ void fall_board()
 
       //careful we wan't to only fall of 1 puyo height per cycle !
       //So we keep the position of the last element that has falled so top there
-      previous_empty = j+1;
+      previous_empty = gp_j+1;
       can_fall = 0;
     }
   }
@@ -1172,21 +1176,21 @@ void fall_board()
     memset(ntbuf2, 0, sizeof(ntbuf2));
     memset(attrbuf, 0, sizeof(attrbuf));
     //we start at 1 as we don't want to modify the ceiling
-    for (j = 1; j < 13 ; ++j)
+    for (gp_j = 1; gp_j < 13 ; ++gp_j)
     {
-      switch ((boards[current_player][tmp_counter][j]))
+      switch ((boards[current_player][tmp_counter][gp_j]))
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
-          clear_metatile(j-1);
-          attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter_2,j*2);
+          clear_metatile(gp_j-1);
+          attrbuf[gp_j>>1] = return_tile_attribute_color(2,tmp_counter_2,gp_j*2);
           break;
         case OJAMA:
-          set_metatile(j-1,0xdc);
-          attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
+          set_metatile(gp_j-1,0xdc);
+          attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j*2);
           break;//          
         default:
-          set_metatile(j-1,*(puyoSeq[boards[current_player][tmp_counter][j]+blind_offset]+0x2));
-          attrbuf[j>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][j],tmp_counter_2,j*2);
+          set_metatile(gp_j-1,*(puyoSeq[boards[current_player][tmp_counter][gp_j]+blind_offset]+0x2));
+          attrbuf[gp_j>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][gp_j],tmp_counter_2,gp_j*2);
           break;
         break;
         /*case PUYO_RED:
@@ -1312,9 +1316,11 @@ void manage_point()
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
   //register word addr;
-  byte tmp_mask = 0/*, i = 0, j = 0*/;
+  //byte tmp_mask = 0/*, i = 0, j = 0*/;
+  tmp_mask = 0;
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
-  unsigned long int tmp_score = 0;
+  /*unsigned long int tmp_score = 0;*/
+  tmp_score = 0;
   
   if (step_p_counter[current_player] == 0/*(current_player == 0)  ? (step_p1_counter == 0):(step_p2_counter == 0)*/)
   {
@@ -1647,13 +1653,13 @@ void update_next()
 
   //I still quite don't get how this tile buffering fuctions works
   //So I do it like..that, and it's ugly.
-  byte i;
+  //byte i;
   byte tmp_color; 
   //register word addr;
   byte y[4] = {4,6,10,12};
   memset(attrbuf, 0, sizeof(attrbuf));
   
-  for (i = 0; i < 4; ++i)
+  /*for (i = 0; i < 4; ++i)
   {
     tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(i/2))%2)*2)+i%2)*2))&3;
     addr = NTADR_A(14+(current_player<<1), y[i]);
@@ -1662,10 +1668,10 @@ void update_next()
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
     put_attr_entries((nt2attraddr(addr)), 1);
-  }
+  }*/
   //using the gp_i here curiously does not work, I don't know why
   //looks like it's blocked to a value of 0x2...
-  /*for (gp_i = 0; gp_i < 4; ++gp_i)
+  for (gp_i = 0; gp_i < 4; ++gp_i)
   {
     tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(gp_i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(gp_i/2))%2)*2)+gp_i%2)*2))&3;
     addr = NTADR_A(14+(current_player<<1), y[gp_i]);
@@ -1674,7 +1680,7 @@ void update_next()
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
     put_attr_entries((nt2attraddr(addr)), 1);
-  }*/
+  }
   return;
 }
 
