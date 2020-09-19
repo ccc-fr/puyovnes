@@ -187,7 +187,7 @@ char str[32];
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
 byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3;
-;
+/*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
 
 //
 // MUSIC ROUTINES
@@ -520,9 +520,8 @@ byte return_sprite_color(byte spr_index)
 //then update the attributes with the color passes in parameter
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
 {
- //word addr = nt2attraddr(NTADR_A(spr_x,spr_y));
-  byte attr;
-  byte index;
+  //byte attr; // now gp_i
+  //byte index; // now gp_j
   byte attr_x = spr_x&0xfc;
   byte attr_y = spr_y&0xfc;
   byte mask = 3;
@@ -542,14 +541,14 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
     color <<= 2;
   }
   // attribute position is y/2 + x/4 where y 2 LSB are 0
-  index = (attr_y<<1) + (spr_x>>2);
+  gp_j = (attr_y<<1) + (spr_x>>2);
 
-  attr = attribute_table[index];
+  gp_i = attribute_table[gp_j];
   //let's erase the previous attributes for the intended position
-  attr &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
-  attr += color;
-  attribute_table[index] = attr;
-  return attr;
+  gp_i &= ~mask; //~ bitwise not, so we keep only bit outside of mask from attr
+  gp_i += color;
+  attribute_table[gp_j] = gp_i;
+  return gp_i;
 }
 
 //Update the boards table, once the puyos have stop moving, not optimized :-S
@@ -1017,9 +1016,8 @@ byte destroy_board()
 {
   //byte i, j;
   //byte tmp_counter;
-  register word addr;
-  byte counter = 0, tmp_line = 0;
-  byte destruction = 0;
+  //register word addr;
+  //byte tmp_line = 0;
    
   tmp_counter = step_p_counter[current_player];
   
@@ -1054,7 +1052,7 @@ byte destroy_board()
         //sum-up the 3 lines into 1 !
         boards[current_player][tmp_counter][gp_j] = PUYO_POP + FLAG;
 
-        tmp_line=gp_j;
+        //tmp_line=gp_j;
       }
     }
     
@@ -1105,7 +1103,7 @@ void fall_board()
   //ensuite on redessine toute la colonne dans le buffer.
   //si pas de changement on ne fait rien pour gagner en temps de calcul !
   byte j, j2;
-  register word addr;
+  //register word addr;
   byte can_fall = 0, previous_empty = 0, puyo_found = 0;
   byte smask = 7;
   //byte attr_x_shift = 1;
@@ -1313,7 +1311,7 @@ void manage_point()
 {
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
-  register word addr;
+  //register word addr;
   byte tmp_mask = 0/*, i = 0, j = 0*/;
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
   unsigned long int tmp_score = 0;
@@ -1540,7 +1538,7 @@ byte fall_ojama()
 void flush()
 {
   //byte tmp_counter_2, tmp_counter_3, j;
-  register word addr;
+  //register word addr;
   /*byte */tmp_counter = step_p_counter[current_player]%6;
 
   if (current_player != 0)
@@ -1651,7 +1649,7 @@ void update_next()
   //So I do it like..that, and it's ugly.
   byte i;
   byte tmp_color; 
-  register word addr;
+  //register word addr;
   byte y[4] = {4,6,10,12};
   memset(attrbuf, 0, sizeof(attrbuf));
   
@@ -1683,7 +1681,6 @@ void update_next()
 
 void build_field()
 {
-  //register word addr;
   //byte i, x, y;
   byte x, y;
   //Filling up boards with EMPTY => done on wait now
@@ -2076,7 +2073,7 @@ void handle_controler_and_sprites()
 void main(void)
 {
   char i,j;	// actor index
-  register word addr;
+  //register word addr;
 
   setup_graphics();
   // draw message  
