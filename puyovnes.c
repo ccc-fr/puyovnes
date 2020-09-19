@@ -186,7 +186,7 @@ char str[32];
 
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
-byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y;
+byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y, tmp_color;
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
 unsigned long int tmp_score;
@@ -223,7 +223,8 @@ byte music_index = 0;
 byte cur_duration = 0;
 
 const byte music1[]; // music data -- see end of file
-const byte* music_ptr = music1;
+const byte* music_ptr = NULL;
+const byte* music_selected_ptr = NULL;
 #define SAMPLE_TEST 0xF800
 //const byte bayoen[];
 //extern const void * bayoen_sample_data[];
@@ -269,6 +270,8 @@ const byte const nt_x_offset[2] = {2,18};
 const byte const shift[2] = {0,4};
 const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
 const byte const floor_y = 190;
+const byte next_columns_y[4] = {4,6,10,12};
+
 
 
 //declaration des fonctions, il parait que ça aide
@@ -1448,7 +1451,8 @@ byte fall_ojama()
   */
   //byte tmp_counter = step_p_counter[current_player];
   //byte opponent_status = step_p[~current_player & 1]; //~0 & 1 donne 1 et ~1 & 1 donne 0;
-  byte /*fall = 0, i = 0,*/ top_line_space = 0;
+  /*byte fall = 0, i = 0, top_line_space = 0;*/
+  tmp_counter = 0; // top_line_space
   if ((step_ojama_fall[current_player] == 0 && step_p[~current_player & 1] != PLAY) )
   {
     //inutile de continuer on passe à SHOW_NEXT
@@ -1492,17 +1496,17 @@ byte fall_ojama()
     {
       //less than a line, we have to randomize the popping
       //look for empty spots on the top hidden line:
-      top_line_space = 0;
+      tmp_counter = 0;
       for (gp_i = 0; gp_i < 6; ++gp_i )
       {
         if ((boards[current_player][gp_i][0]) == EMPTY)
         {
-          ++top_line_space;
+          ++tmp_counter;
         } 
       }
-      if (top_line_space > 0)
+      if (tmp_counter > 0)
       {
-        if (top_line_space > (ojamas[current_player<<1] / 70) )
+        if (tmp_counter > (ojamas[current_player<<1] / 70) )
         {
           gp_i = 0;
           //more space than ojama, we randomize the fall
@@ -1654,9 +1658,8 @@ void update_next()
   //I still quite don't get how this tile buffering fuctions works
   //So I do it like..that, and it's ugly.
   //byte i;
-  byte tmp_color; 
+  //byte tmp_color; //gloabl now
   //register word addr;
-  byte y[4] = {4,6,10,12};
   memset(attrbuf, 0, sizeof(attrbuf));
   
   /*for (i = 0; i < 4; ++i)
@@ -1674,9 +1677,9 @@ void update_next()
   for (gp_i = 0; gp_i < 4; ++gp_i)
   {
     tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(gp_i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(gp_i/2))%2)*2)+gp_i%2)*2))&3;
-    addr = NTADR_A(14+(current_player<<1), y[gp_i]);
+    addr = NTADR_A(14+(current_player<<1), next_columns_y[gp_i]);
     set_metatile(0,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
-    attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),y[gp_i]); 
+    attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
     put_attr_entries((nt2attraddr(addr)), 1);
@@ -2135,7 +2138,7 @@ void main(void)
   while(1) {
     
     //set sound
-    //if (!music_ptr) start_music(music1);=> ne boucle pas si on l'active pas !
+    if (!music_ptr && music_selected_ptr != NULL) start_music(music_selected_ptr);//=> ne boucle pas si on l'active pas !
     //next music 
     play_music();
     
@@ -2190,7 +2193,8 @@ void main(void)
               bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
               break;
             case 2: //music
-              music_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              music_selected_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              music_ptr = music_selected_ptr;
               cur_duration = 0;
               break;
             case 3: //color blind
@@ -2212,7 +2216,8 @@ void main(void)
               bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
               break;
             case 2: //music
-              music_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              music_selected_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              music_ptr = music_selected_ptr;
               cur_duration = 0;
               break;
             case 3: //color blind
