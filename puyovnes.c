@@ -183,6 +183,7 @@ byte bg_pal;//0 color palette 0, 85 color palette 1 (4 couleur par octets, 0b010
 byte menu_pos_x;
 byte menu_pos_y[4];
 char str[32];
+byte current_damage_tiles[2][6];
 
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
@@ -1287,8 +1288,11 @@ void fall_board()
 
           //play hit sound
           play_bayoen();
-          
-          step_p_counter[current_player] = 1;
+          //temporary solution, as it takes too much time there ! maybe 60000 cycles for point counting alone...
+          //Maybe adding a AC step, if size of rom allows it... 
+          step_p_counter[current_player] = 2;
+          manage_point();
+          step_p_counter[current_player] = 3;
           manage_point();
         }
         step_p[current_player] = CHECK_ALL;
@@ -1318,125 +1322,127 @@ void manage_point()
 {
   //based on this formula: https://www.bayoen.fr/wiki/Tableau_des_dommages
   //dommage hit = (10*nb_puyos_destroyed)*(hit_power + color_bonus + group_bonus)
-  //register word addr;
-  //byte tmp_mask = 0/*, i = 0, j = 0*/;
-  tmp_mask = 0;
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
-  /*unsigned long int tmp_score = 0;*/
-  tmp_score = 0;
+  //4 steps:
+  //0 : calculate the score
+  //1 : update hit and score, play sound
+  //2 : compute the damage over opponent board
+  //3 : update the tiles based on 2
   
-  if (step_p_counter[current_player] == 0/*(current_player == 0)  ? (step_p1_counter == 0):(step_p2_counter == 0)*/)
+  switch (step_p_counter[current_player])
   {
-    //hit power
-    tmp_score = (nb_hit[current_player] <= 3) ? ((nb_hit[current_player]-1) << 3) : ((nb_hit[current_player]-3) << 5);
+    case 0: // Compute the new score and ojamas
+      //hit power
+      tmp_score = (nb_hit[current_player] <= 3) ? ((nb_hit[current_player]-1) << 3) : ((nb_hit[current_player]-3) << 5);
 
-    //color_bonus
-    //first get colors for current player, don't forget to shift it !
-    tmp_mask = ((current_player == 0) ? mask_color_destroyed : mask_color_destroyed >> 4) & 0xf;
-        
-    //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
-    tmp_score += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
+      //color_bonus
+      //first get colors for current player, don't forget to shift it !
+      tmp_mask = ((current_player == 0) ? mask_color_destroyed : mask_color_destroyed >> 4) & 0xf;
+
+      //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
+      tmp_score += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
 
 
-    // group_bonus
-    if ( nb_group[current_player] > 0 )
-    {
-      tmp_score += ( (nb_group[current_player] < 7) ? (nb_group[current_player] + 1) : 10 );
-    }
-
-    //you need to raise the score if bonus are null, to avoid multiply by 0
-    if (tmp_score == 0)
-      tmp_score = 1;
-
-    //Now the disappearing puyos
-    tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[current_player] * 10);
-
-    score[current_player] += tmp_score;
-
-    //WIP add the opponent ojama removal from current player stack !
-    if (current_player == 0)
-    {
-      ojamas[2] += tmp_score;
-      if (ojamas[0] > 0)
-      {  
-        ojamas[0] = (ojamas[0] - tmp_score > ojamas[0] ) ? 0 : ojamas[0] - tmp_score ;
-      }
-    }
-    else
-    {
-      ojamas[0] += tmp_score;
-      if (ojamas[2] > 0)
-      {  
-        ojamas[2] = (ojamas[2] - tmp_score > ojamas[2] ) ? 0 : ojamas[2] - tmp_score ;
-      }
-    }
-
-    //TODO warikomi not handled yet
-    sprintf(str,"Hit:%2d", nb_hit[current_player]);
-    addr = NTADR_A(nt_x_offset[current_player],26);
-    vrambuf_put(addr,str,6);
-    sprintf(str,"%6lu", score[current_player]);
-    addr = NTADR_A(6 + nt_x_offset[current_player],27);
-    vrambuf_put(addr,str,6);
-    
-    //play hit sound
-    play_hit();
-    
-    //reinit value for next compute
-    nb_puyos_destroyed[current_player] = 0;
-    mask_color_destroyed = mask_color_destroyed & ((current_player == 0) ? 0xf0 : 0xf) /*0xF0*/;
-    nb_group[current_player] = 0;
-  }
-  else
-  {
-    //display damages
-    //note: at some point we will have to deal with too much things updated simultaneously
-    memset(ntbuf1, 0, sizeof(ntbuf1));
-    memset(ntbuf2, 0, sizeof(ntbuf2));
-    //the number of ojama depends of the score
-    //see https://www.bayoen.fr/wiki/Tableau_des_dommages
-    //would be neater to put addresses into an enum...
-    //1:    0xfc   ojama
-    //6:    0xf8   bug ojama
-    //30:   0xe4   rock
-    //180:  0xe8   tilted rock
-    //360:  0xec   star
-    //720:  0xf0   crown
-    //1440: 0xf4   comet
-    
-    //first let's get our score divided by 70
-    tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
-    gp_j = 0;
-    //let's cheat, setup everything as ojamaless tile
-    memset(str,bg_tile, sizeof(str));
-    
-    for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
-    {
-      //we go from higher score to lowest, checking the rest.
-      if (tmp_score / damageList[gp_i] > 0 )
+      // group_bonus
+      if ( nb_group[current_player] > 0 )
       {
-        //we use our previously declared str to store the address of the tile
-        //we use byte_mask because as str it is there, avoidinf declaring something else
-        //index_is reused too !
-        for (tmp_mask = 0; tmp_mask < (tmp_score/damageList[gp_i]) && gp_j < 6 ; ++tmp_mask)
-        {
-          str[gp_j] = damageTile[gp_i];
-          ++gp_j;
-        }   
+        tmp_score += ( (nb_group[current_player] < 7) ? (nb_group[current_player] + 1) : 10 );
       }
-      tmp_score %= damageList[gp_i];     
-    }
 
-    for (gp_j = 0; gp_j < 6; ++gp_j)
-    {
-      set_metatile(0,str[gp_j]);
-      addr = NTADR_A((20+(gp_j*2))-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
-      //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
-      //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
-      //plus profondément à un moment.
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-    }
+      //you need to raise the score if bonus are null, to avoid multiply by 0
+      if (tmp_score == 0)
+        tmp_score = 1;
+
+      //Now the disappearing puyos
+      tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[current_player] * 10);
+
+      score[current_player] += tmp_score;
+
+      //WIP add the opponent ojama removal from current player stack !
+      if (current_player == 0)
+      {
+        ojamas[2] += tmp_score;
+        if (ojamas[0] > 0)
+        {  
+          ojamas[0] = (ojamas[0] - tmp_score > ojamas[0] ) ? 0 : ojamas[0] - tmp_score ;
+        }
+      }
+      else
+      {
+        ojamas[0] += tmp_score;
+        if (ojamas[2] > 0)
+        {  
+          ojamas[2] = (ojamas[2] - tmp_score > ojamas[2] ) ? 0 : ojamas[2] - tmp_score ;
+        }
+      }
+      break;
+    case 1: // refresh display of hit and score, play sound
+      //TODO warikomi not handled yet
+      sprintf(str,"Hit:%2d", nb_hit[current_player]);
+      addr = NTADR_A(nt_x_offset[current_player],26);
+      vrambuf_put(addr,str,6);
+      sprintf(str,"%6lu", score[current_player]);
+      addr = NTADR_A(6 + nt_x_offset[current_player],27);
+      vrambuf_put(addr,str,6);
+
+      //play hit sound
+      play_hit();
+
+      //reinit value for next compute
+      nb_puyos_destroyed[current_player] = 0;
+      mask_color_destroyed = mask_color_destroyed & ((current_player == 0) ? 0xf0 : 0xf) /*0xF0*/;
+      nb_group[current_player] = 0;
+      break;
+    case 2: //compute the liste of tile damage over opponent board
+      //the number of ojama depends of the score
+      //see https://www.bayoen.fr/wiki/Tableau_des_dommages
+      //would be neater to put addresses into an enum...
+      //1:    0xfc   ojama
+      //6:    0xf8   bug ojama
+      //30:   0xe4   rock
+      //180:  0xe8   tilted rock
+      //360:  0xec   star
+      //720:  0xf0   crown
+      //1440: 0xf4   comet
+
+      //first let's get our score divided by 70
+      tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+      gp_j = 0;
+      //let's cheat, setup everything as ojamaless tile
+      memset(current_damage_tiles[current_player],bg_tile, sizeof(current_damage_tiles[current_player]));
+
+      for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
+      {
+        //we go from higher score to lowest, checking the rest.
+        if (tmp_score / damageList[gp_i] > 0 )
+        {
+          //we use tmp_mask because it is there, avoiding declaring something else
+          for (tmp_mask = 0; tmp_mask < (tmp_score/damageList[gp_i]) && gp_j < 6 ; ++tmp_mask)
+          {
+            current_damage_tiles[current_player][gp_j] = damageTile[gp_i];
+            ++gp_j;
+          }   
+        }
+        tmp_score %= damageList[gp_i];     
+      }
+      break;
+    case 3:
+      //display damages
+      //note: at some point we will have to deal with too much things updated simultaneously
+      memset(ntbuf1, 0, sizeof(ntbuf1));
+      memset(ntbuf2, 0, sizeof(ntbuf2));
+
+      for (gp_j = 0; gp_j < 6; ++gp_j)
+      {
+        set_metatile(0,current_damage_tiles[current_player][gp_j]);
+        addr = NTADR_A((20+(gp_j*2))-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+        //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
+        //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
+        //plus profondément à un moment.
+        vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+      }
+      break;
   }
 }
 
@@ -1472,7 +1478,8 @@ byte fall_ojama()
   //add a line max of ojama on one row 
   if ( (step_ojama_fall[current_player] < 5) && (ojamas[current_player<<1] >= 70))
   {
-    if ( ojamas[current_player<<1] >= 420)
+    tmp_index = current_player<<1;
+    if ( ojamas[tmp_index] >= 420)
     {
       // over 70*6, 420, a full line can be added
       for (gp_i = 0; gp_i < 6; ++gp_i)
@@ -1480,13 +1487,13 @@ byte fall_ojama()
         if ( (boards[current_player][gp_i][0]/* & mask >> shift*/) == EMPTY)
         {
           boards[current_player][gp_i][0] = OJAMA;
-          if ( (ojamas[current_player<<1] - 70) < ojamas[current_player<<1]) //if not inferior then less than 70 !
+          if ( (ojamas[tmp_index] - 70) < ojamas[tmp_index]) //if not inferior then less than 70 !
           { 
-            ojamas[current_player<<1] -= 70;
+            ojamas[tmp_index] -= 70;
           }
           else
           {
-            ojamas[current_player<<1] = 0;
+            ojamas[tmp_index] = 0;
             break;//no points, no need to continue
           }
         }
@@ -1506,17 +1513,17 @@ byte fall_ojama()
       }
       if (tmp_counter > 0)
       {
-        if (tmp_counter > (ojamas[current_player<<1] / 70) )
+        if (tmp_counter > (ojamas[tmp_index] / 70) )
         {
           gp_i = 0;
           //more space than ojama, we randomize the fall
-          while (ojamas[current_player<<1] >= 70)
+          while (ojamas[tmp_index] >= 70)
           {
             if ((boards[current_player][gp_i][0]) == EMPTY && (rand8() & 1))
             {
               //boards[i][0] |= (OJAMA << shift);
               boards[current_player][gp_i][0] = OJAMA;
-              ojamas[current_player<<1] -= 70;
+              ojamas[tmp_index] -= 70;
             }
             ++gp_i;
             gp_i = gp_i%6;//to loop
@@ -1531,7 +1538,7 @@ byte fall_ojama()
             {
               //boards[i][0] |= (OJAMA << shift);
               boards[current_player][gp_i][0] = OJAMA;
-              ojamas[current_player<<1] -= 70;
+              ojamas[tmp_index] -= 70;
             } 
           }
         }
@@ -1832,6 +1839,10 @@ void init_round()
     column_height[0][gp_i] = floor_y;
     column_height[1][gp_i] = floor_y;
   }
+  
+  nb_puyos_destroyed[current_player] = 0;
+  mask_color_destroyed = 0;
+  nb_group[current_player] = 0;
 
   return;
 }
@@ -2538,10 +2549,11 @@ void main(void)
       { 
         //if we came from fall_board after a fall_ojama, we have to update the ojama display list first
         //(a bit of a hack for show_next initial purpose...)
-        if( step_p_counter[current_player] == 1) 
+        if( step_p_counter[current_player] == 2 || step_p_counter[current_player] == 3) 
         {
           manage_point();
-          step_p_counter[current_player] = 0;
+          if (step_p_counter[current_player] == 3)
+            step_p_counter[current_player] = 0;
         }
         else
         {
@@ -2599,7 +2611,7 @@ void main(void)
         manage_point();
         ++step_p_counter[current_player];
         
-        if (step_p_counter[current_player] == 2)
+        if (step_p_counter[current_player] == 4)
         {
           step_p[current_player] = FALL;
           step_p_counter[current_player] = 0;
