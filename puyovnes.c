@@ -157,7 +157,7 @@ byte step_ojama_fall[2];
 byte should_destroy;
 byte blind_offset; //offset to apply to get the correct sprite
 byte sprite_addr[2][2]; //keep track of the addr of the sprite tile to convert from sprite to tile
-
+byte current_color;
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
 #define INPUT_BUTTON_DELAY 4
@@ -587,12 +587,12 @@ void update_boards()
 // Look for puyo to destroy and flag them as such
 byte check_board(byte x, byte y)
 {
-  static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
+  //static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
   /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
   /*byte mask = 15, flag = 8, shift = 0;*/ 
   //byte destruction = 0;//tmp_coutner_3 !
-  tmp_counter_2 = 0; // counter
   tmp_counter = 0;
+  tmp_counter_2 = 0; // counter
   tmp_counter_3 = 0; //destruction
   //to gain time we start from position of the last placed puyos
   //actor_x[board_index], actor_y[board_index],actor_x[board_index+1], actor_y[board_index+1],
@@ -608,6 +608,7 @@ byte check_board(byte x, byte y)
   // Note : how to do when after destruction ?
   //k == current line above, k == current line below
   
+  //Note : sizeof boards won't change, we could use a define here instead of computing it each time the function is called
   memset(tmp_boards,0,sizeof(tmp_boards));
 
   current_color = ((boards[current_player][x][y]));
