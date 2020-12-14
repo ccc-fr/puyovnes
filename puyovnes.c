@@ -158,6 +158,7 @@ byte should_destroy;
 byte blind_offset; //offset to apply to get the correct sprite
 byte sprite_addr[2][2]; //keep track of the addr of the sprite tile to convert from sprite to tile
 byte current_color;
+byte check_all_column_list[2]; //during CHECK_ALL, which columns must be checked, bit mask, column 0 : 1, 1:2, 2:4 ...column 5 : 32
 //INPUT BUFFER DELAY
 #define INPUT_DIRECTION_DELAY 4
 #define INPUT_BUTTON_DELAY 4
@@ -1158,6 +1159,8 @@ void fall_board()
  
   if (fall == 1)
   {
+    //this is falling, so we keep that column value to check it during CHECK_ALL step
+    check_all_column_list[current_player] = 1 << tmp_counter;
     //If we got a fall we reset the counter, then ...?
     //if (step_p[current_player] != FALL_OJAMA)
     step_p_counter[current_player] = tmp_counter;
@@ -2127,6 +2130,8 @@ void main(void)
   actor_y[0][1] = 120;
   actor_y[1][0] = 136;
   actor_y[1][1] = 152;
+  check_all_column_list[0] = 0;
+  check_all_column_list[1] = 0;
   input_delay_PAD_LEFT[0] = 0; //to prevent multiple inputs
   bg_tile = bg_tile_addr[0];
   bg_pal = 0;
@@ -2682,6 +2687,8 @@ void main(void)
       //after fall (and so destroy) we need to recheck all the board
       //Everything is fallen at that point, so we can go from bottom
       //to top and stop searching as soon empty is found
+      //2020/12/14 new idea to improve compute time in some scenario: only check columns that have fallen !
+      //with how check_board works, it shouldn't change its result to avoid the untouched columns
       if (step_p[current_player] == CHECK_ALL)
       {
         if (step_p_counter[current_player] < 78)
@@ -2697,21 +2704,30 @@ void main(void)
             --i;
           }*/
           i = step_p_counter[current_player] / 13;
-          j = 13 - (step_p_counter[current_player] % 13);
-          if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & 8) != 8))
-            should_destroy = (check_board(/*0,*/ i, j) > 0) || should_destroy ;
+          if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
+          {
+            j = 13 - (step_p_counter[current_player] % 13);
+            if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+              should_destroy = (check_board(i, j) > 0) || should_destroy ;  
+          }
           ++step_p_counter[current_player];
 
           i = step_p_counter[current_player] / 13;
-          j = 13 - (step_p_counter[current_player] % 13);
-          if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & 8) != 8))
-            should_destroy = (check_board(/*0,*/ i, j) > 0) || should_destroy ;
+          if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
+          {
+            j = 13 - (step_p_counter[current_player] % 13);
+            if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+              should_destroy = (check_board(i, j) > 0) || should_destroy ;
+          }
           ++step_p_counter[current_player];
 
           i = step_p_counter[current_player] / 13;
-          j = 13 - (step_p_counter[current_player] % 13);
-          if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & 8) != 8))
-            should_destroy = (check_board(/*0,*/ i, j) > 0) || should_destroy ;
+          if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
+          {
+            j = 13 - (step_p_counter[current_player] % 13);
+            if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+              should_destroy = (check_board(i, j) > 0) || should_destroy ;
+          }
           ++step_p_counter[current_player];
         }
         else
@@ -2737,6 +2753,8 @@ void main(void)
             step_p_counter[current_player] = 0;
             nb_hit[current_player] = 0;// hit combo counter
           }
+          //reinit the column marked to be checked
+          check_all_column_list[current_player] = 0;
         }
         continue;
       }
