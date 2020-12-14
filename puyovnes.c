@@ -1023,58 +1023,28 @@ byte check_board(byte x, byte y)
 
 //puyo visual destroying after check_board
 byte destroy_board()
-{
-  //byte i, j;
-  //byte tmp_counter;
-  //register word addr;
-  //byte tmp_line = 0;
-   
+{  
   tmp_counter = step_p_counter[current_player];
   
-  //step 0 we change the puyo to puyo_pop => e0
-  if (tmp_counter < 6)
+  if (tmp_counter < 6 || tmp_counter >= 12)
   {
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
     //memset(attrbuf, 0, sizeof(attrbuf)); // no need to reset the attributes, they are not changed !
-
-    set_metatile(0,0xe0); //0xe0 == puyo_pop
-
-    for (gp_j = 0; gp_j < 13 ; ++gp_j)
+    if (tmp_counter <6)
     {
-      if ((boards[current_player][tmp_counter][gp_j] & FLAG) > 0)
-      {
-        //(i+1)<<1 à l'air ok, y on y est pas encore
-        //addr = NTADR_A((i+1)<<1, j *2 );//?????
-        addr = NTADR_A(((tmp_counter)*2) + nt_x_offset[current_player], gp_j << 1 );//?????
-        vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-        /*addr = NTADR_A(i, (j)+2);
-          vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-          vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
-        //Sujet traité, on zappe le flag
-        //boards[current_player][tmp_counter][j] -= FLAG;
-        //On change le board pour puyo_pop
-        //boards[current_player][tmp_counter][j] = PUYO_POP;
-        //We will reuse the flag for destruction
-        //boards[current_player][tmp_counter][j] += FLAG;
-        
-        //sum-up the 3 lines into 1 !
-        boards[current_player][tmp_counter][gp_j] = PUYO_POP + FLAG;
-
-        //tmp_line=gp_j;
-      }
+      set_metatile(0,0xe0); //0xe0 == puyo_pop   //step 0 we change the puyo to puyo_pop => e0
+      // boards[current_player][tmp_counter][gp_j] = PUYO_POP + FLAG; // we don't want to lose the flag!
+      //gp_k used to temporarily store the new board status
+      gp_k = PUYO_POP + FLAG;
+    }
+    else
+    {
+      clear_metatile(0);   //step 1 we change the puyo_pop to nothing
+      //boards[current_player][gp_i][gp_j] = EMPTY;
+      gp_k = EMPTY;
     }
     
-  }
-  //step 1 we change the puyo_pop to nothing
-  if (tmp_counter >= 12)
-  {
-    memset(ntbuf1, 0, sizeof(ntbuf1));
-    memset(ntbuf2, 0, sizeof(ntbuf2));
-    //memset(attrbuf, 0, sizeof(attrbuf));
-
-    clear_metatile(0);
     gp_i = tmp_counter%12;
     
     for (gp_j = 0; gp_j < 13 ; ++gp_j)
@@ -1084,10 +1054,8 @@ byte destroy_board()
         addr = NTADR_A(((gp_i)*2) + nt_x_offset[current_player], gp_j << 1 );
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-        //sujet traité, on zappe le flag
-        //boards[current_player][i][j] -= FLAG; //useless to remove the flag as it will be removed by = EMPTY...
-        //on change le board pour EMPTY
-        boards[current_player][gp_i][gp_j] = EMPTY;
+    
+        boards[current_player][gp_i][gp_j] = gp_k;
       }
     }
 
@@ -1096,8 +1064,9 @@ byte destroy_board()
       step_p[current_player] = POINT;
       step_p_counter[current_player] = 255;
     }
+    
   }
-
+  
   ++step_p_counter[current_player];
   return 0;
 }
