@@ -1160,7 +1160,7 @@ void fall_board()
   if (fall == 1)
   {
     //this is falling, so we keep that column value to check it during CHECK_ALL step
-    check_all_column_list[current_player] = 1 << tmp_counter;
+    check_all_column_list[current_player] = check_all_column_list[current_player] | (1 << tmp_counter);
     //If we got a fall we reset the counter, then ...?
     //if (step_p[current_player] != FALL_OJAMA)
     step_p_counter[current_player] = tmp_counter;
