@@ -272,7 +272,7 @@ const byte const nt_x_offset[2] = {2,18};
 const byte const shift[2] = {0,4};
 const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
 const byte const floor_y = 190;
-const byte next_columns_y[4] = {4,6,10,12};
+const byte next_columns_y[5] = {4,6,8,10,12};
 
 
 
@@ -1654,12 +1654,20 @@ void update_next()
   }*/
   //using the gp_i here curiously does not work, I don't know why
   //looks like it's blocked to a value of 0x2...
-  for (gp_i = 0; gp_i < 4; ++gp_i)
+  for (gp_i = 0; gp_i < 5; ++gp_i)
   {
     tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(gp_i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(gp_i/2))%2)*2)+gp_i%2)*2))&3;
     //addr = NTADR_A(14+(current_player<<1), next_columns_y[gp_i]);
-    set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
-    attrbuf[gp_i] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
+    if (gp_i == 3)
+    {
+      set_metatile(gp_i,0xd8);//for not blind gamer the tile is different from standard puyos
+      attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]);
+    }
+    else
+    {  
+      set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
+      attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
+    }
     //set_metatile(0,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
     //attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
     /*vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
@@ -1669,9 +1677,9 @@ void update_next()
   //ceci est un test, ne marche pas entre autre parce qu'il y a 
   //une zone de vide entre les 2 paires dont il faudrait tenir compte.
   addr = NTADR_A(14+(current_player<<1), next_columns_y[0]);
-  vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 8);
-  vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 8);
-  put_attr_entries((nt2attraddr(addr)), 4);
+  vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 10);
+  vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 10);
+  put_attr_entries((nt2attraddr(addr)), 3);
   
   return;
 }
