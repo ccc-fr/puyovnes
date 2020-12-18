@@ -1656,26 +1656,26 @@ void update_next()
   //looks like it's blocked to a value of 0x2...
   for (gp_i = 0; gp_i < 5; ++gp_i)
   {
-    tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(gp_i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(gp_i/2))%2)*2)+gp_i%2)*2))&3;
     //addr = NTADR_A(14+(current_player<<1), next_columns_y[gp_i]);
-    if (gp_i == 3)
+    if (gp_i >= 2)
+      gp_j = gp_i - 1;
+    else
+      gp_j = gp_i;
+    if (gp_i !=2)
     {
-      set_metatile(gp_i,0xd8);//for not blind gamer the tile is different from standard puyos
-      attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]);
+      tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(gp_j/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(gp_j/2))%2)*2)+gp_j%2)*2))&3;
+      set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
     }
     else
-    {  
-      set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
-      attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
+    {
+      tmp_color = bg_pal;
+      set_metatile(gp_i,bg_tile);//for not blind gamer the tile is different from standard puyos
     }
-    //set_metatile(0,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
-    //attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
-    /*vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-    put_attr_entries((nt2attraddr(addr)), 1);*/
+    attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
   }
-  //ceci est un test, ne marche pas entre autre parce qu'il y a 
-  //une zone de vide entre les 2 paires dont il faudrait tenir compte.
+ 
+  //without loop ? prg size issue ? TEst to do=> apaprently not enough space...
+
   addr = NTADR_A(14+(current_player<<1), next_columns_y[0]);
   vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 10);
   vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 10);
