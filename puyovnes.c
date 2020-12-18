@@ -1407,14 +1407,18 @@ void manage_point()
 
       for (gp_j = 0; gp_j < 6; ++gp_j)
       {
-        set_metatile(0,current_damage_tiles[current_player][gp_j]);
-        addr = NTADR_A((20+(gp_j*2))-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+        set_metatile(gp_j,current_damage_tiles[current_player][gp_j]);
+        //addr = NTADR_A((20+(gp_j*2))-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
         //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
         //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
         //plus profondément à un moment.
-        vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+        /*vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
       }
+      addr = NTADR_A((20)-nt_x_offset[current_player], 0);
+      vrambuf_put(addr, ntbuf1, 12);
+      addr = NTADR_A((20)-nt_x_offset[current_player], 1);
+      vrambuf_put(addr+1, ntbuf2, 12);
       break;
   }
 }
@@ -1635,23 +1639,8 @@ void update_next()
   
   //puyoSeq[(puyo_list[(p1_puyo_list_index>>1)]>>((((p1_puyo_list_index%2)*2)+i)*2))&3]);
 
-  //I still quite don't get how this tile buffering fuctions works
-  //So I do it like..that, and it's ugly.
-  //byte i;
-  //byte tmp_color; //gloabl now
-  //register word addr;
   memset(attrbuf, 0, sizeof(attrbuf));
   
-  /*for (i = 0; i < 4; ++i)
-  {
-    tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(i/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(i/2))%2)*2)+i%2)*2))&3;
-    addr = NTADR_A(14+(current_player<<1), y[i]);
-    set_metatile(0,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
-    attrbuf[0] = return_tile_attribute_color(tmp_color,14+(current_player<<1),y[i]); 
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-    put_attr_entries((nt2attraddr(addr)), 1);
-  }*/
   //using the gp_i here curiously does not work, I don't know why
   //looks like it's blocked to a value of 0x2...
   for (gp_i = 0; gp_i < 5; ++gp_i)
@@ -1679,7 +1668,7 @@ void update_next()
   addr = NTADR_A(14+(current_player<<1), next_columns_y[0]);
   vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 10);
   vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 10);
-  put_attr_entries((nt2attraddr(addr)), 3);
+  put_attr_entries((nt2attraddr(addr)), 3); // need to check that 3 at some point...
   
   return;
 }
