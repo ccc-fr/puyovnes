@@ -191,7 +191,7 @@ byte current_damage_tiles[2][6];
 byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y, tmp_color;
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
-unsigned long int tmp_score;
+unsigned long int tmp_score, tmp_score2;
 
 //
 // MUSIC ROUTINES
@@ -1366,7 +1366,7 @@ void manage_point()
       mask_color_destroyed = mask_color_destroyed & ((current_player == 0) ? 0xf0 : 0xf) /*0xF0*/;
       nb_group[current_player] = 0;
       break;
-    case 2: //compute the liste of tile damage over opponent board
+    case 2: //compute the list of tile damage over opponent board
       //the number of ojama depends of the score
       //see https://www.bayoen.fr/wiki/Tableau_des_dommages
       //would be neater to put addresses into an enum...
@@ -1383,20 +1383,31 @@ void manage_point()
       gp_j = 0;
       //let's cheat, setup everything as ojamaless tile
       memset(current_damage_tiles[current_player],bg_tile, sizeof(current_damage_tiles[current_player]));
-
+      /* bit of explanation here
+      * that part is super expensive in term of CPU because of loops + division
+      * looks like divisions like eating the NES CPU cycles
+      * damageList contained the divider we have to use to select the correct tile
+      * 1440, 720, 360, 180, 30, 6, 1
+      * first try to optimize: stock the result of tmp_score / damageList[gp_i] in a variable tmp_score2
+      * the tmp_score %= damageList[gp_i]; was outside of the if, but it is useless outside, just
+      * returning the same value, so it is moved from outside to inside.
+      * we are still very near the 30000cy for that part only though...
+      */
+      
       for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
+        tmp_score2 = tmp_score / damageList[gp_i];
         //we go from higher score to lowest, checking the rest.
-        if (tmp_score / damageList[gp_i] > 0 )
+        if (tmp_score2 > 0 )
         {
           //we use tmp_mask because it is there, avoiding declaring something else
-          for (tmp_mask = 0; tmp_mask < (tmp_score/damageList[gp_i]) && gp_j < 6 ; ++tmp_mask)
+          for (tmp_mask = 0; tmp_mask < (tmp_score2) && gp_j < 6 ; ++tmp_mask)
           {
             current_damage_tiles[current_player][gp_j] = damageTile[gp_i];
             ++gp_j;
-          }   
-        }
-        tmp_score %= damageList[gp_i];     
+          }
+          tmp_score %= damageList[gp_i]; 
+        }      
       }
       break;
     case 3:
