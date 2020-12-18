@@ -1407,18 +1407,18 @@ void manage_point()
 
       for (gp_j = 0; gp_j < 6; ++gp_j)
       {
-        set_metatile(gp_j,current_damage_tiles[current_player][gp_j]);
-        //addr = NTADR_A((20+(gp_j*2))-nt_x_offset[current_player], 0);// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
-        //si je ne mets pas le VRAMBUF_VERT la tile n'est pas bien présentée...
-        //ce qui oblige à faire 6 appels, il faudra que je me plonge dans cette histoire
-        //plus profondément à un moment.
-        /*vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);*/
+        //set_metatile(gp_j,current_damage_tiles[current_player][gp_j]);
+        //set_metatile is only valid for vertical vrambuf_put !
+        //for horital just fill manually ntbuf1 & 2 :)
+        ntbuf1[gp_j*2] = current_damage_tiles[current_player][gp_j];
+        ntbuf1[gp_j*2+1] = current_damage_tiles[current_player][gp_j]+2;
+        ntbuf2[gp_j*2] = current_damage_tiles[current_player][gp_j]+1;
+        ntbuf2[gp_j*2+1] = current_damage_tiles[current_player][gp_j]+3;
       }
       addr = NTADR_A((20)-nt_x_offset[current_player], 0);
       vrambuf_put(addr, ntbuf1, 12);
       addr = NTADR_A((20)-nt_x_offset[current_player], 1);
-      vrambuf_put(addr+1, ntbuf2, 12);
+      vrambuf_put(addr, ntbuf2, 12);
       break;
   }
 }
