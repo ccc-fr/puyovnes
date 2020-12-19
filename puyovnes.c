@@ -247,6 +247,18 @@ const unsigned char* const puyoSeq[8] = {
 const unsigned int const damageList[7] = 
 { 
   1440,720,360,180,30,6,1
+  /*1024,512,256,128,32,8,1*/
+};
+/*  65535 / 1440 => 45, 0x2D
+      *  65535 / 720  => 91, 0x5B
+      *  65535 / 360  => 182, 0xB6
+      *  65535 / 180  => 364, 0x16C
+      *  65535 / 30   => 2184, 0x888
+      *  65535 / 6    => 10922, 0x2AAA
+      *  note: this can result in an erro*/
+const unsigned int const damageListMult[7] =
+{
+  0x2D, 0x5B, 0xB6, 0x16C, 0x888, 0x2AAA, 0xFFFF
 };
 
 const byte const damageTile[7] = 
@@ -1379,7 +1391,8 @@ void manage_point()
       //1440: 0xf4   comet
 
       //first let's get our score divided by 70
-      tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+      //tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+      tmp_score = (ojamas[(current_player == 0 ? 2 : 0)] * 936) >> 16;
       gp_j = 0;
       //let's cheat, setup everything as ojamaless tile
       memset(current_damage_tiles[current_player],bg_tile, sizeof(current_damage_tiles[current_player]));
@@ -1392,11 +1405,39 @@ void manage_point()
       * the tmp_score %= damageList[gp_i]; was outside of the if, but it is useless outside, just
       * returning the same value, so it is moved from outside to inside.
       * we are still very near the 30000cy for that part only though...
+      * after checking with mesen, we do use more cycles in fact....????!!!!
+      * So new technic ! We will do what is explained there:
+      *  https://www.embeddedrelated.com/showthread/comp.arch.embedded/29854-1.php
+      * The key point here is that you are dividing by a *constant*.  You are 
+      *  re-arranging your sum from:
+      *          y = x / k
+      *  to
+      *          y = (x * (2^n / k)) / (2^n)
+      *  where n is picked to make the ranges work out well with the sizes of 
+      *  arithmetic you are working with.  Since you can use 32-bit arithmetic, 
+      *  but only need 16-bit values, make n=16, and you can avoid overflows. 
+      *  Thus if you want to divide by 6, you calculate (2^16 / 6) = 0x2aaa, and 
+      *  then your "division" becomes a multiply by 0x2aaa, followed by a divide 
+      *  by 2^16 (which is just a shift, or 32-bit store followed by a 16-bit load).
+      *  If you have a decent C compiler, it will generate such code for you.
+      *
+      *  So:2^16 is 0xFFFF, 
+      *  65535 / 70   => 936, 0x3A8
+      *  65535 / 1440 => 45, 0x2D
+      *  65535 / 720  => 91, 0x5B
+      *  65535 / 360  => 182, 0xB6
+      *  65535 / 180  => 364, 0x16C
+      *  65535 / 30   => 2184, 0x888
+      *  65535 / 6    => 10922, 0x2AAA
+      *  note: this can result in an error of 1 sometimes, need to check how to correct that
+      *  As first optimisation with that system, we will just hardcode the multiplier in damageListMult
       */
       
       for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
-        tmp_score2 = tmp_score / damageList[gp_i];
+        //tmp_score2 = tmp_score / damageList[gp_i];
+        //tmp_score2 = tmp_score >> 10-(gp_i); // up to 10000cy better than the line above !
+        tmp_score2 = (tmp_score * damageListMult[gp_i]) >> 16;
         //we go from higher score to lowest, checking the rest.
         if (tmp_score2 > 0 )
         {
@@ -2368,7 +2409,12 @@ void main(void)
         {
           for ( i = 0; i < 6; ++i)
           {
-            tmp_boards[i][0] = boards[current_player][i][0];
+            //loop inserted to gain a few bytes of space.
+            for (j = 0; j<12; ++j)
+            {
+              tmp_boards[i][j] = boards[current_player][i][j];
+            }
+            /*tmp_boards[i][0] = boards[current_player][i][0];
             tmp_boards[i][1] = boards[current_player][i][1];
             tmp_boards[i][2] = boards[current_player][i][2];
             tmp_boards[i][3] = boards[current_player][i][3];
@@ -2380,7 +2426,7 @@ void main(void)
             tmp_boards[i][9] = boards[current_player][i][9];
             tmp_boards[i][10] = boards[current_player][i][10];
             tmp_boards[i][11] = boards[current_player][i][11];
-            tmp_boards[i][12] = boards[current_player][i][12];
+            tmp_boards[i][12] = boards[current_player][i][12];*/
             tmp_boards[i][13] = 255; // we use 255 as a way to identify a floor tile
             tmp_boards[i][14] = 255;
           }
