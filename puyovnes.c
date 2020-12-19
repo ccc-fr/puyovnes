@@ -1391,8 +1391,11 @@ void manage_point()
       //1440: 0xf4   comet
 
       //first let's get our score divided by 70
-      //tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
-      tmp_score = (ojamas[(current_player == 0 ? 2 : 0)] * 936) >> 16;
+      tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+      //tmp_score = (ojamas[(current_player == 0 ? 2 : 0)] * 936) >> 16; //
+      //36 => 512 + 256 + 128 + 32 +8
+      //tmp_score = ojamas[(current_player == 0 ? 2 : 0)];
+      //tmp_score = (tmp_score << 9 + tmp_score << 8 + tmp_score << 7 + tmp_score << 5 + tmp_score << 3) >> 16;
       gp_j = 0;
       //let's cheat, setup everything as ojamaless tile
       memset(current_damage_tiles[current_player],bg_tile, sizeof(current_damage_tiles[current_player]));
@@ -1431,13 +1434,22 @@ void manage_point()
       *  65535 / 6    => 10922, 0x2AAA
       *  note: this can result in an error of 1 sometimes, need to check how to correct that
       *  As first optimisation with that system, we will just hardcode the multiplier in damageListMult
+      * result => no change still 29000cy & more used
+      * last try before juste splitting into two steps : change the  multiply by bitshifts
+      * 936 => 512 + 256 + 128 + 32 +8
+      * 45  => 32 + 8 + 4 +1
+      * 91  => 64 + 16 + 8 + 2 +1
+      * 182 => 128 + 32 + 16 + 4 + 2 
+      * 364 => 256 + 64 + 32 + 8 + 4
+      * 2184 => 2048 + 128 + 8
+      * 10922 => 8192 + 2048 + 512 + 128 + 32 + 8 + 2
       */
       
       for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
-        //tmp_score2 = tmp_score / damageList[gp_i];
+        tmp_score2 = tmp_score / damageList[gp_i];
         //tmp_score2 = tmp_score >> 10-(gp_i); // up to 10000cy better than the line above !
-        tmp_score2 = (tmp_score * damageListMult[gp_i]) >> 16;
+        //tmp_score2 = (tmp_score * damageListMult[gp_i]) >> 16;
         //we go from higher score to lowest, checking the rest.
         if (tmp_score2 > 0 )
         {
