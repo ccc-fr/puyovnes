@@ -1448,7 +1448,7 @@ void manage_point()
       
       for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
-        if (tmp_score > damageList[gp_i])
+        if (tmp_score >= damageList[gp_i])
         {
           tmp_score2 = tmp_score / damageList[gp_i];
           //tmp_score2 = tmp_score >> 10-(gp_i); // up to 10000cy better than the line above !
@@ -1725,7 +1725,7 @@ void update_next()
     }
     else
     {
-      tmp_color = bg_pal; // may be an issue here when the background color is not the one by default !
+      tmp_color = bg_pal & 3; // bg_pal is for 4 tiles, we just need the color, so &3 will keep the 2 LSB having the color
       set_metatile(gp_i,bg_tile);//for not blind gamer the tile is different from standard puyos
     }
     attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
