@@ -256,10 +256,10 @@ const unsigned int const damageList[7] =
       *  65535 / 30   => 2184, 0x888
       *  65535 / 6    => 10922, 0x2AAA
       *  note: this can result in an erro*/
-const unsigned int const damageListMult[7] =
+/*const unsigned int const damageListMult[7] =
 {
   0x2D, 0x5B, 0xB6, 0x16C, 0x888, 0x2AAA, 0xFFFF
-};
+};*/
 
 const byte const damageTile[7] = 
 { 
@@ -1443,23 +1443,27 @@ void manage_point()
       * 364 => 256 + 64 + 32 + 8 + 4
       * 2184 => 2048 + 128 + 8
       * 10922 => 8192 + 2048 + 512 + 128 + 32 + 8 + 2
+      * Ok as nothing works, no I will try the following : if tmp_score < to the divisor value then skip because obviously it will return 0
       */
       
       for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
-        tmp_score2 = tmp_score / damageList[gp_i];
-        //tmp_score2 = tmp_score >> 10-(gp_i); // up to 10000cy better than the line above !
-        //tmp_score2 = (tmp_score * damageListMult[gp_i]) >> 16;
-        //we go from higher score to lowest, checking the rest.
-        if (tmp_score2 > 0 )
+        if (tmp_score > damageList[gp_i])
         {
-          //we use tmp_mask because it is there, avoiding declaring something else
-          for (tmp_mask = 0; tmp_mask < (tmp_score2) && gp_j < 6 ; ++tmp_mask)
+          tmp_score2 = tmp_score / damageList[gp_i];
+          //tmp_score2 = tmp_score >> 10-(gp_i); // up to 10000cy better than the line above !
+          //tmp_score2 = (tmp_score * damageListMult[gp_i]) >> 16;
+          //we go from higher score to lowest, checking the rest.
+          if (tmp_score2 > 0 )
           {
-            current_damage_tiles[current_player][gp_j] = damageTile[gp_i];
-            ++gp_j;
+            //we use tmp_mask because it is there, avoiding declaring something else
+            for (tmp_mask = 0; tmp_mask < (tmp_score2) && gp_j < 6 ; ++tmp_mask)
+            {
+              current_damage_tiles[current_player][gp_j] = damageTile[gp_i];
+              ++gp_j;
+            }
+            tmp_score %= damageList[gp_i]; 
           }
-          tmp_score %= damageList[gp_i]; 
         }      
       }
       break;
@@ -1721,7 +1725,7 @@ void update_next()
     }
     else
     {
-      tmp_color = bg_pal;
+      tmp_color = bg_pal; // may be an issue here when the background color is not the one by default !
       set_metatile(gp_i,bg_tile);//for not blind gamer the tile is different from standard puyos
     }
     attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
