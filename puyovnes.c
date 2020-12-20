@@ -185,13 +185,14 @@ byte menu_pos_x;
 byte menu_pos_y[4];
 char str[32];
 byte current_damage_tiles[2][6];
+byte current_damage_tiles_index[2]; //the table indicate the player, the index is pointing at which current_damage_tiles we will fill.
 
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
 byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y, tmp_color;
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
-unsigned long int tmp_score, tmp_score2;
+unsigned long int tmp_score[2], tmp_score2[2];
 
 //
 // MUSIC ROUTINES
@@ -1275,10 +1276,14 @@ void fall_board()
           play_bayoen();
           //temporary solution, as it takes too much time there ! maybe 60000 cycles for point counting alone...
           //Maybe adding a AC step, if size of rom allows it... 
-          step_p_counter[current_player] = 2;
+          for ( step_p_counter[current_player] = 2; step_p_counter[current_player] < 11;  step_p_counter[current_player] ++)
+          {
+            manage_point();
+          }
+          /*step_p_counter[current_player] = 2;
           manage_point();
           step_p_counter[current_player] = 3;
-          manage_point();
+          manage_point();*/
         }
         step_p[current_player] = CHECK_ALL;
         step_p_counter[current_player] = 255;
@@ -1318,46 +1323,46 @@ void manage_point()
   {
     case 0: // Compute the new score and ojamas
       //hit power
-      tmp_score = (nb_hit[current_player] <= 3) ? ((nb_hit[current_player]-1) << 3) : ((nb_hit[current_player]-3) << 5);
+      tmp_score[current_player] = (nb_hit[current_player] <= 3) ? ((nb_hit[current_player]-1) << 3) : ((nb_hit[current_player]-3) << 5);
 
       //color_bonus
       //first get colors for current player, don't forget to shift it !
       tmp_mask = ((current_player == 0) ? mask_color_destroyed : mask_color_destroyed >> 4) & 0xf;
 
       //then get nb of colors used from the mask by bitshift, substract 1 and multiply by 3
-      tmp_score += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
+      tmp_score[current_player] += (((tmp_mask & 1) + ((tmp_mask & 2) >> 1) + ((tmp_mask & 4) >> 2) + ((tmp_mask & 8) >> 3)) - 1) * 3;
 
 
       // group_bonus
       if ( nb_group[current_player] > 0 )
       {
-        tmp_score += ( (nb_group[current_player] < 7) ? (nb_group[current_player] + 1) : 10 );
+        tmp_score[current_player] += ( (nb_group[current_player] < 7) ? (nb_group[current_player] + 1) : 10 );
       }
 
       //you need to raise the score if bonus are null, to avoid multiply by 0
-      if (tmp_score == 0)
-        tmp_score = 1;
+      if (tmp_score[current_player] == 0)
+        tmp_score[current_player] = 1;
 
       //Now the disappearing puyos
-      tmp_score = tmp_score * ((unsigned long) nb_puyos_destroyed[current_player] * 10);
+      tmp_score[current_player] = tmp_score[current_player] * ((unsigned long) nb_puyos_destroyed[current_player] * 10);
 
-      score[current_player] += tmp_score;
+      score[current_player] += tmp_score[current_player];
 
       //WIP add the opponent ojama removal from current player stack !
       if (current_player == 0)
       {
-        ojamas[2] += tmp_score;
+        ojamas[2] += tmp_score[current_player];
         if (ojamas[0] > 0)
         {  
-          ojamas[0] = (ojamas[0] - tmp_score > ojamas[0] ) ? 0 : ojamas[0] - tmp_score ;
+          ojamas[0] = (ojamas[0] - tmp_score[current_player] > ojamas[0] ) ? 0 : ojamas[0] - tmp_score[current_player] ;
         }
       }
       else
       {
-        ojamas[0] += tmp_score;
+        ojamas[0] += tmp_score[current_player];
         if (ojamas[2] > 0)
         {  
-          ojamas[2] = (ojamas[2] - tmp_score > ojamas[2] ) ? 0 : ojamas[2] - tmp_score ;
+          ojamas[2] = (ojamas[2] - tmp_score[current_player] > ojamas[2] ) ? 0 : ojamas[2] - tmp_score[current_player] ;
         }
       }
       break;
@@ -1391,14 +1396,15 @@ void manage_point()
       //1440: 0xf4   comet
 
       //first let's get our score divided by 70
-      tmp_score = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+      tmp_score[current_player] = ojamas[(current_player == 0 ? 2 : 0)] / 70;
       //tmp_score = (ojamas[(current_player == 0 ? 2 : 0)] * 936) >> 16; //
       //36 => 512 + 256 + 128 + 32 +8
       //tmp_score = ojamas[(current_player == 0 ? 2 : 0)];
       //tmp_score = (tmp_score << 9 + tmp_score << 8 + tmp_score << 7 + tmp_score << 5 + tmp_score << 3) >> 16;
-      gp_j = 0;
+      //gp_j = 0;
       //let's cheat, setup everything as ojamaless tile
       memset(current_damage_tiles[current_player],bg_tile, sizeof(current_damage_tiles[current_player]));
+      current_damage_tiles_index[current_player] = 0;
       /* bit of explanation here
       * that part is super expensive in term of CPU because of loops + division
       * looks like divisions like eating the NES CPU cycles
@@ -1444,30 +1450,57 @@ void manage_point()
       * 2184 => 2048 + 128 + 8
       * 10922 => 8192 + 2048 + 512 + 128 + 32 + 8 + 2
       * Ok as nothing works, no I will try the following : if tmp_score < to the divisor value then skip because obviously it will return 0
+      * not a big difference, so hammer solution: we will subdivise it into mutiple steps ! from 2 to 3, to 2 to 10
+      * /!\ /!\ /!\ /!\ /!\it may cause issues if damage from other player get the points be modified .../!\/!\/!\/!\/!\
       */
-      
-      for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
+      break;
+    case 3://1440
+    case 4://720
+    case 5://360
+    case 6://180
+    case 7://30
+    case 8://6
+    case 9://1
+      /*for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
-        if (tmp_score >= damageList[gp_i])
+        if (tmp_score[current_player] >= damageList[gp_i])
         {
-          tmp_score2 = tmp_score / damageList[gp_i];
+          tmp_score2[current_player] = tmp_score[current_player] / damageList[gp_i];
           //tmp_score2 = tmp_score >> 10-(gp_i); // up to 10000cy better than the line above !
           //tmp_score2 = (tmp_score * damageListMult[gp_i]) >> 16;
           //we go from higher score to lowest, checking the rest.
-          if (tmp_score2 > 0 )
+          if (tmp_score2[current_player] > 0 )
           {
             //we use tmp_mask because it is there, avoiding declaring something else
-            for (tmp_mask = 0; tmp_mask < (tmp_score2) && gp_j < 6 ; ++tmp_mask)
+            for (tmp_mask = 0; tmp_mask < (tmp_score2[current_player]) && gp_j < 6 ; ++tmp_mask)
             {
               current_damage_tiles[current_player][gp_j] = damageTile[gp_i];
               ++gp_j;
             }
-            tmp_score %= damageList[gp_i]; 
+            tmp_score[current_player] %= damageList[gp_i]; 
           }
         }      
+      }*/
+      
+      if (tmp_score[current_player] >= damageList[step_p_counter[current_player]])
+      {
+        tmp_score2[current_player] = tmp_score[current_player] / damageList[step_p_counter[current_player]];
+        if (tmp_score2[current_player] > 0 )
+        {
+          //we use tmp_mask because it is there, avoiding declaring something else
+          for (tmp_mask = 0; tmp_mask < (tmp_score2[current_player]) && current_damage_tiles_index[current_player] < 6 ; ++tmp_mask)
+          {
+            current_damage_tiles[current_player][current_damage_tiles_index[current_player]] = damageTile[step_p_counter[current_player]];
+            ++current_damage_tiles_index[current_player];
+          }
+        }
+        tmp_score[current_player] %= damageList[step_p_counter[current_player]];
       }
+
+      if (current_damage_tiles_index[current_player] >= 6 )
+        step_p_counter[current_player] = 9; // to be sure we don't go in 3 to 9 again, as it will be update outside
       break;
-    case 3:
+    case 10:
       //display damages
       //note: at some point we will have to deal with too much things updated simultaneously
       memset(ntbuf1, 0, sizeof(ntbuf1));
@@ -2603,10 +2636,10 @@ void main(void)
       { 
         //if we came from fall_board after a fall_ojama, we have to update the ojama display list first
         //(a bit of a hack for show_next initial purpose...)
-        if( step_p_counter[current_player] == 2 || step_p_counter[current_player] == 3) 
+        if( step_p_counter[current_player] >= 2 && step_p_counter[current_player] <= 10) 
         {
           manage_point();
-          if (step_p_counter[current_player] == 3)
+          if (step_p_counter[current_player] == 10)
             step_p_counter[current_player] = 0;
         }
         else
@@ -2665,7 +2698,7 @@ void main(void)
         manage_point();
         ++step_p_counter[current_player];
         
-        if (step_p_counter[current_player] == 4)
+        if (step_p_counter[current_player] == 11)
         {
           step_p[current_player] = FALL;
           step_p_counter[current_player] = 0;
