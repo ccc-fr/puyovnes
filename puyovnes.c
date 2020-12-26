@@ -1548,7 +1548,9 @@ byte fall_ojama()
   //we need to let the fall_board function fall every column,
   //something it will do in 6 frames
   //so we only add the new ojama to fall on step_p_counter%6 ==0
-  if (step_p_counter[current_player]%6 != 0)
+  // if the step is 0, it is the first time we enter that part, 
+  //and there is nothing the fall, so we skip this step
+  if (step_ojama_fall[current_player] != 0 && step_p_counter[current_player]%6 != 0)
   {
     return 1;
   }
@@ -2609,7 +2611,7 @@ void main(void)
         continue;//no need to evaluate the other possibilities
       }
       
-      // ojama fall, only when opponent is in step "PLAY" when counter  is at 0
+      // ojama fall, only when opponent is in step "PLAY" when counter is at 0
       // only 5 rows at a time, which will translate to 5*6 columns in our case
       // only if ojama[x], the damage score, is superior to 0
       // and if second row, the first visible, and third column is empty (top row : 0, so [2][1])
