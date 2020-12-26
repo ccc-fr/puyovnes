@@ -1106,6 +1106,7 @@ void fall_board()
   
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/
 
+  //ce for prend 10000 cycles !?!?
   for (gp_j = 0 ; gp_j < 13 ; ++gp_j)
   {
     if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & smask)) != EMPTY)
@@ -1113,7 +1114,7 @@ void fall_board()
       puyo_found = gp_j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
-      if (gp_j+1 < 13)
+      if (/*gp_j+1 < 13*/ gp_j < 12)
         ++gp_j;  
     }
 
