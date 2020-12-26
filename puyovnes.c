@@ -1123,7 +1123,7 @@ void fall_board()
       //we start from j and get up to avoid overwriting values
       for (gp_i = gp_j ; gp_i >= previous_empty && gp_i < 255 ; --gp_i)
       {
-        if (gp_i == 0) 
+        if (/*gp_i == 0 ||*/ gp_i == previous_empty) 
           boards[current_player][tmp_counter][gp_i] = EMPTY; /*(boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);*/
         else
           boards[current_player][tmp_counter][gp_i] = boards[current_player][tmp_counter][gp_i-1]; /*(boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  */
