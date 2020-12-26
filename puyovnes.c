@@ -193,6 +193,8 @@ byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
 unsigned long int tmp_score[2], tmp_score2[2];
+//variable for fall_board
+byte fall, can_fall, previous_empty, puyo_found;
 
 //
 // MUSIC ROUTINES
@@ -1096,20 +1098,24 @@ void fall_board()
   //si pas de changement on ne fait rien pour gagner en temps de calcul !
   //byte j, j2; replaced by  gp_i and gp_j
   //register word addr;
-  byte can_fall = 0, previous_empty = 0, puyo_found = 0;
-  byte smask = 7;
+  //byte can_fall = 0, previous_empty = 0, puyo_found = 0;
+  //byte smask = 7;
   //byte attr_x_shift = 1;
-  byte fall = 0;
+  //byte fall = 0;
+  can_fall = 0;
+  previous_empty = 0;
+  puyo_found = 0;
+  fall= 0;
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
   tmp_counter_2 = 0;
   tmp_counter_3 = 0;
   
-  tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/
+  tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ !
 
   //ce for prend 10000 cycles !?!?
   for (gp_j = 0 ; gp_j < 13 ; ++gp_j)
   {
-    if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & smask)) != EMPTY)
+    if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
     {
       puyo_found = gp_j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
@@ -1118,7 +1124,7 @@ void fall_board()
         ++gp_j;  
     }
 
-    if (can_fall == 1 && ( (boards[current_player][tmp_counter][gp_j] & smask)) == EMPTY)
+    if (can_fall == 1 && ( (boards[current_player][tmp_counter][gp_j] & /*smask*/7)) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
