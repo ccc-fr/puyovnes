@@ -1123,7 +1123,10 @@ void fall_board()
     //prend aussi 700 si on enlève le & 7, donc en gros, le simple test prend 700, ou l'accès à la mémoire. Voilà...
     //idem en bas chaque accès à boards[current_player][tmp_counter][gp_j] demande 700 cycles ?!? Why ?
     //gp_i = boards[current_player][tmp_counter][gp_j]; // ça prend 700cycles, mais pourquoi ????
-    case_address = (board_address + (tmp_counter*0xD) + gp_j);
+    //so we compute the address by hand, much faster
+    //basically, boards[0][0][0] is at board_address, select the player by moving of 0x48 == 78 case, a 13*6 boards
+    // every columne are separated by 0xD (13) and every line by just one
+    case_address = (board_address + (current_player*0x48) + (tmp_counter*0xD) + gp_j); //player index missing there !
     gp_i = *case_address;
     //peut-être qu'on peu calculer l'adresse suivante à la main ?
     if ((gp_i & 7) == EMPTY) 
