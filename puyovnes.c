@@ -1107,44 +1107,84 @@ void fall_board()
   puyo_found = 0;
   fall= 0;
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
-  tmp_counter_2 = 0;
-  tmp_counter_3 = 0;
-  
+ 
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ !
-
-  //ce for prend 10000 cycles !?!?
-  for (gp_j = 0 ; gp_j < 13 ; ++gp_j)
+  
+  for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
-    if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
+    //on va de bas en haut, par contre il faut insérer les valeurs dans ntbuff de haut en bas!
+    if ( ((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
+    {
+      puyo_found = gp_j;
+      if (can_fall)
+        fall = 1;
+    }
+    else
+    {
+      //On est vide, ça peut chuter
+      can_fall = 1;
+    }
+    if (can_fall)
+      gp_i = gp_j-1;
+    else
+      gp_i = gp_j;
+    
+    if (gp_i != 255)
+      boards[current_player][tmp_counter][gp_j] = boards[current_player][tmp_counter][gp_i];
+    else
+      boards[current_player][tmp_counter][gp_j] = EMPTY;
+    
+    //problème, même si ça ne tombe pas on modifie les valeurs
+    //et ça affiche n'importe quoi !
+    /*switch ((boards[current_player][tmp_counter][gp_j]))
+    {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
+      case EMPTY:
+        clear_metatile(12-gp_j);
+        attrbuf[(12-gp_j)>>1] = return_tile_attribute_color(2,tmp_counter_2,(12-gp_j)*2);
+        break;
+      case OJAMA:
+        set_metatile(12-gp_j,0xdc);
+        attrbuf[(12-gp_j)>>1] = return_tile_attribute_color(0,tmp_counter_2,(12-gp_j)*2);
+        break;//          
+      default:
+        set_metatile(12-gp_j,*(puyoSeq[boards[current_player][tmp_counter][gp_j]+blind_offset]+0x2));
+        attrbuf[(12-gp_j)>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][gp_j],tmp_counter_2,(12-gp_j)*2);
+        break;
+    }*/
+  }
+  //ce for prend 10000 cycles !?!?
+  // il y a peut-être une solution pour remplir le ntbuf et attribuf en même temps
+  //tout en évitant la deuxième boucle du can_fall
+  /*for (gp_j = 0 ; gp_j < 13 ; ++gp_j)
+  {
+    if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & 7)) != EMPTY)
     {
       puyo_found = gp_j;// if no puyo are found then the column is empty=> need to reset height
       //as long as no puyo is found, there is nothing to get down
       can_fall = 1;
-      if (/*gp_j+1 < 13*/ gp_j < 12)
+      if (gp_j < 12)
         ++gp_j;  
     }
 
-    if (can_fall == 1 && ( (boards[current_player][tmp_counter][gp_j] & /*smask*/7)) == EMPTY)
+    if (can_fall == 1 && ( (boards[current_player][tmp_counter][gp_j] & 7)) == EMPTY)
     {
       //this is where things get interesting, lets move everything down.
       //we start from j and get up to avoid overwriting values
       for (gp_i = gp_j ; gp_i >= previous_empty && gp_i < 255 ; --gp_i)
       {
-        if (/*gp_i == 0 ||*/ gp_i == previous_empty) 
-          boards[current_player][tmp_counter][gp_i] = EMPTY; /*(boards[board_index][tmp_counter][j2] & invmask) + (EMPTY << shift);*/
+        if ( gp_i == previous_empty) 
+          boards[current_player][tmp_counter][gp_i] = EMPTY; 
         else
-          boards[current_player][tmp_counter][gp_i] = boards[current_player][tmp_counter][gp_i-1]; /*(boards[board_index][tmp_counter][j2] & invmask) + (boards[board_index][tmp_counter][j2-1] & mask);  */
+          boards[current_player][tmp_counter][gp_i] = boards[current_player][tmp_counter][gp_i-1]; 
       }
       fall = 1;
-      /*sprintf(str,"F %d", tmp_counter);
-        vrambuf_put(NTADR_A(16,15+tmp_counter),str,8);*/
 
       //careful we wan't to only fall of 1 puyo height per cycle !
       //So we keep the position of the last element that has falled so top there
       previous_empty = gp_j+1;
       can_fall = 0;
     }
-  }
+  }*/
  
   if (fall == 1)
   {
@@ -1157,7 +1197,7 @@ void fall_board()
     if (column_height[current_player][tmp_counter] < floor_y) //let's avoid going under the floor
       column_height[current_player][tmp_counter] +=16;
     
-    if (current_player != 0)
+   if (current_player != 0)
     {
       tmp_counter_2 = (tmp_counter + 9) << 1;
       tmp_counter_3 = tmp_counter + 8;
@@ -1189,23 +1229,6 @@ void fall_board()
           set_metatile(gp_j-1,*(puyoSeq[boards[current_player][tmp_counter][gp_j]+blind_offset]+0x2));
           attrbuf[gp_j>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][gp_j],tmp_counter_2,gp_j*2);
           break;
-        break;
-        /*case PUYO_RED:
-          set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(0,tmp_counter_2,j*2);
-          break;
-        case PUYO_BLUE:
-          set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(1,tmp_counter_2,j*2);
-          break;
-        case PUYO_GREEN:
-          set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(2,tmp_counter_2,j*2);
-          break;
-        case PUYO_YELLOW:
-          set_metatile(j-1,0xd8);
-          attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter_2,j*2);
-          break;*/
       }
     } 
    
