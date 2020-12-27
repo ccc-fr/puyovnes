@@ -106,6 +106,7 @@ byte attribute_table[64];/* = {
 //Ok stop the bit shift thing it's horrendous, let's go simple : each board his table.
 //yes we lose 78 bytes of memory, but it will be simpler to manage and less cycle consuming
 byte boards[2][6][13];
+byte * board_address;
 
 //for sake of simplicity keeping the same table type for tmp
 //but we may look for something less huge in size later.
@@ -1102,6 +1103,7 @@ void fall_board()
   //byte smask = 7;
   //byte attr_x_shift = 1;
   //byte fall = 0;
+  byte * case_address;
   can_fall = 0;
   previous_empty = 0;
   puyo_found = 0;
@@ -1113,8 +1115,18 @@ void fall_board()
   for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
     //on va de bas en haut, par contre il faut insérer les valeurs dans ntbuff de haut en bas!
+    //juste une itération fait 2200cycles :O 
 
-    if (((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) == EMPTY)
+    // ce test avec &s prend...700cycles, OMG ! et donc le reste en dessous 1500!
+    // utiliser un || EMPTY+FLAG prend le même temps...
+    //la version précédente a plus de can_fall !=1, donc teste moins avec le &, peut-être la raison de sa vitesse.
+    //prend aussi 700 si on enlève le & 7, donc en gros, le simple test prend 700, ou l'accès à la mémoire. Voilà...
+    //idem en bas chaque accès à boards[current_player][tmp_counter][gp_j] demande 700 cycles ?!? Why ?
+    //gp_i = boards[current_player][tmp_counter][gp_j]; // ça prend 700cycles, mais pourquoi ????
+    case_address = (board_address + (tmp_counter*0xD) + gp_j);
+    gp_i = *case_address;
+    //peut-être qu'on peu calculer l'adresse suivante à la main ?
+    if ((gp_i & 7) == EMPTY) 
     {
       can_fall = 1;
     }
@@ -1122,7 +1134,7 @@ void fall_board()
     else
     {
       puyo_found = gp_j;
-      if (fall == 0 && can_fall)
+      if (!fall && can_fall)
         fall=1;
     }
       
@@ -1130,9 +1142,11 @@ void fall_board()
     {
       //on peut tomber et on a un truc pas vide =>on tombe :)
       if ( gp_j != 0 )
-        boards[current_player][tmp_counter][gp_j] = boards[current_player][tmp_counter][gp_j-1];
+        //boards[current_player][tmp_counter][gp_j] = boards[current_player][tmp_counter][gp_j-1];
+        *case_address = *(case_address-1);
       else    
-        boards[current_player][tmp_counter][gp_j] = EMPTY;
+        //boards[current_player][tmp_counter][gp_j] = EMPTY;
+       *case_address = EMPTY;
     }
       
     //problème, même si ça ne tombe pas on modifie les valeurs
@@ -1914,6 +1928,8 @@ void build_field()
     put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
     put_str(NTADR_C(6,24), "Press start to begin!");
   }
+  //the address of the boards, will be usefull in fall_board()
+  board_address = &boards[0][0][0];
 }
 
 void init_round()
