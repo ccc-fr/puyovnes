@@ -1113,27 +1113,28 @@ void fall_board()
   for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
     //on va de bas en haut, par contre il faut insérer les valeurs dans ntbuff de haut en bas!
-    if ( ((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
+
+    if (((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) == EMPTY)
     {
-      puyo_found = gp_j;
-      if (can_fall)
-        fall = 1;
-    }
-    else
-    {
-      //On est vide, ça peut chuter
       can_fall = 1;
     }
+    //if (((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
+    else
+    {
+      puyo_found = gp_j;
+      if (fall == 0 && can_fall)
+        fall=1;
+    }
+      
     if (can_fall)
-      gp_i = gp_j-1;
-    else
-      gp_i = gp_j;
-    
-    if (gp_i != 255)
-      boards[current_player][tmp_counter][gp_j] = boards[current_player][tmp_counter][gp_i];
-    else
-      boards[current_player][tmp_counter][gp_j] = EMPTY;
-    
+    {
+      //on peut tomber et on a un truc pas vide =>on tombe :)
+      if ( gp_j != 0 )
+        boards[current_player][tmp_counter][gp_j] = boards[current_player][tmp_counter][gp_j-1];
+      else    
+        boards[current_player][tmp_counter][gp_j] = EMPTY;
+    }
+      
     //problème, même si ça ne tombe pas on modifie les valeurs
     //et ça affiche n'importe quoi !
     /*switch ((boards[current_player][tmp_counter][gp_j]))
