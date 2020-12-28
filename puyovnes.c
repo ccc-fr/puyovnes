@@ -1110,7 +1110,7 @@ void fall_board()
   fall= 0;
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
  
-  tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ !
+  tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ ! un if > 6 else serait-il mieux ?
   
   for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
@@ -1136,7 +1136,9 @@ void fall_board()
     //if (((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
     else
     {
-      puyo_found = gp_j;
+      puyo_found = gp_j; // on est obligé de continuer à checker si empty à cause de ça, il nous faut la hauteur du puyo le plus haut
+      //c'est pour ça que l'ancienne version, avec la double boucle, était en fait plus rapide, elle ne retestait pas après
+      //avoir trouvé le premier puyo qui était forcément le plus haut.
       if (!fall && can_fall)
         fall=1;
     }
@@ -1204,7 +1206,7 @@ void fall_board()
     }
   }*/
  
-  if (fall == 1)
+  if (fall == 1) //22.5k cycles à lui seul, donc a priori ça rame...//en mode adressage [][][] il prenait...28k environ
   {
     //this is falling, so we keep that column value to check it during CHECK_ALL step
     check_all_column_list[current_player] = check_all_column_list[current_player] | (1 << tmp_counter);
@@ -1233,7 +1235,9 @@ void fall_board()
     //we start at 1 as we don't want to modify the ceiling
     for (gp_j = 1; gp_j < 13 ; ++gp_j)
     {
-      switch ((boards[current_player][tmp_counter][gp_j]))
+      case_address = (board_address + (current_player*0x48) + (tmp_counter*0xD) + gp_j); //player index missing there !
+      gp_i = *case_address;
+      switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
           clear_metatile(gp_j-1);
@@ -1244,8 +1248,8 @@ void fall_board()
           attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j*2);
           break;//          
         default:
-          set_metatile(gp_j-1,*(puyoSeq[boards[current_player][tmp_counter][gp_j]+blind_offset]+0x2));
-          attrbuf[gp_j>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][gp_j],tmp_counter_2,gp_j*2);
+          set_metatile(gp_j-1,*(puyoSeq[/*boards[current_player][tmp_counter][gp_j]*/gp_i+blind_offset]+0x2));
+          attrbuf[gp_j>>1] = return_tile_attribute_color(/*boards[current_player][tmp_counter][gp_j]*/gp_i,tmp_counter_2,gp_j*2);
           break;
       }
     } 
