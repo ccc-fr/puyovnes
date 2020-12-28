@@ -1104,6 +1104,7 @@ void fall_board()
   //byte attr_x_shift = 1;
   //byte fall = 0;
   byte * case_address;
+  byte * offset_address;
   can_fall = 0;
   previous_empty = 0;
   puyo_found = 0;
@@ -1111,7 +1112,7 @@ void fall_board()
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
  
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ ! un if > 6 else serait-il mieux ?
-  
+  offset_address = board_address + (current_player*0x48) + tmp_counter*0xD;
   for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
     //on va de bas en haut, par contre il faut insérer les valeurs dans ntbuff de haut en bas!
@@ -1126,7 +1127,7 @@ void fall_board()
     //so we compute the address by hand, much faster
     //basically, boards[0][0][0] is at board_address, select the player by moving of 0x48 == 78 case, a 13*6 boards
     // every columne are separated by 0xD (13) and every line by just one
-    case_address = (board_address + (current_player*0x48) + (tmp_counter*0xD) + gp_j); //player index missing there !
+    case_address = (offset_address + gp_j); //player index missing there !
     gp_i = *case_address;
     //peut-être qu'on peu calculer l'adresse suivante à la main ?
     if ((gp_i & 7) == EMPTY) 
@@ -1235,7 +1236,7 @@ void fall_board()
     //we start at 1 as we don't want to modify the ceiling
     for (gp_j = 1; gp_j < 13 ; ++gp_j)
     {
-      case_address = (board_address + (current_player*0x48) + (tmp_counter*0xD) + gp_j); //player index missing there !
+      case_address = (offset_address + gp_j); //player index missing there !
       gp_i = *case_address;
       switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
