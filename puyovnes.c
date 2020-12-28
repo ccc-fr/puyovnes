@@ -1103,7 +1103,7 @@ void fall_board()
   //byte smask = 7;
   //byte attr_x_shift = 1;
   //byte fall = 0;
-  byte * case_address;
+  byte * cell_address;
   byte * offset_address;
   can_fall = 0;
   previous_empty = 0;
@@ -1127,8 +1127,8 @@ void fall_board()
     //so we compute the address by hand, much faster
     //basically, boards[0][0][0] is at board_address, select the player by moving of 0x48 == 78 case, a 13*6 boards
     // every columne are separated by 0xD (13) and every line by just one
-    case_address = (offset_address + gp_j); //player index missing there !
-    gp_i = *case_address;
+    cell_address = (offset_address + gp_j); //player index missing there !
+    gp_i = *cell_address;
     //peut-être qu'on peu calculer l'adresse suivante à la main ?
     if ((gp_i & 7) == EMPTY) 
     {
@@ -1149,10 +1149,10 @@ void fall_board()
       //on peut tomber et on a un truc pas vide =>on tombe :)
       if ( gp_j != 0 )
         //boards[current_player][tmp_counter][gp_j] = boards[current_player][tmp_counter][gp_j-1];
-        *case_address = *(case_address-1);
+        *cell_address = *(cell_address-1);
       else    
         //boards[current_player][tmp_counter][gp_j] = EMPTY;
-       *case_address = EMPTY;
+       *cell_address = EMPTY;
     }
       
     //problème, même si ça ne tombe pas on modifie les valeurs
@@ -1236,8 +1236,8 @@ void fall_board()
     //we start at 1 as we don't want to modify the ceiling
     for (gp_j = 1; gp_j < 13 ; ++gp_j)
     {
-      case_address = (offset_address + gp_j); //player index missing there !
-      gp_i = *case_address;
+      cell_address = (offset_address + gp_j); //player index missing there !
+      gp_i = *cell_address;
       switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
@@ -1589,6 +1589,10 @@ byte fall_ojama()
   //byte tmp_counter = step_p_counter[current_player];
   //byte opponent_status = step_p[~current_player & 1]; //~0 & 1 donne 1 et ~1 & 1 donne 0;
   /*byte fall = 0, i = 0, top_line_space = 0;*/
+  byte * offset_address;
+  byte * cell_address;
+  offset_address = board_address + (current_player*0x48) /*+ tmp_counter*0xD*/;
+
   tmp_counter = 0; // top_line_space
   if ((step_ojama_fall[current_player] == 0 && step_p[~current_player & 1] != PLAY) )
   {
@@ -1612,14 +1616,16 @@ byte fall_ojama()
   if ( (step_ojama_fall[current_player] < 5) && (ojamas[current_player<<1] >= 70))
   {
     tmp_index = current_player<<1;
+    cell_address = offset_address;
     if ( ojamas[tmp_index] >= 420)
     {
       // over 70*6, 420, a full line can be added
       for (gp_i = 0; gp_i < 6; ++gp_i)
       {
-        if ( (boards[current_player][gp_i][0]/* & mask >> shift*/) == EMPTY)
+        if ( (/*boards[current_player][gp_i][0]*/*cell_address) == EMPTY)
         {
-          boards[current_player][gp_i][0] = OJAMA;
+          //boards[current_player][gp_i][0] = OJAMA;
+          *cell_address = OJAMA;
           if ( (ojamas[tmp_index] - 70) < ojamas[tmp_index]) //if not inferior then less than 70 !
           { 
             ojamas[tmp_index] -= 70;
@@ -1630,6 +1636,7 @@ byte fall_ojama()
             break;//no points, no need to continue
           }
         }
+        cell_address += 0x0D;//pour aller de colonnes en colonne on se déplace de 13
       }
     }
     else
@@ -1639,27 +1646,33 @@ byte fall_ojama()
       tmp_counter = 0;
       for (gp_i = 0; gp_i < 6; ++gp_i )
       {
-        if ((boards[current_player][gp_i][0]) == EMPTY)
+        if (/*(boards[current_player][gp_i][0])*/*cell_address == EMPTY)
         {
           ++tmp_counter;
-        } 
+        }
+        cell_address += 0x0D;//pour aller de colonnes en colonne on se déplace de 13
       }
       if (tmp_counter > 0)
       {
+        cell_address = offset_address;
         if (tmp_counter > (ojamas[tmp_index] / 70) )
         {
           gp_i = 0;
           //more space than ojama, we randomize the fall
           while (ojamas[tmp_index] >= 70)
           {
-            if ((boards[current_player][gp_i][0]) == EMPTY && (rand8() & 1))
+            if (/*(boards[current_player][gp_i][0])*/ *cell_address== EMPTY && (rand8() & 1))
             {
-              //boards[i][0] |= (OJAMA << shift);
-              boards[current_player][gp_i][0] = OJAMA;
+              //boards[current_player][gp_i][0] = OJAMA;
+              *cell_address = OJAMA;
               ojamas[tmp_index] -= 70;
             }
             ++gp_i;
             gp_i = gp_i%6;//to loop
+            if (gp_i == 0)
+              cell_address = offset_address;//on repart au début de notre tableau, 1ère colonne
+            else
+              cell_address += 0x0D;//pour aller de colonnes en colonne on se déplace de 13
           }
         }
         else
@@ -1667,12 +1680,13 @@ byte fall_ojama()
           //less space than ojama, we fill every holes, the remaining ojamas will fall at next step
           for (gp_i = 0; gp_i < 6; ++gp_i )
           {
-            if ((boards[current_player][gp_i][0]) == EMPTY)
+            if (/*(boards[current_player][gp_i][0])*/ *cell_address == EMPTY)
             {
-              //boards[i][0] |= (OJAMA << shift);
-              boards[current_player][gp_i][0] = OJAMA;
+              //boards[current_player][gp_i][0] = OJAMA;
+              *cell_address = OJAMA;
               ojamas[tmp_index] -= 70;
-            } 
+            }
+            cell_address += 0x0D;//pour aller de colonnes en colonne on se déplace de 13
           }
         }
       }
