@@ -65,7 +65,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //with 8 bits we have 2 pairs
 //So we need an array length of 64 bytes/char to stock everything, amazing !
 #define PUYOLISTLENGTH 64
-#define DEBUG 1
+#define DEBUG 1 // Currently P2 game is broken, need to check why.
 /// GLOBAL VARIABLES
 byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
@@ -107,6 +107,7 @@ byte attribute_table[64];/* = {
 //yes we lose 78 bytes of memory, but it will be simpler to manage and less cycle consuming
 byte boards[2][6][13];
 byte * board_address;
+byte * cell_address;
 
 //for sake of simplicity keeping the same table type for tmp
 //but we may look for something less huge in size later.
@@ -589,15 +590,15 @@ void update_boards()
   //we must be careful not to erase the data for p2 table
   //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
   //get the column number right
+  byte * base_address = board_address + (current_player? 0x48:0);
   
-  //x = ((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1;
-  //y = ((actor_y[current_player][0]>>3)+1)>>1;
-  boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
+  //boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
+  cell_address = base_address + ((((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((actor_y[current_player][0]>>3)+1)>>1);
+  *cell_address = return_sprite_color(current_player<<1);
 
-  //x = ((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1;
-  //y = ((actor_y[current_player][1]>>3)+1)>>1;
-  boards[current_player][((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][1]>>3)+1)>>1] = return_sprite_color((current_player<<1)+1);
-
+  //boards[current_player][((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][1]>>3)+1)>>1] = return_sprite_color((current_player<<1)+1);
+  cell_address = base_address + ((((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((actor_y[current_player][1]>>3)+1)>>1);
+  *cell_address = return_sprite_color((current_player<<1)+1);
   return;
 }
 
@@ -1103,7 +1104,7 @@ void fall_board()
   //byte smask = 7;
   //byte attr_x_shift = 1;
   //byte fall = 0;
-  byte * cell_address;
+  //byte * cell_address;
   byte * offset_address;
   can_fall = 0;
   previous_empty = 0;
@@ -1590,7 +1591,7 @@ byte fall_ojama()
   //byte opponent_status = step_p[~current_player & 1]; //~0 & 1 donne 1 et ~1 & 1 donne 0;
   /*byte fall = 0, i = 0, top_line_space = 0;*/
   byte * offset_address;
-  byte * cell_address;
+  //byte * cell_address;
   offset_address = board_address + (current_player*0x48) /*+ tmp_counter*0xD*/;
 
   tmp_counter = 0; // top_line_space
