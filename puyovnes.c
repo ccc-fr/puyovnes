@@ -2867,7 +2867,9 @@ void main(void)
           if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
           {
             j = 13 - (step_p_counter[current_player] % 13);
-            if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+            cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
+            //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+            if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
               should_destroy = (check_board(i, j) > 0) || should_destroy ;  
           }
           ++step_p_counter[current_player];
@@ -2876,7 +2878,9 @@ void main(void)
           if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
           {
             j = 13 - (step_p_counter[current_player] % 13);
-            if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+            cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
+            //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+            if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
               should_destroy = (check_board(i, j) > 0) || should_destroy ;
           }
           ++step_p_counter[current_player];
@@ -2885,7 +2889,9 @@ void main(void)
           if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
           {
             j = 13 - (step_p_counter[current_player] % 13);
-            if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+            cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
+            //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+            if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
               should_destroy = (check_board(i, j) > 0) || should_destroy ;
           }
           ++step_p_counter[current_player];
