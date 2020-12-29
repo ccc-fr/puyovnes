@@ -2523,19 +2523,24 @@ void main(void)
 
       //flush step, that's supposing one opponent has lost
       //we are unsing tmp_boards, which is slightly larger than boards table.
-      //the two extra lines are for storing what will be display on the floor
+      //the two extra lines are for storing what will be displayed on the floor
       if (step_p[current_player] == FLUSH)
       {
         //memset(tmp_boards,0,sizeof(tmp_boards));
         //init step, we copy current boards into tmp_boards, and set the floor tiles too
         if (step_p_counter[current_player] == 255)
         {
+          cell_address = board_address + (current_player ? 0x48:0);
           for ( i = 0; i < 6; ++i)
           {
             //loop inserted to gain a few bytes of space.
-            for (j = 0; j<12; ++j)
+            for (j = 0; j<13; ++j)
             {
-              tmp_boards[i][j] = boards[current_player][i][j];
+              //tmp_boards[i][j] = boards[current_player][i][j];
+              tmp_boards[i][j] = *cell_address;
+              // incrementing by 0x0D in the column loop is unecessary, as basically doing +1 at the end of one column move to the beginning of the next
+              //++cell_address;
+              cell_address +=1;
             }
             /*tmp_boards[i][0] = boards[current_player][i][0];
             tmp_boards[i][1] = boards[current_player][i][1];
