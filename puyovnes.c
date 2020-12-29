@@ -1063,17 +1063,19 @@ byte destroy_board()
     }
     
     gp_i = tmp_counter%12;
-    
+    cell_address = board_address + (current_player?0x48:0) + gp_i*0xD;
     for (gp_j = 0; gp_j < 13 ; ++gp_j)
     {
-      if ((boards[current_player][gp_i][gp_j] & FLAG) > 0)
+      if ((/*boards[current_player][gp_i][gp_j]*/ *cell_address & FLAG) > 0)
       {
         addr = NTADR_A(((gp_i)*2) + nt_x_offset[current_player], gp_j << 1 );
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
     
-        boards[current_player][gp_i][gp_j] = gp_k;
+        //boards[current_player][gp_i][gp_j] = gp_k;
+        *cell_address = gp_k;
       }
+      cell_address += 1;
     }
 
     if (tmp_counter == 17)
