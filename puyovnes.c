@@ -609,6 +609,7 @@ byte check_board(byte x, byte y)
   /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
   /*byte mask = 15, flag = 8, shift = 0;*/ 
   //byte destruction = 0;//tmp_coutner_3 !
+  byte * current_board_address = board_address + (current_player?0x48:0);
   tmp_counter = 0;
   tmp_counter_2 = 0; // counter
   tmp_counter_3 = 0; //destruction
@@ -628,8 +629,10 @@ byte check_board(byte x, byte y)
   
   //Note : sizeof boards won't change, we could use a define here instead of computing it each time the function is called
   memset(tmp_boards,0,sizeof(tmp_boards));
+  cell_address = current_board_address + x*0xD + y;
+  //current_color = ((boards[current_player][x][y]));
+  current_color = *cell_address;
 
-  current_color = ((boards[current_player][x][y]));
   //OJAMA are not destroyed by being linked by 4 !
   if (current_color == OJAMA)
     return 0;
@@ -637,11 +640,14 @@ byte check_board(byte x, byte y)
   //tmp_boards contains flag of the currently looked color 
   tmp_boards[x][y] = FLAG;
   gp_i = (x - 1); //byte are unsigned, so -1 = 255, we will not enter in the while if i < 0
+  cell_address = current_board_address + gp_i*0xD + y;
+  
   while ( gp_i < 6 )
   {
     if ( tmp_boards[gp_i][y] != FLAG)
     {
-      if (current_color == ((boards[current_player][gp_i][y]) ))
+      //if (current_color == ((boards[current_player][gp_i][y]) ))
+      if (current_color == (*cell_address))
       {     
         tmp_boards[gp_i][y] = FLAG;
         ++tmp_counter_2;
@@ -660,14 +666,18 @@ byte check_board(byte x, byte y)
       }
     }
     --gp_i;
+    cell_address -= 0xD; //0xD d'écart dans le tableau entre chaque colonne.
   }
   
   gp_i = (x + 1);
+  cell_address = current_board_address + gp_i*0xD + y;
+  
   while ( gp_i < 6 )
   {
     if ( tmp_boards[gp_i][y] != FLAG)
     {
-      if (current_color == ((boards[current_player][gp_i][y]) ))
+      //if (current_color == ((boards[current_player][gp_i][y]) ))
+      if (current_color == (*cell_address))
       {     
         tmp_boards[gp_i][y] = FLAG;
         ++tmp_counter_2;
@@ -686,14 +696,18 @@ byte check_board(byte x, byte y)
       }
     }
     ++gp_i;
+    cell_address += 0xD;
   }
   
   gp_i = (y - 1);
+  cell_address = current_board_address + x*0xD + gp_i;
+
   while ( gp_i < 13 )
   {
     if ( tmp_boards[x][gp_i] != FLAG)
     {
-      if (current_color == ((boards[current_player][x][gp_i]) ))
+      //if (current_color == ((boards[current_player][x][gp_i]) ))
+      if (current_color == (*cell_address))
       {     
         tmp_boards[x][gp_i] = FLAG;
         ++tmp_counter_2;
@@ -711,14 +725,19 @@ byte check_board(byte x, byte y)
       }
     }
     --gp_i;
+    --cell_address;
+    
   }
   
   gp_i = (y + 1);
+  cell_address = current_board_address + x*0xD + gp_i;
+
   while ( gp_i < 13 )
   {
     if ( tmp_boards[x][gp_i] != FLAG)
     {
-      if (current_color == ((boards[current_player][x][gp_i]) ))
+      //if (current_color == ((boards[current_player][x][gp_i]) ))
+      if (current_color == (*cell_address))
       {     
         tmp_boards[x][gp_i] = FLAG;
         ++tmp_counter_2;
@@ -736,6 +755,7 @@ byte check_board(byte x, byte y)
       }
     }
     ++gp_i;
+    ++cell_address;
   }
   //nothing found ? exit !
   if (tmp_counter_2 == 0)
@@ -743,6 +763,8 @@ byte check_board(byte x, byte y)
   
   //ok so we got something, now looking for more
   gp_j = (y-1);
+  cell_address = current_board_address + gp_j;
+
   //we go above, so we look below, left and right
   //we must do the line in both way (0 to 6 and 6 to 0) to avoid missing something
   while (gp_j < 13)
@@ -751,7 +773,8 @@ byte check_board(byte x, byte y)
     gp_k = gp_j+1;
     //unlooped version
     //0
-    if (tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]) )) && 
+    //if (tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]) )) && 
+    if (tmp_boards[0][gp_j] != FLAG && (current_color == (*cell_address )) &&
         ( ((gp_k!=13) ? (tmp_boards[0][gp_k] == FLAG) : false) ||
          (tmp_boards[1][gp_j] == FLAG)) )
     {
@@ -761,7 +784,9 @@ byte check_board(byte x, byte y)
     }
 
     //1
-    if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j]) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j]) )) && 
+    if ( tmp_boards[1][gp_j] != FLAG && (current_color == (*cell_address )) && 
         ( ((gp_k!=13) ? (tmp_boards[1][gp_k] == FLAG) : false) ||
          (tmp_boards[0][gp_j] == FLAG) ||
          (tmp_boards[2][gp_j] == FLAG)) )
@@ -772,7 +797,9 @@ byte check_board(byte x, byte y)
     }
 
     //2
-    if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == ((boards[current_player][2][gp_j]))) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == ((boards[current_player][2][gp_j]))) &&
+    if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == (*cell_address)) &&
         ( ((gp_k!=13) ? (tmp_boards[2][gp_k] == FLAG) : false) ||
          (tmp_boards[1][gp_j] == FLAG) ||
          (tmp_boards[3][gp_j] == FLAG)) )
@@ -783,7 +810,9 @@ byte check_board(byte x, byte y)
     }
 
     //3
-    if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == ((boards[current_player][3][gp_j] ) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == ((boards[current_player][3][gp_j] ) )) && 
+    if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == (*cell_address )) && 
         ( ((gp_k!=13) ? (tmp_boards[3][gp_k] == FLAG) : false) ||
          (tmp_boards[2][gp_j] == FLAG) ||
          (tmp_boards[4][gp_j] == FLAG)) )
@@ -794,7 +823,9 @@ byte check_board(byte x, byte y)
     }
 
     //4
-    if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == ((boards[current_player][4][gp_j]))) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == ((boards[current_player][4][gp_j]))) && 
+    if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == (*cell_address)) && 
         ( ((gp_k!=13) ? (tmp_boards[4][gp_k] == FLAG) : false) ||
          (tmp_boards[3][gp_j] == FLAG) ||
          (tmp_boards[5][gp_j] == FLAG)) )
@@ -805,7 +836,9 @@ byte check_board(byte x, byte y)
     }
 
     //5
-    if ( tmp_boards[5][gp_j] != FLAG && (current_color == ((boards[current_player][5][gp_j] ))) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[5][gp_j] != FLAG && (current_color == ((boards[current_player][5][gp_j] ))) &&
+    if ( tmp_boards[5][gp_j] != FLAG && (current_color == (*cell_address)) &&
         ( ((gp_k!=13) ? (tmp_boards[5][gp_k] == FLAG) : false) ||
          (tmp_boards[4][gp_j] == FLAG)))
     {
@@ -819,7 +852,9 @@ byte check_board(byte x, byte y)
     {
       
       //4
-      if ( tmp_boards[4][gp_j] != FLAG && (current_color == ((boards[current_player][4][gp_j]))) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[4][gp_j] != FLAG && (current_color == ((boards[current_player][4][gp_j]))) && 
+      if ( tmp_boards[4][gp_j] != FLAG && (current_color == (*cell_address)) &&
            ((tmp_boards[3][gp_j] == FLAG) ||
             (tmp_boards[5][gp_j] == FLAG)) )
       {
@@ -828,7 +863,9 @@ byte check_board(byte x, byte y)
       }
       
       //3
-      if ( tmp_boards[3][gp_j] != FLAG && (current_color == ((boards[current_player][3][gp_j] ) )) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[3][gp_j] != FLAG && (current_color == ((boards[current_player][3][gp_j] ) )) && 
+      if ( tmp_boards[3][gp_j] != FLAG && (current_color == (*cell_address )) && 
            ((tmp_boards[2][gp_j] == FLAG) ||
             (tmp_boards[4][gp_j] == FLAG)) )
       {
@@ -837,7 +874,9 @@ byte check_board(byte x, byte y)
       }
       
       //2
-      if ( tmp_boards[2][gp_j] != FLAG && (current_color == ((boards[current_player][2][gp_j] ) )) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[2][gp_j] != FLAG && (current_color == ((boards[current_player][2][gp_j] ) )) &&
+      if ( tmp_boards[2][gp_j] != FLAG && (current_color == (*cell_address )) &&
            ((tmp_boards[1][gp_j] == FLAG) ||
             (tmp_boards[3][gp_j] == FLAG)) )
       {
@@ -846,7 +885,9 @@ byte check_board(byte x, byte y)
       }
       
       //1
-      if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j] ) )) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j] ) )) && 
+      if ( tmp_boards[1][gp_j] != FLAG && (current_color == (*cell_address )) &&
            ((tmp_boards[0][gp_j] == FLAG) ||
             (tmp_boards[2][gp_j] == FLAG)) )
       {
@@ -855,7 +896,8 @@ byte check_board(byte x, byte y)
       }
       
        //0
-      if ( tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j] ) )) && 
+      cell_address -= 0xD;
+      if ( tmp_boards[0][gp_j] != FLAG && (current_color == (*cell_address )) && 
            ((tmp_boards[1][gp_j] == FLAG)) )
       {
         tmp_boards[0][gp_j] = FLAG;
@@ -865,10 +907,13 @@ byte check_board(byte x, byte y)
     }
     tmp_counter = 0;
     --gp_j; //going above is getting lower j
+    --cell_address;
   }
   
   gp_j = y+1;
   //we go below so we look above
+  cell_address = current_board_address + gp_j;
+  
   while (gp_j < 13)
   {
   
@@ -877,7 +922,8 @@ byte check_board(byte x, byte y)
     
     //unlooped version
     //0
-    if (tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]) )) && 
+    //if (tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]) )) && 
+    if (tmp_boards[0][gp_j] != FLAG && (current_color == (*cell_address )) &&
         (((gp_k<13) ? (tmp_boards[0][gp_k] == FLAG) : false) ||
          (tmp_boards[1][gp_j] == FLAG)) )
     {
@@ -887,7 +933,9 @@ byte check_board(byte x, byte y)
     }
 
     //1
-    if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j] ) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j] ) )) && 
+    if ( tmp_boards[1][gp_j] != FLAG && (current_color == (*cell_address )) && 
         (((gp_k<13) ? (tmp_boards[1][gp_k] == FLAG) : false) ||
          (tmp_boards[0][gp_j] == FLAG) ||
          (tmp_boards[2][gp_j] == FLAG)) )
@@ -898,7 +946,10 @@ byte check_board(byte x, byte y)
     }
 
     //2
-    if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == ((boards[current_player][2][gp_j] ) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == ((boards[current_player][2][gp_j] ) )) && 
+    if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == (*cell_address )) && 
+
         (((gp_k<13) ? (tmp_boards[2][gp_k] == FLAG) : false) ||
          (tmp_boards[1][gp_j] == FLAG) ||
          (tmp_boards[3][gp_j] == FLAG)) )
@@ -909,7 +960,9 @@ byte check_board(byte x, byte y)
     }
 
     //3
-    if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == ((boards[current_player][3][gp_j] ) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == ((boards[current_player][3][gp_j] ) )) && 
+    if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == (*cell_address )) && 
         (((gp_k<13) ? (tmp_boards[3][gp_k] == FLAG) : false) ||
          (tmp_boards[2][gp_j] == FLAG) ||
          (tmp_boards[4][gp_j] == FLAG)) )
@@ -920,7 +973,9 @@ byte check_board(byte x, byte y)
     }
 
     //4
-    if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == ((boards[current_player][4][gp_j]) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == ((boards[current_player][4][gp_j]) )) &&
+    if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == (*cell_address )) &&
         (((gp_k<13) ? (tmp_boards[4][gp_k] == FLAG) : false) ||
          (tmp_boards[3][gp_j] == FLAG) ||
          (tmp_boards[5][gp_j] == FLAG)) )
@@ -931,7 +986,9 @@ byte check_board(byte x, byte y)
     }
 
     //5
-    if ( tmp_boards[5][gp_j] != FLAG && (current_color == ((boards[current_player][5][gp_j]) )) && 
+    cell_address += 0xD;
+    //if ( tmp_boards[5][gp_j] != FLAG && (current_color == ((boards[current_player][5][gp_j]) )) &&
+    if ( tmp_boards[5][gp_j] != FLAG && (current_color == (*cell_address )) &&
         ( ((gp_k<13) ? (tmp_boards[5][gp_k] == FLAG) : false) ||
          (tmp_boards[4][gp_j] == FLAG)))
     {
@@ -952,7 +1009,9 @@ byte check_board(byte x, byte y)
       }*/
       
       //4
-      if ( tmp_boards[4][gp_j] != FLAG && (current_color == ((boards[current_player][4][gp_j]) )) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[4][gp_j] != FLAG && (current_color == ((boards[current_player][4][gp_j]) )) &&
+      if ( tmp_boards[4][gp_j] != FLAG && (current_color == (*cell_address )) &&
            ((tmp_boards[3][gp_j] == FLAG) ||
             (tmp_boards[5][gp_j] == FLAG)) )
       {
@@ -961,7 +1020,9 @@ byte check_board(byte x, byte y)
       }
       
       //3
-      if ( tmp_boards[3][gp_j] != FLAG && (current_color == ((boards[current_player][3][gp_j] ) )) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[3][gp_j] != FLAG && (current_color == ((boards[current_player][3][gp_j] ) )) && 
+      if ( tmp_boards[3][gp_j] != FLAG && (current_color == (*cell_address )) && 
            ((tmp_boards[2][gp_j] == FLAG) ||
             (tmp_boards[4][gp_j] == FLAG)) )
       {
@@ -970,7 +1031,9 @@ byte check_board(byte x, byte y)
       }
       
       //2
-      if ( tmp_boards[2][gp_j] != FLAG && (current_color == ((boards[current_player][2][gp_j]) )) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[2][gp_j] != FLAG && (current_color == ((boards[current_player][2][gp_j]) )) && 
+      if ( tmp_boards[2][gp_j] != FLAG && (current_color == (*cell_address )) &&
            ((tmp_boards[1][gp_j] == FLAG) ||
             (tmp_boards[3][gp_j] == FLAG)) )
       {
@@ -979,7 +1042,9 @@ byte check_board(byte x, byte y)
       }
       
       //1
-      if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j]))) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j]))) &&
+      if ( tmp_boards[1][gp_j] != FLAG && (current_color == (*cell_address)) &&
            ((tmp_boards[0][gp_j] == FLAG) ||
             (tmp_boards[2][gp_j] == FLAG)) )
       {
@@ -988,7 +1053,9 @@ byte check_board(byte x, byte y)
       }
       
        //0
-      if ( tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]))) && 
+      cell_address -= 0xD;
+      //if ( tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]))) && 
+      if ( tmp_boards[0][gp_j] != FLAG && (current_color == (*cell_address)) &&
            ((tmp_boards[1][gp_j] == FLAG)) )
       {
         tmp_boards[0][gp_j] = FLAG;
@@ -997,6 +1064,7 @@ byte check_board(byte x, byte y)
     }
     tmp_counter = 0;
     ++gp_j; //going below is getting higher j
+    ++cell_address;
   }
   
   //we started from 0, so at 3 we have 4 to erase
@@ -1007,7 +1075,8 @@ byte check_board(byte x, byte y)
     // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow
     mask_color_destroyed |= (1 << shift[current_player]) << current_color;  
     nb_group[current_player] += (tmp_counter_2 + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
-
+    
+    cell_address = current_board_address + 12;
     //copy flag to boards
     for (gp_i = 0; gp_i < 6; ++gp_i)
     {
@@ -1015,24 +1084,35 @@ byte check_board(byte x, byte y)
       {
         if ( tmp_boards[gp_i][gp_j] == FLAG)
         {
-          boards[current_player][gp_i][gp_j] |= FLAG;
+          //boards[current_player][gp_i][gp_j] |= FLAG;
+          *cell_address |= FLAG;
           ++tmp_counter_3;
           //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
           //note : it will probably slow done things a lot do do that :-s
           //look left
-          if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
-            boards[current_player][gp_i-1][gp_j] |= FLAG;
+          /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
+            boards[current_player][gp_i-1][gp_j] |= FLAG;*/
+          if (gp_i>0 && *(cell_address - 0xD) == OJAMA)
+            *(cell_address - 0xD) |= FLAG;
           //look right
-          if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
-            boards[current_player][gp_i+1][gp_j] |= FLAG;
+          /*if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
+            boards[current_player][gp_i+1][gp_j] |= FLAG*/
+          if (gp_i<5 && *(cell_address + 0xD) == OJAMA)
+            *(cell_address + 0xD) |= FLAG;
           //look up
-          if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
-            boards[current_player][gp_i][gp_j-1] |= FLAG;
+          /*if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
+            boards[current_player][gp_i][gp_j-1] |= FLAG;*/
+          if (gp_j>0 && *(cell_address - 1) == OJAMA)
+            *(cell_address - 1) |= FLAG;
           //look down
-          if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
-            boards[current_player][gp_i][gp_j+1] |= FLAG;
+          /*if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
+            boards[current_player][gp_i][gp_j+1] |= FLAG;*/
+          if (gp_j<12 && *(cell_address + 1) == OJAMA)
+            *(cell_address + 1) |= FLAG;
         }
+        --cell_address;
       }
+      cell_address += 0xD;
     }
   }
   return tmp_counter_3;
