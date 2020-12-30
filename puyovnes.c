@@ -629,7 +629,7 @@ byte check_board(byte x, byte y)
   
   //Note : sizeof boards won't change, we could use a define here instead of computing it each time the function is called
   memset(tmp_boards,0,sizeof(tmp_boards));
-  cell_address = current_board_address + x*0xD + y;
+  cell_address = current_board_address + (x*0xD) + y;
   //current_color = ((boards[current_player][x][y]));
   current_color = *cell_address;
 
@@ -640,7 +640,7 @@ byte check_board(byte x, byte y)
   //tmp_boards contains flag of the currently looked color 
   tmp_boards[x][y] = FLAG;
   gp_i = (x - 1); //byte are unsigned, so -1 = 255, we will not enter in the while if i < 0
-  cell_address = current_board_address + gp_i*0xD + y;
+  cell_address = current_board_address + (gp_i*0xD) + y;
   
   while ( gp_i < 6 )
   {
@@ -670,7 +670,7 @@ byte check_board(byte x, byte y)
   }
   
   gp_i = (x + 1);
-  cell_address = current_board_address + gp_i*0xD + y;
+  cell_address = current_board_address + (gp_i*0xD) + y;
   
   while ( gp_i < 6 )
   {
@@ -700,7 +700,7 @@ byte check_board(byte x, byte y)
   }
   
   gp_i = (y - 1);
-  cell_address = current_board_address + x*0xD + gp_i;
+  cell_address = current_board_address + (x*0xD) + gp_i;
 
   while ( gp_i < 13 )
   {
@@ -726,11 +726,10 @@ byte check_board(byte x, byte y)
     }
     --gp_i;
     --cell_address;
-    
   }
   
   gp_i = (y + 1);
-  cell_address = current_board_address + x*0xD + gp_i;
+  cell_address = current_board_address + (x*0xD) + gp_i;
 
   while ( gp_i < 13 )
   {
@@ -905,6 +904,12 @@ byte check_board(byte x, byte y)
       } 
       
     }
+    else
+    {
+      //si dans le cas où on à trouver quelque chose on peut conserver l'@, là il faut réinitialiser l'adresse
+      //pour que le -- matche
+      cell_address = current_board_address + gp_j;
+    }
     tmp_counter = 0;
     --gp_j; //going above is getting lower j
     --cell_address;
@@ -1062,6 +1067,12 @@ byte check_board(byte x, byte y)
         ++tmp_counter_2;
       } 
     }
+    else
+    {
+      //si dans le cas où on à trouver quelque chose on peut conserver l'@, là il faut réinitialiser l'adresse
+      //pour que le ++ matche
+      cell_address = current_board_address + gp_j;
+    }
     tmp_counter = 0;
     ++gp_j; //going below is getting higher j
     ++cell_address;
@@ -1080,6 +1091,7 @@ byte check_board(byte x, byte y)
     //copy flag to boards
     for (gp_i = 0; gp_i < 6; ++gp_i)
     {
+      current_board_address = cell_address;
       for (gp_j = 12 ; gp_j <= 12 ; --gp_j)
       {
         if ( tmp_boards[gp_i][gp_j] == FLAG)
@@ -1092,27 +1104,27 @@ byte check_board(byte x, byte y)
           //look left
           /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
             boards[current_player][gp_i-1][gp_j] |= FLAG;*/
-          if (gp_i>0 && *(cell_address - 0xD) == OJAMA)
-            *(cell_address - 0xD) |= FLAG;
+          if (gp_i>0 && (*cell_address - 0xD) == OJAMA)
+            *cell_address |= FLAG;
           //look right
           /*if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
             boards[current_player][gp_i+1][gp_j] |= FLAG*/
-          if (gp_i<5 && *(cell_address + 0xD) == OJAMA)
-            *(cell_address + 0xD) |= FLAG;
+          if (gp_i<5 && (*cell_address + 0xD) == OJAMA)
+            *cell_address |= FLAG;
           //look up
           /*if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
             boards[current_player][gp_i][gp_j-1] |= FLAG;*/
-          if (gp_j>0 && *(cell_address - 1) == OJAMA)
-            *(cell_address - 1) |= FLAG;
+          if (gp_j>0 && (*cell_address - 1) == OJAMA)
+            *cell_address |= FLAG;
           //look down
           /*if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
             boards[current_player][gp_i][gp_j+1] |= FLAG;*/
-          if (gp_j<12 && *(cell_address + 1) == OJAMA)
-            *(cell_address + 1) |= FLAG;
+          if (gp_j<12 && (*cell_address + 1) == OJAMA)
+            *cell_address |= FLAG;
         }
         --cell_address;
       }
-      cell_address += 0xD;
+      cell_address = current_board_address + 0xD;
     }
   }
   return tmp_counter_3;
