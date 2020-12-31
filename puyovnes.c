@@ -1810,12 +1810,13 @@ void flush()
     tmp_counter_2 = (tmp_counter + 1) << 1;
     tmp_counter_3 = tmp_counter;
   }
-  
-   //tmp_boards contains the information we need
+  cell_address = &tmp_boards[tmp_counter][0];
+  //tmp_boards contains the information we need
   //we start from the bottom, each cell will receive the one above itself
   for (gp_j = 14 ; gp_j > 0 ; --gp_j)
   {
-    tmp_boards[tmp_counter][gp_j] = tmp_boards[tmp_counter][gp_j-1];
+    //tmp_boards[tmp_counter][gp_j] = tmp_boards[tmp_counter][gp_j-1];
+    cell_address[gp_j] = cell_address[gp_j-1]; //cf 12. of https://www.cc65.org/doc/coding.html
   }
   /*tmp_boards[tmp_counter][14] = tmp_boards[tmp_counter][13];
   tmp_boards[tmp_counter][13] = tmp_boards[tmp_counter][12];
@@ -1831,7 +1832,8 @@ void flush()
   tmp_boards[tmp_counter][3] = tmp_boards[tmp_counter][2];
   tmp_boards[tmp_counter][2] = tmp_boards[tmp_counter][1];
   tmp_boards[tmp_counter][1] = tmp_boards[tmp_counter][0];*/
-  tmp_boards[tmp_counter][0] = EMPTY;  //last one receive empty
+  //tmp_boards[tmp_counter][0] = EMPTY;  //last one receive empty
+  cell_address[0] = EMPTY;
 
   
   
@@ -1842,7 +1844,7 @@ void flush()
   //we start at 1 as we don't want to modify the ceiling
   for (gp_j = 1; gp_j < 15 ; ++gp_j)
   {
-    switch (tmp_boards[tmp_counter][gp_j])
+    switch (/*tmp_boards[tmp_counter][gp_j]*/ cell_address[gp_j])
     {
       case EMPTY:
         clear_metatile(gp_j-1);
@@ -1873,8 +1875,10 @@ void flush()
         attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j*2);
         break;
       default:
-        set_metatile(gp_j-1,*(puyoSeq[tmp_boards[tmp_counter][gp_j]+blind_offset]+0x2));
-        attrbuf[gp_j>>1] = return_tile_attribute_color(tmp_boards[tmp_counter][gp_j],tmp_counter_2,gp_j*2);
+        //set_metatile(gp_j-1,*(puyoSeq[tmp_boards[tmp_counter][gp_j]+blind_offset]+0x2));
+        //attrbuf[gp_j>>1] = return_tile_attribute_color(tmp_boards[tmp_counter][gp_j],tmp_counter_2,gp_j*2);
+        set_metatile(gp_j-1,*(puyoSeq[cell_address[gp_j]+blind_offset]+0x2));
+        attrbuf[gp_j>>1] = return_tile_attribute_color(cell_address[gp_j],tmp_counter_2,gp_j*2);
         break;
     }
   } 
