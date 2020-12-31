@@ -106,13 +106,17 @@ byte attribute_table[64];/* = {
 //Ok stop the bit shift thing it's horrendous, let's go simple : each board his table.
 //yes we lose 78 bytes of memory, but it will be simpler to manage and less cycle consuming
 byte boards[2][6][13];
-byte * board_address;
-byte * cell_address;
 
 //for sake of simplicity keeping the same table type for tmp
 //but we may look for something less huge in size later.
 //we bump tmp_boards to 15 for the flush step, will contain what was the floor before
 byte tmp_boards[6][15];
+
+//Pointers to addresses to speed-up access time
+byte * board_address;
+byte * tmp_board_address;
+byte * cell_address;
+byte * tmp_cell_address;
 
 // buffers that hold vertical slices of nametable data
 char ntbuf1[PLAYROWS];	// left side
@@ -1810,13 +1814,13 @@ void flush()
     tmp_counter_2 = (tmp_counter + 1) << 1;
     tmp_counter_3 = tmp_counter;
   }
-  cell_address = &tmp_boards[tmp_counter][0];
+  tmp_cell_address = /*&tmp_boards[tmp_counter][0];*/tmp_board_address + (tmp_counter*0xF);
   //tmp_boards contains the information we need
   //we start from the bottom, each cell will receive the one above itself
   for (gp_j = 14 ; gp_j > 0 ; --gp_j)
   {
     //tmp_boards[tmp_counter][gp_j] = tmp_boards[tmp_counter][gp_j-1];
-    cell_address[gp_j] = cell_address[gp_j-1]; //cf 12. of https://www.cc65.org/doc/coding.html
+    tmp_cell_address[gp_j] = tmp_cell_address[gp_j-1]; //cf 12. of https://www.cc65.org/doc/coding.html
   }
   /*tmp_boards[tmp_counter][14] = tmp_boards[tmp_counter][13];
   tmp_boards[tmp_counter][13] = tmp_boards[tmp_counter][12];
@@ -1833,7 +1837,7 @@ void flush()
   tmp_boards[tmp_counter][2] = tmp_boards[tmp_counter][1];
   tmp_boards[tmp_counter][1] = tmp_boards[tmp_counter][0];*/
   //tmp_boards[tmp_counter][0] = EMPTY;  //last one receive empty
-  cell_address[0] = EMPTY;
+  tmp_cell_address[0] = EMPTY;
 
   
   
@@ -1844,7 +1848,7 @@ void flush()
   //we start at 1 as we don't want to modify the ceiling
   for (gp_j = 1; gp_j < 15 ; ++gp_j)
   {
-    switch (/*tmp_boards[tmp_counter][gp_j]*/ cell_address[gp_j])
+    switch (/*tmp_boards[tmp_counter][gp_j]*/ tmp_cell_address[gp_j])
     {
       case EMPTY:
         clear_metatile(gp_j-1);
@@ -1877,8 +1881,8 @@ void flush()
       default:
         //set_metatile(gp_j-1,*(puyoSeq[tmp_boards[tmp_counter][gp_j]+blind_offset]+0x2));
         //attrbuf[gp_j>>1] = return_tile_attribute_color(tmp_boards[tmp_counter][gp_j],tmp_counter_2,gp_j*2);
-        set_metatile(gp_j-1,*(puyoSeq[cell_address[gp_j]+blind_offset]+0x2));
-        attrbuf[gp_j>>1] = return_tile_attribute_color(cell_address[gp_j],tmp_counter_2,gp_j*2);
+        set_metatile(gp_j-1,*(puyoSeq[tmp_cell_address[gp_j]+blind_offset]+0x2));
+        attrbuf[gp_j>>1] = return_tile_attribute_color(tmp_cell_address[gp_j],tmp_counter_2,gp_j*2);
         break;
     }
   } 
@@ -2051,6 +2055,7 @@ void build_field()
   }
   //the address of the boards, will be usefull in fall_board()
   board_address = &boards[0][0][0];
+  tmp_board_address = &tmp_boards[0][0];
 }
 
 void init_round()
@@ -2627,13 +2632,15 @@ void main(void)
         if (step_p_counter[current_player] == 255)
         {
           cell_address = board_address + (current_player ? 0x48:0);
+          tmp_cell_address = tmp_board_address;
           for ( i = 0; i < 6; ++i)
           {
             //loop inserted to gain a few bytes of space.
             for (j = 0; j<13; ++j)
             {
               //tmp_boards[i][j] = boards[current_player][i][j];
-              tmp_boards[i][j] = *cell_address;
+              //tmp_boards[i][j] = *cell_address;
+              tmp_cell_address[j] = *cell_address;
               // incrementing by 0x0D in the column loop is unecessary, as basically doing +1 at the end of one column move to the beginning of the next
               //++cell_address;
               cell_address +=1;
@@ -2651,8 +2658,11 @@ void main(void)
             tmp_boards[i][10] = boards[current_player][i][10];
             tmp_boards[i][11] = boards[current_player][i][11];
             tmp_boards[i][12] = boards[current_player][i][12];*/
-            tmp_boards[i][13] = 255; // we use 255 as a way to identify a floor tile
-            tmp_boards[i][14] = 255;
+            //tmp_boards[i][13] = 255; // we use 255 as a way to identify a floor tile
+            // tmp_boards[i][14] = 255;
+            tmp_cell_address[13] = 255;
+            tmp_cell_address[14] = 255;
+            tmp_cell_address += 0xF;
           }
         }
         else
