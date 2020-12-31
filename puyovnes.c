@@ -117,6 +117,8 @@ byte * board_address;
 byte * tmp_boards_address;
 byte * cell_address;
 byte * tmp_cell_address;
+byte * current_board_address;
+byte * current_tmp_board_address;
 
 // buffers that hold vertical slices of nametable data
 char ntbuf1[PLAYROWS];	// left side
@@ -613,7 +615,8 @@ byte check_board(byte x, byte y)
   /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
   /*byte mask = 15, flag = 8, shift = 0;*/ 
   //byte destruction = 0;//tmp_coutner_3 !
-  byte * current_board_address = board_address + (current_player?0x48:0);
+  current_board_address = board_address + (current_player?0x48:0);
+  current_tmp_board_address = tmp_boards_address;
   tmp_counter = 0;
   tmp_counter_2 = 0; // counter
   tmp_counter_3 = 0; //destruction
@@ -1129,13 +1132,15 @@ byte check_board(byte x, byte y)
     nb_group[current_player] += (tmp_counter_2 + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
     
     cell_address = current_board_address + 12;
+    tmp_cell_address = current_tmp_board_address + 12;
     //copy flag to boards
     for (gp_i = 0; gp_i < 6; ++gp_i)
     {
       current_board_address = cell_address;
+      current_tmp_board_address = tmp_cell_address;
       for (gp_j = 12 ; gp_j <= 12 ; --gp_j)
       {
-        if ( tmp_boards[gp_i][gp_j] == FLAG)
+        if ( /*tmp_boards[gp_i][gp_j]*/ *tmp_cell_address == FLAG)
         {
           //boards[current_player][gp_i][gp_j] |= FLAG;
           *cell_address |= FLAG;
@@ -1164,8 +1169,10 @@ byte check_board(byte x, byte y)
             *cell_address |= FLAG;
         }
         --cell_address;
+        --tmp_cell_address;
       }
       cell_address = current_board_address + 0xD;
+      tmp_cell_address = current_tmp_board_address + 0xF;
     }
   }
   return tmp_counter_3;
