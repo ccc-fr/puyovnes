@@ -1,5 +1,5 @@
 //custom config file, explained there http://8bitworkshop.com/blog/docs/ide.md.html#8bitworkshopideusermanual/managingfiles/cc65customconfigfiles
-//it's only purpose is to allocated/defined/whatever room for the audio sample (by default DMC/SAMPLE size is too short)
+//it's only purpose is to allocate/define/whatever room for the audio sample (by default DMC/SAMPLE size is too short)
 #define CFGFILE puyovnes.cfg
 //#resource "puyovnes.cfg"
 
@@ -114,7 +114,7 @@ byte tmp_boards[6][15];
 
 //Pointers to addresses to speed-up access time
 byte * board_address;
-byte * tmp_board_address;
+byte * tmp_boards_address;
 byte * cell_address;
 byte * tmp_cell_address;
 
@@ -641,27 +641,26 @@ byte check_board(byte x, byte y)
   if (current_color == OJAMA)
     return 0;
 
-  //tmp_boards contains flag of the currently looked color 
-  tmp_boards[x][y] = FLAG;
+  //tmp_boards contains flag of the currently looked color
+  tmp_cell_address = tmp_boards_address + (x*0xF) + y;
+  //tmp_boards[x][y] = FLAG;
+  *tmp_cell_address = FLAG;
+  
   gp_i = (x - 1); //byte are unsigned, so -1 = 255, we will not enter in the while if i < 0
   cell_address = current_board_address + (gp_i*0xD) + y;
+  tmp_cell_address = tmp_boards_address + (gp_i*0xF) + y;
   
   while ( gp_i < 6 )
   {
-    if ( tmp_boards[gp_i][y] != FLAG)
+    if ( /*tmp_boards[gp_i][y]*/*tmp_cell_address != FLAG)
     {
       //if (current_color == ((boards[current_player][gp_i][y]) ))
       if (current_color == (*cell_address))
       {     
-        tmp_boards[gp_i][y] = FLAG;
+        //tmp_boards[gp_i][y] = FLAG;
+        *tmp_cell_address = FLAG;
         ++tmp_counter_2;
       }
-      /*else if (OJAMA == ((boards[current_player][i][y]) ))
-      {
-        tmp_boards[i][y] = FLAG;
-        //counter is not incremented for ojamas
-        break;//if we met an ojama, then the chain is simply broken !
-      }*/
       else
       {  
        /* i = 7; //no need to continue if not found
@@ -671,27 +670,24 @@ byte check_board(byte x, byte y)
     }
     --gp_i;
     cell_address -= 0xD; //0xD d'écart dans le tableau entre chaque colonne.
+    tmp_cell_address -= 0xF; //0xF d'écart dans le tableau temporaire entre chaque colonne.
   }
   
   gp_i = (x + 1);
   cell_address = current_board_address + (gp_i*0xD) + y;
+  tmp_cell_address = tmp_boards_address + (gp_i*0xF) + y;
   
   while ( gp_i < 6 )
   {
-    if ( tmp_boards[gp_i][y] != FLAG)
+    if ( /*tmp_boards[gp_i][y]*/ *tmp_cell_address != FLAG)
     {
       //if (current_color == ((boards[current_player][gp_i][y]) ))
       if (current_color == (*cell_address))
       {     
-        tmp_boards[gp_i][y] = FLAG;
+        //tmp_boards[gp_i][y] = FLAG;
+        *tmp_cell_address = FLAG;
         ++tmp_counter_2;
       }
-      /*else if (OJAMA == ((boards[current_player][i][y]) ))
-      {
-        tmp_boards[i][y] = FLAG;
-        //counter is not incremented for ojamas
-        break;//if we met an ojama, then the chain is simply broken !
-      }*/
       else
       {
         /*i = 7; //no need to continue if not found
@@ -701,27 +697,24 @@ byte check_board(byte x, byte y)
     }
     ++gp_i;
     cell_address += 0xD;
+    tmp_cell_address += 0xF;
   }
   
   gp_i = (y - 1);
   cell_address = current_board_address + (x*0xD) + gp_i;
+  tmp_cell_address = tmp_boards_address + (x*0xF) + gp_i;
 
   while ( gp_i < 13 )
   {
-    if ( tmp_boards[x][gp_i] != FLAG)
+    if ( /*tmp_boards[x][gp_i]*/ *tmp_cell_address != FLAG)
     {
       //if (current_color == ((boards[current_player][x][gp_i]) ))
       if (current_color == (*cell_address))
       {     
-        tmp_boards[x][gp_i] = FLAG;
+        //tmp_boards[x][gp_i] = FLAG;
+        *tmp_cell_address = FLAG;
         ++tmp_counter_2;
       }
-      /*else if (OJAMA == ((boards[current_player][x][i]) ))
-      {
-        tmp_boards[x][i] = FLAG;
-        //counter is not incremented for ojamas
-        break;//if we met an ojama, then the chain is simply broken !
-      }*/
       else
       {
         //i = 14; //no need to continue if not found
@@ -730,27 +723,24 @@ byte check_board(byte x, byte y)
     }
     --gp_i;
     --cell_address;
+    --tmp_cell_address;
   }
   
   gp_i = (y + 1);
   cell_address = current_board_address + (x*0xD) + gp_i;
+  tmp_cell_address = tmp_boards_address + (x*0xF) + gp_i;
 
   while ( gp_i < 13 )
   {
-    if ( tmp_boards[x][gp_i] != FLAG)
+    if ( /*tmp_boards[x][gp_i]*/ *tmp_cell_address != FLAG)
     {
       //if (current_color == ((boards[current_player][x][gp_i]) ))
       if (current_color == (*cell_address))
       {     
-        tmp_boards[x][gp_i] = FLAG;
+        //tmp_boards[x][gp_i] = FLAG;
+        *tmp_cell_address = FLAG;
         ++tmp_counter_2;
       }
-     /* else if (OJAMA == ((boards[current_player][x][i]) ))
-      {
-        tmp_boards[x][i] = FLAG;
-        //counter is not incremented for ojamas
-        break;//if we met an ojama, then the chain is simply broken ! no need to look the next
-      }*/
       else
       {
         //i = 14; //no need to continue if not found
@@ -759,6 +749,7 @@ byte check_board(byte x, byte y)
     }
     ++gp_i;
     ++cell_address;
+    ++tmp_cell_address;
   }
   //nothing found ? exit !
   if (tmp_counter_2 == 0)
@@ -1814,7 +1805,7 @@ void flush()
     tmp_counter_2 = (tmp_counter + 1) << 1;
     tmp_counter_3 = tmp_counter;
   }
-  tmp_cell_address = /*&tmp_boards[tmp_counter][0];*/tmp_board_address + (tmp_counter*0xF);
+  tmp_cell_address = /*&tmp_boards[tmp_counter][0];*/tmp_boards_address + (tmp_counter*0xF);
   //tmp_boards contains the information we need
   //we start from the bottom, each cell will receive the one above itself
   for (gp_j = 14 ; gp_j > 0 ; --gp_j)
@@ -2055,7 +2046,7 @@ void build_field()
   }
   //the address of the boards, will be usefull in fall_board()
   board_address = &boards[0][0][0];
-  tmp_board_address = &tmp_boards[0][0];
+  tmp_boards_address = &tmp_boards[0][0];
 }
 
 void init_round()
@@ -2632,7 +2623,7 @@ void main(void)
         if (step_p_counter[current_player] == 255)
         {
           cell_address = board_address + (current_player ? 0x48:0);
-          tmp_cell_address = tmp_board_address;
+          tmp_cell_address = tmp_boards_address;
           for ( i = 0; i < 6; ++i)
           {
             //loop inserted to gain a few bytes of space.
