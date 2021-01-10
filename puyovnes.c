@@ -119,6 +119,8 @@ byte * cell_address;
 byte * tmp_cell_address;
 byte * current_board_address;
 byte * current_tmp_board_address;
+byte * offset_address;
+
 
 // buffers that hold vertical slices of nametable data
 char ntbuf1[PLAYROWS];	// left side
@@ -609,6 +611,10 @@ void update_boards()
 }
 
 // Look for puyo to destroy and flag them as such
+//TO DO : vérifier si c'est vraiment plus rapide avec les tmp_boards en addressage direct...
+//apparemment y'a certaines fois où c'est plus lent...
+//le temps mini est plus court, mais le temps moyen est plus faible (de 2000 cycles)
+//hypothèse : les *(machin +0xF) prennent plus de temps que prévu, comme indiqué là https://www.cc65.org/doc/coding.html
 byte check_board(byte x, byte y)
 {
   //static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
@@ -759,367 +765,198 @@ byte check_board(byte x, byte y)
     return 0;
   
   //ok so we got something, now looking for more
-  gp_j = (y-1);
-  cell_address = current_board_address + gp_j;
-  tmp_cell_address = tmp_boards_address + gp_j;
-  //we go above, so we look below, left and right
-  //we must do the line in both way (0 to 6 and 6 to 0) to avoid missing something
-  while (gp_j < 13)
+  gp_j = (x-1);
+  
+  //we go left, so we look above and below and right ?
+  //we must do the column in both way (0 to 12 and 12 to 0) to avoid missing something
+  cell_address = current_board_address + (gp_j * 0xD) + 12; //we start from the bottom, one column being from 0 (top) to 12 (bottom)
+  tmp_cell_address = tmp_boards_address + (gp_j * 0x0F);
+  offset_address = tmp_cell_address + 0x0F; //on regarde à droite car c'est là d'où on vient (étant donné qu'on va à gauche)
+
+  while (gp_j < 6)
   {
-    //for not testing under or over the board
-    gp_k = gp_j+1;
-    //unlooped version
-    //0
-    //if (tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]) )) && 
-    if (/*tmp_boards[0][gp_j]*/*tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-        ( ((gp_k!=13) ? (/*tmp_boards[0][gp_k]*/*(tmp_cell_address + 1) == FLAG) : false) ||
-         (/*tmp_boards[1][gp_j]*/*(tmp_cell_address + 0xF) == FLAG)) )
-    {
-      //tmp_boards[0][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //1
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j]) )) && 
-    if ( /*tmp_boards[1][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) && 
-        ( ((gp_k!=13) ? (/*tmp_boards[1][gp_k]*/*(tmp_cell_address + 1) == FLAG) : false) ||
-         (/*tmp_boards[0][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-         (/*tmp_boards[2][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-    {
-      //tmp_boards[1][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //2
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == ((boards[current_player][2][gp_j]))) &&
-    if ( /*tmp_boards[2][gp_j*/ *tmp_cell_address != FLAG &&  (current_color == (*cell_address)) &&
-        ( ((gp_k!=13) ? (/*tmp_boards[2][gp_k]*/*(tmp_cell_address + 1) == FLAG) : false) ||
-         (/*tmp_boards[1][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-         (/*tmp_boards[3][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-    {
-      //tmp_boards[2][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //3
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == ((boards[current_player][3][gp_j] ) )) && 
-    if ( /*tmp_boards[3][gp_j]*/ *tmp_cell_address != FLAG &&  (current_color == (*cell_address )) && 
-        ( ((gp_k!=13) ? (/*tmp_boards[3][gp_k]*/ *(tmp_cell_address + 1) == FLAG) : false) ||
-         (/*tmp_boards[2][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-         (/*tmp_boards[4][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-    {
-      //tmp_boards[3][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //4
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == ((boards[current_player][4][gp_j]))) && 
-    if ( /*tmp_boards[4][gp_j]*/ *tmp_cell_address != FLAG &&  (current_color == (*cell_address)) && 
-        ( ((gp_k!=13) ? (/*tmp_boards[4][gp_k]*/ *(tmp_cell_address + 1) == FLAG) : false) ||
-         (/*tmp_boards[3][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-         (/*tmp_boards[5][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-    {
-      //tmp_boards[4][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //5
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[5][gp_j] != FLAG && (current_color == ((boards[current_player][5][gp_j] ))) &&
-    if ( /*tmp_boards[5][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address)) &&
-        ( ((gp_k!=13) ? (/*tmp_boards[5][gp_k]*/ *(tmp_cell_address + 1) == FLAG) : false) ||
-         (/*tmp_boards[4][gp_j]*/ *(tmp_cell_address - 0x0F)== FLAG)))
-    {
-      //tmp_boards[5][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
+    //for not testing before or after the board
+    //gp_k = gp_j+1; //useless as gp_j = x-1, and x can't be == 6 ! So in this case offset_address is always in the table.
     
-    //no need to go backward if nothing has been found in the first loop
-    if (tmp_counter != 0) 
+    //we start from the bottom and get up, we stop as we reach the ceiling or an empty cell
+    //then we go to the bottom if we have found something on the way up, otherwise it is useless
+    
+    //12, bottom
+    if ( tmp_cell_address[12] != FLAG && (current_color == (*cell_address)) && 
+        ( (offset_address[12] == FLAG) ||
+          (tmp_cell_address[11] == FLAG) ))
     {
-      
-      //4
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[4][gp_j] != FLAG && (current_color == ((boards[current_player][4][gp_j]))) && 
-      if ( /*tmp_boards[4][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address)) &&
-           ((/*tmp_boards[3][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[5][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[4][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      }
-      
-      //3
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[3][gp_j] != FLAG && (current_color == ((boards[current_player][3][gp_j] ) )) && 
-      if ( /*tmp_boards[3][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) && 
-           ((/*tmp_boards[2][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[4][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[3][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      }
-      
-      //2
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[2][gp_j] != FLAG && (current_color == ((boards[current_player][2][gp_j] ) )) &&
-      if ( /*tmp_boards[2][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-           ((/*tmp_boards[1][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[3][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[2][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      }
-      
-      //1
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j] ) )) && 
-      if ( /*tmp_boards[1][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-           ((/*tmp_boards[0][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[2][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[1][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      }
-      
-       //0
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      if ( /*tmp_boards[0][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) && 
-           ((/*tmp_boards[1][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[0][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      } 
-      
+      tmp_cell_address[12] = FLAG;
+      ++tmp_counter_2;
+      ++tmp_counter;
     }
-    else
-    {
-      //si dans le cas où on à trouver quelque chose on peut conserver l'@, là il faut réinitialiser l'adresse
-      //pour que le -- matche
-      cell_address = current_board_address + gp_j;
-      tmp_cell_address = tmp_boards_address + gp_j;
-    }
-    tmp_counter = 0;
-    --gp_j; //going above is getting lower j
     --cell_address;
-    --tmp_cell_address;
-  }
-  
-  gp_j = y+1;
-  //we go below so we look above
-  cell_address = current_board_address + gp_j;
-  tmp_cell_address = tmp_boards_address + gp_j;
-  
-  while (gp_j < 13)
-  {
-  
-    //for not testing under or over the board
-    gp_k = gp_j-1;
     
-    //unlooped version
-    //0
-    //if (tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]) )) && 
-    if (/*tmp_boards[0][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-        (((gp_k<13) ? (/*tmp_boards[0][gp_k]*/ *(tmp_cell_address - 1) == FLAG) : false) ||
-         (/*tmp_boards[1][gp_j]*/ *(tmp_cell_address + 0xF) == FLAG)) )
+    //11 to 2
+    for (gp_i = 11; gp_i < 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
     {
-      //tmp_boards[0][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
+      if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
+          ( (offset_address[gp_i] == FLAG) ||
+            (tmp_cell_address[gp_i-1] == FLAG) ||
+            (tmp_cell_address[gp_i+1] == FLAG) ))
+      {
+        tmp_cell_address[gp_i] = FLAG;
+        ++tmp_counter_2;
+        ++tmp_counter;
+      }
+      --cell_address;
     }
-
+    
     //1
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j] ) )) && 
-    if ( /*tmp_boards[1][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) && 
-        (((gp_k<13) ? (/*tmp_boards[1][gp_k]*/ *(tmp_cell_address - 1) == FLAG) : false) ||
-         (/*tmp_boards[0][gp_j]*/ *(tmp_cell_address - 0xF) == FLAG) ||
-         (/*tmp_boards[2][gp_j]*/ *(tmp_cell_address + 0xF) == FLAG)) )
+    if ( tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
+        ( (offset_address[1] == FLAG) ||
+          (tmp_cell_address[2] == FLAG) ))
     {
-      //tmp_boards[1][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
+      tmp_cell_address[1] = FLAG;
       ++tmp_counter_2;
       ++tmp_counter;
     }
-
-    //2
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[2][gp_j] != FLAG &&  (current_color == ((boards[current_player][2][gp_j] ) )) && 
-    if ( /*tmp_boards[2][gp_j]*/ *tmp_cell_address != FLAG &&  (current_color == (*cell_address )) && 
-        (((gp_k<13) ? (/*tmp_boards[2][gp_k]*/ *(tmp_cell_address - 1) == FLAG) : false) ||
-         (/*tmp_boards[1][gp_j]*/ *(tmp_cell_address - 0xF) == FLAG) ||
-         (/*tmp_boards[3][gp_j]*/ *(tmp_cell_address + 0xF) == FLAG)) )
-    {
-      //tmp_boards[2][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //3
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[3][gp_j] != FLAG &&  (current_color == ((boards[current_player][3][gp_j] ) )) && 
-    if ( /*tmp_boards[3][gp_j]*/ *tmp_cell_address != FLAG &&  (current_color == (*cell_address )) && 
-        (((gp_k<13) ? (/*tmp_boards[3][gp_k]*/ *(tmp_cell_address - 1) == FLAG) : false) ||
-         (/*tmp_boards[2][gp_j]*/ *(tmp_cell_address - 0xF) == FLAG) ||
-         (/*tmp_boards[4][gp_j]*/ *(tmp_cell_address + 0xF) == FLAG)) )
-    {
-      //tmp_boards[3][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //4
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[4][gp_j] != FLAG &&  (current_color == ((boards[current_player][4][gp_j]) )) &&
-    if ( /*tmp_boards[4][gp_j]*/ *tmp_cell_address != FLAG &&  (current_color == (*cell_address )) &&
-        (((gp_k<13) ? (/*tmp_boards[4][gp_k]*/ *(tmp_cell_address - 1) == FLAG) : false) ||
-         (/*tmp_boards[3][gp_j]*/ *(tmp_cell_address - 0xF) == FLAG) ||
-         (/*tmp_boards[5][gp_j]*/ *(tmp_cell_address + 0xF) == FLAG)) )
-    {
-      //tmp_boards[4][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
-    //5
-    cell_address += 0xD;
-    tmp_cell_address += 0xF;
-    //if ( tmp_boards[5][gp_j] != FLAG && (current_color == ((boards[current_player][5][gp_j]) )) &&
-    if ( /*tmp_boards[5][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-        ( ((gp_k<13) ? (/*tmp_boards[5][gp_k]*/ *(tmp_cell_address - 1) == FLAG) : false) ||
-         (/*tmp_boards[4][gp_j]*/ *(tmp_cell_address - 0xF) == FLAG)))
-    {
-      //tmp_boards[5][gp_j] = FLAG;
-      *tmp_cell_address = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
-    }
-
+        
+    //if something has been found or added, we must go backwards to left nothing unchecked
     if (tmp_counter != 0)
     {
+      //No need to redo the 1, 0 still hidden by ceiling
+      ++cell_address; //should point on 2   
       
-      //5 useless, same as last from previous "loop"
-      /*if ( tmp_boards[5][j] != flag && (current_color == ((boards[5][j] & mask) >> shift)) && 
-           (tmp_boards[4][j] == flag))
+      //2 to 11
+      for (gp_i = 2; gp_i < 12; ++gp_i)
       {
-        tmp_boards[5][j] = flag;
-        ++counter;
-      }*/
-      
-      //4
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[4][gp_j] != FLAG && (current_color == ((boards[current_player][4][gp_j]) )) &&
-      if ( /*tmp_boards[4][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-           ((/*tmp_boards[3][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[5][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[4][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
+        if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
+          ( (offset_address[gp_i] == FLAG) ||
+            (tmp_cell_address[gp_i-1] == FLAG) ||
+            (tmp_cell_address[gp_i+1] == FLAG) ))
+        {
+          tmp_cell_address[gp_i] = FLAG;
+          ++tmp_counter_2;
+          ++tmp_counter;
+        }
+        ++cell_address;
       }
-      
-      //3
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[3][gp_j] != FLAG && (current_color == ((boards[current_player][3][gp_j] ) )) && 
-      if ( /*tmp_boards[3][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) && 
-           ((/*tmp_boards[2][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[4][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
+      //12
+      if ( tmp_cell_address[12] != FLAG && (current_color == (*cell_address)) && 
+        ( (offset_address[12] == FLAG) ||
+          (tmp_cell_address[11] == FLAG) ))
       {
-        //tmp_boards[3][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
+        tmp_cell_address[12] = FLAG;
         ++tmp_counter_2;
+        ++tmp_counter;
       }
-      
-      //2
-      cell_address -= 0xD;
+    }
+    if (tmp_counter)
+    {
+      tmp_counter = 0;
+      --gp_j;
+      offset_address = tmp_cell_address;
       tmp_cell_address -= 0xF;
-      //if ( tmp_boards[2][gp_j] != FLAG && (current_color == ((boards[current_player][2][gp_j]) )) && 
-      if ( /*tmp_boards[2][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address )) &&
-           ((/*tmp_boards[1][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[3][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[2][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      }
-      
-      //1
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[1][gp_j] != FLAG && (current_color == ((boards[current_player][1][gp_j]))) &&
-      if ( /*tmp_boards[1][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address)) &&
-           ((/*tmp_boards[0][gp_j]*/ *(tmp_cell_address - 0x0F) == FLAG) ||
-            (/*tmp_boards[2][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[1][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      }
-      
-       //0
-      cell_address -= 0xD;
-      tmp_cell_address -= 0xF;
-      //if ( tmp_boards[0][gp_j] != FLAG && (current_color == ((boards[current_player][0][gp_j]))) && 
-      if ( /*tmp_boards[0][gp_j]*/ *tmp_cell_address != FLAG && (current_color == (*cell_address)) &&
-           ((/*tmp_boards[1][gp_j]*/ *(tmp_cell_address + 0x0F) == FLAG)) )
-      {
-        //tmp_boards[0][gp_j] = FLAG;
-        *tmp_cell_address = FLAG;
-        ++tmp_counter_2;
-      } 
+      cell_address = current_board_address + (gp_j * 0xD) + 12; // possible to do faster ?
     }
     else
     {
-      //si dans le cas où on à trouver quelque chose on peut conserver l'@, là il faut réinitialiser l'adresse
-      //pour que le ++ matche
-      cell_address = current_board_address + gp_j;
-      tmp_cell_address = tmp_boards_address + gp_j;
+      //Nothing has been found for that column, so there is no chance something is found on the next, we can exit
+      gp_j = 7;
     }
-    tmp_counter = 0;
-    ++gp_j; //going below is getting higher j
-    ++cell_address;
-    ++tmp_cell_address;
+  }
+  
+  gp_j = x+1;
+  //we go right so we look left and above and below
+  cell_address = current_board_address + (gp_j * 0xD) + 12; //we start from the bottom, one column being from 0 (top) to 12 (bottom)
+  tmp_cell_address = tmp_boards_address + (gp_j * 0x0F);
+  offset_address = tmp_cell_address - 0x0F; //on regarde à gauche car c'est là d'où on vient (étant donné qu'on va à droite)
+  tmp_counter = 0;
+
+  //TODO : the 2 loops, x-1 and x+1, are very similar now, can we combined them ?
+  while (gp_j < 6)
+  {
+    //for not testing before or after the board
+    //gp_k = gp_j-1; //useless as gp_j = x+1, and x can't be inferior to 0 ! So in this case offset_address is always in the table.
+    
+    //we start from the bottom and get up, we stop as we reach the ceiling or an empty cell
+    //then we go to the bottom if we have found something on the way up, otherwise it is useless
+    
+    //12, bottom
+    if ( tmp_cell_address[12] != FLAG && (current_color == (*cell_address)) && 
+        ( (offset_address[12] == FLAG) ||
+          (tmp_cell_address[11] == FLAG) ))
+    {
+      tmp_cell_address[12] = FLAG;
+      ++tmp_counter_2;
+      ++tmp_counter;
+    }
+    --cell_address;
+    
+    //11 to 2
+    for (gp_i = 11; gp_i < 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
+    {
+      if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
+          ( (offset_address[gp_i] == FLAG) ||
+            (tmp_cell_address[gp_i-1] == FLAG) ||
+            (tmp_cell_address[gp_i+1] == FLAG) ))
+      {
+        tmp_cell_address[gp_i] = FLAG;
+        ++tmp_counter_2;
+        ++tmp_counter;
+      }
+      --cell_address;
+    }
+    
+    //1
+    if ( tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
+        ( (offset_address[1] == FLAG) ||
+          (tmp_cell_address[2] == FLAG) ))
+    {
+      tmp_cell_address[1] = FLAG;
+      ++tmp_counter_2;
+      ++tmp_counter;
+    }
+        
+    //if something has been found or added, we must go backwards to left nothing unchecked
+    if (tmp_counter != 0)
+    {
+      //No need to redo the 1, 0 still hidden by ceiling
+      ++cell_address; //should point on 2   
+      
+      //2 to 11
+      for (gp_i = 2; gp_i < 12; ++gp_i)
+      {
+        if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
+          ( (offset_address[gp_i] == FLAG) ||
+            (tmp_cell_address[gp_i-1] == FLAG) ||
+            (tmp_cell_address[gp_i+1] == FLAG) ))
+        {
+          tmp_cell_address[gp_i] = FLAG;
+          ++tmp_counter_2;
+          ++tmp_counter;
+        }
+        ++cell_address;
+      }
+      //12
+      if ( tmp_cell_address[12] != FLAG && (current_color == (*cell_address)) && 
+        ( (offset_address[12] == FLAG) ||
+          (tmp_cell_address[11] == FLAG) ))
+      {
+        tmp_cell_address[gp_i] = FLAG;
+        ++tmp_counter_2;
+        ++tmp_counter;
+      }
+    }
+    if (tmp_counter)
+    {
+      tmp_counter = 0;
+      ++gp_j;
+      offset_address = tmp_cell_address;
+      tmp_cell_address += 0xF;
+      cell_address = current_board_address + (gp_j * 0xD) + 12; // possible to do faster ?
+    }
+    else
+    {
+      //nothing found, so nothing to be found on the next column, we can exit
+      gp_j = 7;
+    }
   }
   
   //we started from 0, so at 3 we have 4 to erase
@@ -1146,7 +983,7 @@ byte check_board(byte x, byte y)
           *cell_address |= FLAG;
           ++tmp_counter_3;
           //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
-          //note : it will probably slow done things a lot do do that :-s
+          //note : it will probably slow down things a lot do do that :-s
           //look left
           /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
             boards[current_player][gp_i-1][gp_j] |= FLAG;*/
@@ -1247,7 +1084,6 @@ void fall_board()
   //byte attr_x_shift = 1;
   //byte fall = 0;
   //byte * cell_address;
-  byte * offset_address;
   can_fall = 0;
   previous_empty = 0;
   puyo_found = 0;
@@ -1732,7 +1568,7 @@ byte fall_ojama()
   //byte tmp_counter = step_p_counter[current_player];
   //byte opponent_status = step_p[~current_player & 1]; //~0 & 1 donne 1 et ~1 & 1 donne 0;
   /*byte fall = 0, i = 0, top_line_space = 0;*/
-  byte * offset_address;
+  //byte * offset_address;
   //byte * cell_address;
   offset_address = board_address + (current_player*0x48) /*+ tmp_counter*0xD*/;
 
@@ -1886,9 +1722,10 @@ void flush()
   
   
   //redraw the column through buffer
-  memset(ntbuf1, 0, sizeof(ntbuf1));
-  memset(ntbuf2, 0, sizeof(ntbuf2));
-  memset(attrbuf, 0, sizeof(attrbuf));
+  //is it necessary to memset here ?
+  //memset(ntbuf1, 0, sizeof(ntbuf1));
+  //memset(ntbuf2, 0, sizeof(ntbuf2));
+  //memset(attrbuf, 0, sizeof(attrbuf));
   //we start at 1 as we don't want to modify the ceiling
   for (gp_j = 1; gp_j < 15 ; ++gp_j)
   {
@@ -2412,11 +2249,11 @@ void main(void)
   step_p_counter[1] = 255;
   //only for menu navigation
   menu_pos_x = 0;
-  //memset(menu_pos_y,0,sizeof(menu_pos_y));
-  menu_pos_y[0] = 0;
+  memset(menu_pos_y,0,sizeof(menu_pos_y));
+  /*menu_pos_y[0] = 0;
   menu_pos_y[1] = 0;
   menu_pos_y[2] = 0;
-  menu_pos_y[3] = 0;
+  menu_pos_y[3] = 0;*/
   actor_x[0][0] = 135;
   actor_x[0][1] = 135;
   actor_x[1][0] = 135;
@@ -2886,14 +2723,16 @@ void main(void)
             step_p[current_player] = FLUSH;
             step_p_counter[current_player] = 255;
             //hide sprites
-            actor_x[0][0] = 254;
+            /*actor_x[0][0] = 254;
             actor_x[0][1] = 254;
             actor_x[1][0] = 254;
             actor_x[1][1] = 254;
             actor_y[0][0] = 254;
             actor_y[0][1] = 254;
             actor_y[1][0] = 254;
-            actor_y[1][1] = 254;
+            actor_y[1][1] = 254;*/
+            memset(actor_x, 254, sizeof(actor_x));
+            memset(actor_y, 254, sizeof(actor_y));
             play_flush(); // play sound of flush
             if (current_player == 0)          
             { 
