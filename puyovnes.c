@@ -713,7 +713,7 @@ byte check_board(byte x, byte y)
   cell_address = current_board_address + (x*0xD) + gp_i;
   tmp_cell_address = tmp_boards_address + (x*0xF) + gp_i;
 
-  while ( gp_i < 13 )
+  while ( gp_i > 0 )
   {
     if ( /*tmp_boards[x][gp_i]*/ *tmp_cell_address != FLAG)
     {
@@ -793,7 +793,7 @@ byte check_board(byte x, byte y)
     --cell_address;
     
     //11 to 2
-    for (gp_i = 11; gp_i < 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
+    for (gp_i = 11; gp_i > 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
     {
       if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
           ( (offset_address[gp_i] == FLAG) ||
@@ -890,7 +890,7 @@ byte check_board(byte x, byte y)
     --cell_address;
     
     //11 to 2
-    for (gp_i = 11; gp_i < 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
+    for (gp_i = 11; gp_i > 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
     {
       if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
           ( (offset_address[gp_i] == FLAG) ||
