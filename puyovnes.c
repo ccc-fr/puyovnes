@@ -791,6 +791,7 @@ byte check_board(byte x, byte y)
       ++tmp_counter;
     }
     --cell_address;
+    tmp_counter_3 = tmp_cell_address[12]; //we wan't to check if a flag is met
     
     //11 to 2
     for (gp_i = 11; gp_i > 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
@@ -805,6 +806,7 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
       --cell_address;
+      tmp_counter_3 += tmp_cell_address[gp_i];
     }
     
     //1
@@ -816,6 +818,7 @@ byte check_board(byte x, byte y)
       ++tmp_counter_2;
       ++tmp_counter;
     }
+    tmp_counter_3 += tmp_cell_address[1];
         
     //if something has been found or added, we must go backwards to left nothing unchecked
     if (tmp_counter != 0)
@@ -847,20 +850,20 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
     }
-    //if (tmp_counter)
-    //{
+    if (tmp_counter_3 != 0)
+    {
       tmp_counter = 0;
+      tmp_counter_3 = 0;
       --gp_j;
       offset_address = tmp_cell_address;
       tmp_cell_address -= 0xF;
       cell_address = current_board_address + (gp_j * 0xD) + 12; // possible to do faster ?
-    //}
-    //else
-    //{
+    }
+    else
+    {
       //Nothing has been found for that column, so there is no chance something is found on the next, we can exit
-      //gp_j = 7;
-      //see explanation at next loop
-    //}
+      gp_j = 7;
+    }
   }
   
   gp_j = x+1;
@@ -868,7 +871,8 @@ byte check_board(byte x, byte y)
   cell_address = current_board_address + (gp_j * 0xD) + 12; //we start from the bottom, one column being from 0 (top) to 12 (bottom)
   tmp_cell_address = tmp_boards_address + (gp_j * 0x0F);
   offset_address = tmp_cell_address - 0x0F; //on regarde à gauche car c'est là d'où on vient (étant donné qu'on va à droite)
-  tmp_counter = 0;
+  tmp_counter = 0; 
+  tmp_counter_3 = 0;
 
   //TODO : the 2 loops, x-1 and x+1, are very similar now, can we combined them ?
   while (gp_j < 6)
@@ -889,6 +893,7 @@ byte check_board(byte x, byte y)
       ++tmp_counter;
     }
     --cell_address;
+    tmp_counter_3 = tmp_cell_address[12];
     
     //11 to 2
     for (gp_i = 11; gp_i > 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
@@ -903,6 +908,7 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
       --cell_address;
+      tmp_counter_3 += tmp_cell_address[gp_i];
     }
     
     //1
@@ -914,6 +920,7 @@ byte check_board(byte x, byte y)
       ++tmp_counter_2;
       ++tmp_counter;
     }
+    tmp_counter_3 += tmp_cell_address[1];
         
     //if something has been found or added, we must go backwards to left nothing unchecked
     if (tmp_counter != 0)
@@ -945,22 +952,22 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
     }
-    //if (tmp_counter)
-    //{
+    if (tmp_counter_3 != 0)
+    {
+      //if tmp_counter_3 != 0 then the current column has something flag, even if not new from this loop
+      //that justify the need to the check the next column
       tmp_counter = 0;
+      tmp_counter_3 = 0;
       ++gp_j;
       offset_address = tmp_cell_address;
       tmp_cell_address += 0xF;
       cell_address = current_board_address + (gp_j * 0xD) + 12; // possible to do faster ?
-    //}
-    //else
-    //{
+    }
+    else
+    {
       //nothing found, so nothing to be found on the next column, we can exit
-      //gp_j = 7;
-      //wrong, even if nothing has changed compared in term of flag, even if one puyo
-      //is flagged we must check the column after.
-    //  ++gp_j;
-    //}
+      gp_j = 7;
+    }
   }
   
   //we started from 0, so at 3 we have 4 to erase
@@ -974,6 +981,7 @@ byte check_board(byte x, byte y)
     
     cell_address = current_board_address + 12;
     tmp_cell_address = current_tmp_board_address + 12;
+    tmp_counter_3 = 0;
     //copy flag to boards
     for (gp_i = 0; gp_i < 6; ++gp_i)
     {
