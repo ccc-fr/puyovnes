@@ -774,12 +774,15 @@ byte check_board(byte x, byte y)
   offset_address = tmp_cell_address + 0x0F; //on regarde à droite car c'est là d'où on vient (étant donné qu'on va à gauche)
 
   while (gp_j < 6)
-  {
-    //for not testing before or after the board
-    //gp_k = gp_j+1; //useless as gp_j = x-1, and x can't be == 6 ! So in this case offset_address is always in the table.
-    
+  { 
     //we start from the bottom and get up, we stop as we reach the ceiling or an empty cell
     //then we go to the bottom if we have found something on the way up, otherwise it is useless
+    
+    //if the column is empty, which is the case if the first cell at the bottom is, we can stop there
+    if ((*cell_address) == EMPTY)
+    {
+      break;
+    }
     
     //12, bottom
     if ( tmp_cell_address[12] != FLAG && (current_color == (*cell_address)) && 
@@ -794,7 +797,7 @@ byte check_board(byte x, byte y)
     tmp_counter_3 = tmp_cell_address[12]; //we wan't to check if a flag is met
     
     //11 to 2
-    for (gp_i = 11; gp_i > 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
+    for (gp_i = 11; gp_i > 1 && (*cell_address) != EMPTY; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
     {
       if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
           ( (offset_address[gp_i] == FLAG) ||
@@ -808,17 +811,27 @@ byte check_board(byte x, byte y)
       --cell_address;
       tmp_counter_3 += tmp_cell_address[gp_i];
     }
-    
-    //1
-    if ( tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
-        ( (offset_address[1] == FLAG) ||
-          (tmp_cell_address[2] == FLAG) ))
+    //if gp_i != 2 then we get out of the loop sooner, no need to check the top ceiling case
+    //and we can start from there for the next loop
+    if (gp_i == 2)
     {
-      tmp_cell_address[1] = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
+      //1
+      if (tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
+          ( (offset_address[1] == FLAG) ||
+            (tmp_cell_address[2] == FLAG) ))
+      {
+        tmp_cell_address[1] = FLAG;
+        ++tmp_counter_2;
+        ++tmp_counter;
+      }
+      tmp_counter_3 += tmp_cell_address[1];
+      gp_k = 2;
     }
-    tmp_counter_3 += tmp_cell_address[1];
+    else
+    {  
+      gp_k = gp_i+1;
+      //++cell_address;
+    }
         
     //if something has been found or added, we must go backwards to left nothing unchecked
     if (tmp_counter != 0)
@@ -827,7 +840,7 @@ byte check_board(byte x, byte y)
       ++cell_address; //should point on 2   
       
       //2 to 11
-      for (gp_i = 2; gp_i < 12; ++gp_i)
+      for (gp_i = gp_k; gp_i < 12; ++gp_i)
       {
         if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
           ( (offset_address[gp_i] == FLAG) ||
@@ -850,6 +863,7 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
     }
+    
     if (tmp_counter_3 != 0)
     {
       tmp_counter = 0;
@@ -862,7 +876,8 @@ byte check_board(byte x, byte y)
     else
     {
       //Nothing has been found for that column, so there is no chance something is found on the next, we can exit
-      gp_j = 7;
+      //gp_j = 7;
+      break;
     }
   }
   
@@ -883,6 +898,12 @@ byte check_board(byte x, byte y)
     //we start from the bottom and get up, we stop as we reach the ceiling or an empty cell
     //then we go to the bottom if we have found something on the way up, otherwise it is useless
     
+     //if the column is empty, which is the case if the first cell at the bottom is, we can stop there
+    if ((*cell_address) == EMPTY)
+    {
+      break;
+    }
+    
     //12, bottom
     if ( tmp_cell_address[12] != FLAG && (current_color == (*cell_address)) && 
         ( (offset_address[12] == FLAG) ||
@@ -896,7 +917,7 @@ byte check_board(byte x, byte y)
     tmp_counter_3 = tmp_cell_address[12];
     
     //11 to 2
-    for (gp_i = 11; gp_i > 1; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
+    for (gp_i = 11; gp_i > 1 && (*cell_address) != EMPTY; --gp_i) //0 is in the ceiling and should not be tested, so we stop at 2 and process 1 independently
     {
       if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
           ( (offset_address[gp_i] == FLAG) ||
@@ -911,16 +932,25 @@ byte check_board(byte x, byte y)
       tmp_counter_3 += tmp_cell_address[gp_i];
     }
     
-    //1
-    if ( tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
-        ( (offset_address[1] == FLAG) ||
-          (tmp_cell_address[2] == FLAG) ))
+    if (gp_i == 2)
     {
-      tmp_cell_address[1] = FLAG;
-      ++tmp_counter_2;
-      ++tmp_counter;
+      //1
+      if ( tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
+          ( (offset_address[1] == FLAG) ||
+           (tmp_cell_address[2] == FLAG) ))
+      {
+        tmp_cell_address[1] = FLAG;
+        ++tmp_counter_2;
+        ++tmp_counter;
+      }
+      tmp_counter_3 += tmp_cell_address[1];
+      gp_k = 2;
     }
-    tmp_counter_3 += tmp_cell_address[1];
+    else
+    {
+      gp_k = gp_i+1;
+      //++cell_address;
+    }
         
     //if something has been found or added, we must go backwards to left nothing unchecked
     if (tmp_counter != 0)
@@ -929,7 +959,7 @@ byte check_board(byte x, byte y)
       ++cell_address; //should point on 2   
       
       //2 to 11
-      for (gp_i = 2; gp_i < 12; ++gp_i)
+      for (gp_i = gp_k; gp_i < 12; ++gp_i)
       {
         if ( tmp_cell_address[gp_i] != FLAG && (current_color == (*cell_address)) && 
           ( (offset_address[gp_i] == FLAG) ||
@@ -952,6 +982,7 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
     }
+    
     if (tmp_counter_3 != 0)
     {
       //if tmp_counter_3 != 0 then the current column has something flag, even if not new from this loop
@@ -966,7 +997,8 @@ byte check_board(byte x, byte y)
     else
     {
       //nothing found, so nothing to be found on the next column, we can exit
-      gp_j = 7;
+      // gp_j = 7;
+      break;
     }
   }
   
