@@ -811,9 +811,9 @@ byte check_board(byte x, byte y)
       --cell_address;
       tmp_counter_3 += tmp_cell_address[gp_i];
     }
-    //if gp_i != 2 then we get out of the loop sooner, no need to check the top ceiling case
+    //if gp_i != 1 then we get out of the loop sooner, no need to check the top ceiling case
     //and we can start from there for the next loop
-    if (gp_i == 2)
+    if (gp_i == 1)
     {
       //1
       if (tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
@@ -837,7 +837,7 @@ byte check_board(byte x, byte y)
     if (tmp_counter != 0)
     {
       //No need to redo the 1, 0 still hidden by ceiling
-      ++cell_address; //should point on 2   
+      ++cell_address; //should point on 2  or gp_k  
       
       //2 to 11
       for (gp_i = gp_k; gp_i < 12; ++gp_i)
@@ -932,7 +932,7 @@ byte check_board(byte x, byte y)
       tmp_counter_3 += tmp_cell_address[gp_i];
     }
     
-    if (gp_i == 2)
+    if (gp_i == 1)
     {
       //1
       if ( tmp_cell_address[1] != FLAG && (current_color == (*cell_address)) && 
