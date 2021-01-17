@@ -847,19 +847,20 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
     }
-    if (tmp_counter)
-    {
+    //if (tmp_counter)
+    //{
       tmp_counter = 0;
       --gp_j;
       offset_address = tmp_cell_address;
       tmp_cell_address -= 0xF;
       cell_address = current_board_address + (gp_j * 0xD) + 12; // possible to do faster ?
-    }
-    else
-    {
+    //}
+    //else
+    //{
       //Nothing has been found for that column, so there is no chance something is found on the next, we can exit
-      gp_j = 7;
-    }
+      //gp_j = 7;
+      //see explanation at next loop
+    //}
   }
   
   gp_j = x+1;
@@ -944,19 +945,22 @@ byte check_board(byte x, byte y)
         ++tmp_counter;
       }
     }
-    if (tmp_counter)
-    {
+    //if (tmp_counter)
+    //{
       tmp_counter = 0;
       ++gp_j;
       offset_address = tmp_cell_address;
       tmp_cell_address += 0xF;
       cell_address = current_board_address + (gp_j * 0xD) + 12; // possible to do faster ?
-    }
-    else
-    {
+    //}
+    //else
+    //{
       //nothing found, so nothing to be found on the next column, we can exit
-      gp_j = 7;
-    }
+      //gp_j = 7;
+      //wrong, even if nothing has changed compared in term of flag, even if one puyo
+      //is flagged we must check the column after.
+    //  ++gp_j;
+    //}
   }
   
   //we started from 0, so at 3 we have 4 to erase
