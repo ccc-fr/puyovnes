@@ -2069,8 +2069,8 @@ void handle_controler_and_sprites()
   //p1 puyo 0 & 1, p2 puyo 2 & 3
   if (actor_x[current_player][0] < actor_x[current_player][1])
   {
-    //left/right
-    if ( pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player*128))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
+    //left/right, shift by 128px, <<7, for p2
+    if ( pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
     {
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
@@ -2081,7 +2081,7 @@ void handle_controler_and_sprites()
         actor_x[current_player][1] -= 16;
       }
     }
-    else if ( pad&PAD_RIGHT && (actor_x[current_player][1] < (96+(current_player*128))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] + 1]) )
+    else if ( pad&PAD_RIGHT && (actor_x[current_player][1] < (96+(current_player<<7))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] + 1]) )
     {
       if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
@@ -2126,7 +2126,7 @@ void handle_controler_and_sprites()
     {
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+current_player*128)) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+(current_player<<7))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2136,7 +2136,7 @@ void handle_controler_and_sprites()
           actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2168,7 +2168,7 @@ void handle_controler_and_sprites()
     else
     {
       //left or right movement with both actor on the same x
-      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2178,7 +2178,7 @@ void handle_controler_and_sprites()
           actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+current_player*128)) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2199,7 +2199,7 @@ void handle_controler_and_sprites()
         {
           //going from up to left
           ///are we on the side left side?
-          if (actor_x[current_player][0] == (16+current_player*128))
+          if (actor_x[current_player][0] == (16+(current_player<<7)))
           {
             //wall kick
             /*actor_dx[current_player][1] = actor_x[current_player][1];*/
@@ -2215,7 +2215,7 @@ void handle_controler_and_sprites()
         }
         else
         {  //going down to right
-          if (actor_x[current_player][0] == (96+current_player*128))
+          if (actor_x[current_player][0] == (96+(current_player<<7)))
           {
             //wall kick
             /*actor_dx[current_player][1] = actor_x[current_player][1];*/
