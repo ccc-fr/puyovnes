@@ -2238,15 +2238,33 @@ void handle_controler_and_sprites()
         {
           // going from up to right
           /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-          actor_x[current_player][0] += 16;
-          actor_y[current_player][0] += 16;  
+          if (actor_x[current_player][0] == (96+(current_player<<7)))
+          {
+            //wall kick on t he right side
+            actor_x[current_player][1] -= 16;
+            actor_y[current_player][0] += 16;  
+          }
+          else
+          {
+            actor_x[current_player][0] += 16;
+            actor_y[current_player][0] += 16;  
+          }
         }
         else
         {
           //going from down to left
           /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-          actor_x[current_player][0] -= 16;
-          actor_y[current_player][0] -= 16; 
+          if (actor_x[current_player][0] == (16+(current_player<<7)))
+          {
+            //wall kick on the left side
+            actor_x[current_player][1] += 16;
+            actor_y[current_player][0] -= 16;
+          }
+          else
+          {
+            actor_x[current_player][0] -= 16;
+            actor_y[current_player][0] -= 16;
+          }
         }   
       } 
     }
