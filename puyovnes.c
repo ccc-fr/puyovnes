@@ -79,6 +79,8 @@ byte seg_palette;	// attribute table value
 
 byte current_player; // takes 0 or 1
 
+byte x, y; //position in the board of the puyo to check;
+
 //byte step_p1, step_p2;
 //byte step_p1_counter, step_p2_counter;// indicates where we are in the process.
 //we will use array for these new to easily switch from p1 to p2
@@ -311,7 +313,7 @@ void generate_rng(void);
 byte return_sprite_color(byte spr_index);
 byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
 void update_boards(void); //return if a puyo has been placed on x = 2 and y = 1, then flush
-byte check_board(byte x, byte y);
+byte check_board(void);
 byte destroy_board(void);
 void fall_board(void);
 void manage_point(void);
@@ -615,7 +617,7 @@ void update_boards()
 //apparemment y'a certaines fois où c'est plus lent...
 //le temps mini est plus court, mais le temps moyen est plus faible (de 2000 cycles)
 //hypothèse : les *(machin +0xF) prennent plus de temps que prévu, comme indiqué là https://www.cc65.org/doc/coding.html
-byte check_board(byte x, byte y)
+byte check_board(void)
 {
   //static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
   /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
@@ -2835,13 +2837,18 @@ void main(void)
         nb_group[current_player] = 0;//if the group is over 4 puyos add the part over in this variable.
 
         //should_destroy = (check_board( ((actor_x[current_player][0]>>3) - 2) >> 1, ((actor_y[current_player][0]>>3)+1)>>1) > 0);
-        should_destroy = (check_board( (actor_x[current_player][0]>>4) - pos_x_offset[current_player], ((actor_y[current_player][0]>>3)+1)>>1) > 0);
+        x = (actor_x[current_player][0]>>4) - pos_x_offset[current_player];
+        y = ((actor_y[current_player][0]>>3)+1)>>1;
+        should_destroy = (check_board() > 0);
         //if both puyo had the same color it's useless to perform the second check....No because of splits !
         /*if ( (boards[current_player][((actor_x[current_player][1]>>3) - 2) >> 1][((actor_y[current_player][1]>>3)+1)>>1] & 8) != 8)
           should_destroy = (check_board( ((actor_x[current_player][1]>>3) - 2) >> 1, ((actor_y[current_player][1]>>3)+1)>>1) > 0) || should_destroy;*/
         if ( (boards[current_player][(actor_x[current_player][1]>>4) - pos_x_offset[current_player]][((actor_y[current_player][1]>>3)+1)>>1] & 8) != 8)
-          should_destroy = (check_board( (actor_x[current_player][1]>>4) - pos_x_offset[current_player], ((actor_y[current_player][1]>>3)+1)>>1) > 0) || should_destroy;
-        
+        {
+          x = (actor_x[current_player][1]>>4) - pos_x_offset[current_player];
+          y = ((actor_y[current_player][1]>>3)+1)>>1;
+          should_destroy = (check_board() > 0) || should_destroy;
+        }
         if (should_destroy)
         {
           step_p_counter[current_player] = 0;
@@ -2903,7 +2910,11 @@ void main(void)
             cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
             //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
             if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
-              should_destroy = (check_board(i, j) > 0) || should_destroy ;  
+            {
+              x = i;
+              y = j;
+              should_destroy = (check_board() > 0) || should_destroy ;
+            }  
           }
           ++step_p_counter[current_player];
 
@@ -2914,7 +2925,11 @@ void main(void)
             cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
             //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
             if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
-              should_destroy = (check_board(i, j) > 0) || should_destroy ;
+            {
+              x = i;
+              y = j;
+              should_destroy = (check_board() > 0) || should_destroy ;
+            }
           }
           ++step_p_counter[current_player];
 
@@ -2925,7 +2940,11 @@ void main(void)
             cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
             //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
             if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
-              should_destroy = (check_board(i, j) > 0) || should_destroy ;
+            {
+              x = i;
+              y = j;
+              should_destroy = (check_board() > 0) || should_destroy ;
+            }
           }
           ++step_p_counter[current_player];
         }
