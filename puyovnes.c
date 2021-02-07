@@ -2068,7 +2068,7 @@ void handle_controler_and_sprites()
     input_delay_PAD_B[current_player] = 0;
 
   //you have to look at the leftmost or rightmost puyo
-  //p1 puyo 0 & 1, p2 puyo 2 & 3
+  //p1 puyo 0 & 1, p2 puyo 2 & 3, 0 and 2 are the puyo rotating around 1 et 3
   if (actor_x[current_player][0] < actor_x[current_player][1])
   {
     //left/right, shift by 128px, <<7, for p2
@@ -2093,11 +2093,7 @@ void handle_controler_and_sprites()
         actor_x[current_player][1] += 16;       
       }
     }
-    else
-    { //doing nothing
-      /*actor_x[i*2] = 0;
-          actor_x[(i*2)+1] = 0;*/
-    }
+
     //buttons, the puyo rotating is always the one at the top
     //so with index at 0 (0 p1, 2 p2)
     if (pad&PAD_B && input_delay_PAD_B[current_player] == 0)
@@ -2107,8 +2103,19 @@ void handle_controler_and_sprites()
       //the delay has to be at 0, because we don't want it to turn automatically
       //you have to press each time        
       /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-      actor_y[current_player][0] += 16;
+      
       actor_x[current_player][0] += 16;
+      actor_y[current_player][0] += 16;
+      //Another thing must be checked : the height column below puyo 0 !
+      //we need to raise both puyo above the topmost puyo of the column (or the ground)
+      //kind of "ground kick" or "floor" kick
+      //seriously not optimized :-/
+      if ((actor_y[current_player][0] >= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      {
+        actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1];
+        actor_y[current_player][1] = actor_y[current_player][0] - 16;
+      }
+      
     }
     if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
     { 
@@ -2165,6 +2172,15 @@ void handle_controler_and_sprites()
         /*actor_dx[current_player][0] = actor_x[current_player][0];*/
         actor_y[current_player][0] += 16;
         actor_x[current_player][0] -= 16; 
+        //Another thing must be checked : the height column below puyo 0 !
+        //we need to raise both puyo above the topmost puyo of the column (or the ground)
+        //kind of "ground kick" or "floor" kick
+        //seriously not optimized :-/
+        if ((actor_y[current_player][0] >= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+        {
+          actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1];
+          actor_y[current_player][1] = actor_y[current_player][0] - 16;
+        }
       }   
     }
     else
