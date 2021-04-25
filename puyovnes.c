@@ -2643,8 +2643,13 @@ void main(void)
         
         if (step_p_counter[current_player] > 90) // 15 * 6 == 90
         {
-          step_p[current_player] = WAIT;
-          step_p_counter[current_player] = 0;
+          /*step_p[current_player] = WAIT;
+          step_p_counter[current_player] = 0;*/
+          //both players should habe the same state:
+          step_p[0] = WAIT;
+          step_p_counter[0] = 0;
+          step_p[1] = WAIT;
+          step_p_counter[1] = 0;
         }
         continue;
       }
@@ -2652,7 +2657,7 @@ void main(void)
       //wait for next round to start, each player must press A button
       if (step_p[current_player] == WAIT)
       {
-        if (step_p[0] == step_p[1] && current_player == 0) //both are waiting
+        if ((step_p[0] == step_p[1]) && current_player == 0) //both are waiting
         {
           switch (step_p_counter[0])
           {
