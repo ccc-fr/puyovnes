@@ -65,7 +65,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //with 8 bits we have 2 pairs
 //So we need an array length of 64 bytes/char to stock everything, amazing !
 #define PUYOLISTLENGTH 64
-#define DEBUG 1 // Currently P2 game is broken, need to check why.
+#define DEBUG 0 // Currently P2 game is broken, need to check why.
 /// GLOBAL VARIABLES
 byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
@@ -600,7 +600,7 @@ void update_boards()
   //we must be careful not to erase the data for p2 table
   //column 0 is at 2 for actor_x[board_index]>>3, it gives us an offset, and we need to divide by 2 after to 
   //get the column number right
-  byte * base_address = board_address + (current_player? 0x48:0);
+  byte * base_address = board_address + (current_player? 0x4E:0);
   
   //boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
   cell_address = base_address + ((((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((actor_y[current_player][0]>>3)+1)>>1);
@@ -623,7 +623,7 @@ byte check_board(void)
   /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
   /*byte mask = 15, flag = 8, shift = 0;*/ 
   //byte destruction = 0;//tmp_coutner_3 !
-  current_board_address = board_address + (current_player?0x48:0);
+  current_board_address = board_address + (current_player?0x4E:0);
   current_tmp_board_address = tmp_boards_address;
   tmp_counter = 0;
   tmp_counter_2 = 0; // counter
@@ -1086,7 +1086,7 @@ byte destroy_board()
     }
     
     gp_i = tmp_counter%12;
-    cell_address = board_address + (current_player?0x48:0) + gp_i*0xD;
+    cell_address = board_address + (current_player?0x4E:0) + gp_i*0xD;
     for (gp_j = 0; gp_j < 13 ; ++gp_j)
     {
       if ((/*boards[current_player][gp_i][gp_j]*/ *cell_address & FLAG) > 0)
@@ -1137,7 +1137,7 @@ void fall_board()
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
  
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ ! un if > 6 else serait-il mieux ?
-  offset_address = board_address + (current_player*0x48) + tmp_counter*0xD;
+  offset_address = board_address + (current_player*0x4E) + tmp_counter*0xD;
   for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
     //on va de bas en haut, par contre il faut insérer les valeurs dans ntbuff de haut en bas!
@@ -1150,7 +1150,7 @@ void fall_board()
     //idem en bas chaque accès à boards[current_player][tmp_counter][gp_j] demande 700 cycles ?!? Why ?
     //gp_i = boards[current_player][tmp_counter][gp_j]; // ça prend 700cycles, mais pourquoi ????
     //so we compute the address by hand, much faster
-    //basically, boards[0][0][0] is at board_address, select the player by moving of 0x48 == 78 case, a 13*6 boards
+    //basically, boards[0][0][0] is at board_address, select the player by moving of 0x4E == 78 case, a 13*6 boards
     // every columne are separated by 0xD (13) and every line by just one
     cell_address = (offset_address + gp_j); //player index missing there !
     gp_i = *cell_address;
@@ -1616,7 +1616,7 @@ byte fall_ojama()
   /*byte fall = 0, i = 0, top_line_space = 0;*/
   //byte * offset_address;
   //byte * cell_address;
-  offset_address = board_address + (current_player*0x48) /*+ tmp_counter*0xD*/;
+  offset_address = board_address + (current_player*0x4E) /*+ tmp_counter*0xD*/;
 
   tmp_counter = 0; // top_line_space
   if ((step_ojama_fall[current_player] == 0 && step_p[~current_player & 1] != PLAY) )
@@ -1976,7 +1976,7 @@ void build_field()
     put_str(NTADR_C(11,10), "Puyo VNES");
     put_str(NTADR_C(4,15), "Border style  1  2  3  4");
     put_str(NTADR_C(4,17), "Border color  1  2  3  4");
-    put_str(NTADR_C(4,19), "Music         O  1  2  3");
+    put_str(NTADR_C(4,19), "Music         O  1      ");
     put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
     put_str(NTADR_C(6,24), "Press start to begin!");
   }
@@ -2012,6 +2012,8 @@ void init_round()
     step_p[gp_i] = PLAY;
     step_p_counter[gp_i] = 0;
     current_player = gp_i;
+    nb_puyos_destroyed[gp_i] = 0;
+    nb_group[gp_i] = 0;
     //update_next();
   }
 
@@ -2022,9 +2024,7 @@ void init_round()
     column_height[1][gp_i] = floor_y;
   }
   
-  nb_puyos_destroyed[current_player] = 0;
   mask_color_destroyed = 0;
-  nb_group[current_player] = 0;
 
   return;
 }
@@ -2110,7 +2110,7 @@ void handle_controler_and_sprites()
       //we need to raise both puyo above the topmost puyo of the column (or the ground)
       //kind of "ground kick" or "floor" kick
       //seriously not optimized :-/
-      if ((actor_y[current_player][0] >= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      if ((actor_y[current_player][0] > column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1];
         actor_y[current_player][1] = actor_y[current_player][0] - 16;
@@ -2176,7 +2176,7 @@ void handle_controler_and_sprites()
         //we need to raise both puyo above the topmost puyo of the column (or the ground)
         //kind of "ground kick" or "floor" kick
         //seriously not optimized :-/
-        if ((actor_y[current_player][0] >= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+        if ((actor_y[current_player][0] > column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
         {
           actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1];
           actor_y[current_player][1] = actor_y[current_player][0] - 16;
@@ -2217,6 +2217,14 @@ void handle_controler_and_sprites()
         {
           //going from up to left
           ///are we on the side left side?
+          /*
+            We should add test against the column height if we are not on left
+            if column height is < of top puyo then we should walk kick
+            if we wall kick we should check right column height, if the column
+            is not free then the puyo should swap.
+            if top puyo is above column height before turning
+            but below after, then we should raised both puyos (floor kick)
+          */
           if (actor_x[current_player][0] == (16+(current_player<<7)))
           {
             //wall kick
@@ -2509,7 +2517,7 @@ void main(void)
             oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
           }
           else
-          {
+          { 
             if (debug)
               --actor_y[current_player][i];
             sprite_addr[current_player][i] = ((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+i)*2))&3) + blind_offset;
@@ -2592,7 +2600,7 @@ void main(void)
         //init step, we copy current boards into tmp_boards, and set the floor tiles too
         if (step_p_counter[current_player] == 255)
         {
-          cell_address = board_address + (current_player ? 0x48:0);
+          cell_address = board_address + (current_player ? 0x4E:0);
           tmp_cell_address = tmp_boards_address;
           for ( i = 0; i < 6; ++i)
           {
@@ -2654,12 +2662,8 @@ void main(void)
               memset(tmp_boards, 0, sizeof(tmp_boards));
               //reset the score
               memset(score,0,sizeof(score));
-              if (debug)
-              {
-                /*boards[0][10][1]=OJAMA;
-                score[1] = 1000;*/
-                ojamas[0] = /*1500*/0;
-              }
+              //reset the ojamas
+              memset(ojamas,0,sizeof(ojamas));
               step_p_counter[0] = 1;
               break;
             case 1:
@@ -2941,7 +2945,7 @@ void main(void)
           if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
           {
             j = 13 - (step_p_counter[current_player] % 13);
-            cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
+            cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
             //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
             if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
             {
@@ -2956,7 +2960,7 @@ void main(void)
           if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
           {
             j = 13 - (step_p_counter[current_player] % 13);
-            cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
+            cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
             //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
             if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
             {
@@ -2971,7 +2975,7 @@ void main(void)
           if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
           {
             j = 13 - (step_p_counter[current_player] % 13);
-            cell_address = board_address + (current_player?0x48:0) + (i*0xD) + j;
+            cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
             //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
             if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
             {
