@@ -71,7 +71,17 @@ byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {SETUP, PLAY, CHECK, CHECK_ALL, DESTROY, FALL, POINT, SHOW_NEXT, FALL_OJAMA, FLUSH, WAIT};
+typedef enum Step {SETUP, 	//0
+                   PLAY, 	//1 
+                   CHECK, 	//2
+                   CHECK_ALL, 	//3
+                   DESTROY, 	//4
+                   FALL, 	//5
+                   POINT, 	//6
+                   SHOW_NEXT, 	//7
+                   FALL_OJAMA, 	//8
+                   FLUSH, 	//9
+                   WAIT}; 	//A
 /*byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles*/
 byte seg_char;		// character to draw
@@ -1371,7 +1381,8 @@ void fall_board()
         //FALL_OJAMA case, we go to show_next,
         step_p[current_player] = SHOW_NEXT;
         //we set 0 because the show_next with that counter at 1 will update ojama display list with manage_point
-        step_p_counter[current_player] = 0;
+        //TODO is this what we want ?!
+        step_p_counter[current_player] = 1;
         step_ojama_fall[current_player] = 0;
       }
     }
@@ -2796,7 +2807,8 @@ void main(void)
           manage_point();
           if (step_p_counter[current_player] == 10)
             step_p_counter[current_player] = 0;
-        }
+          else
+            ++step_p_counter[current_player];        }
         else
         {
           //either the screen is filled and party is over, or we just continue
