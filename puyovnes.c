@@ -1408,6 +1408,11 @@ void manage_point()
   //2 : compute the damage over opponent board
   //3 : update the tiles based on 2
   
+  //depeding on thep step, we look at current player of the opposite player
+  //on SHOW_NEXT we update the above current_player own ojama line
+  //on other steps we update the opponent ojama line
+  tmp_index = (step_p[current_player] == SHOW_NEXT) ? (1 - current_player) : current_player;
+   
   switch (step_p_counter[current_player])
   {
     case 0: // Compute the new score and ojamas
@@ -1477,7 +1482,7 @@ void manage_point()
       //see https://www.bayoen.fr/wiki/Tableau_des_dommages
       //would be neater to put addresses into an enum...
       //1:    0xfc   ojama
-      //6:    0xf8   bug ojama
+      //6:    0xf8   big ojama
       //30:   0xe4   rock
       //180:  0xe8   tilted rock
       //360:  0xec   star
@@ -1485,15 +1490,15 @@ void manage_point()
       //1440: 0xf4   comet
 
       //first let's get our score divided by 70
-      tmp_score[current_player] = ojamas[(current_player == 0 ? 2 : 0)] / 70;
+      tmp_score[tmp_index] = ojamas[(tmp_index == 0 ? 2 : 0)] / 70;
       //tmp_score = (ojamas[(current_player == 0 ? 2 : 0)] * 936) >> 16; //
       //36 => 512 + 256 + 128 + 32 +8
       //tmp_score = ojamas[(current_player == 0 ? 2 : 0)];
       //tmp_score = (tmp_score << 9 + tmp_score << 8 + tmp_score << 7 + tmp_score << 5 + tmp_score << 3) >> 16;
       //gp_j = 0;
       //let's cheat, setup everything as ojamaless tile
-      memset(current_damage_tiles[current_player],bg_tile, sizeof(current_damage_tiles[current_player]));
-      current_damage_tiles_index[current_player] = 0;
+      memset(current_damage_tiles[tmp_index],bg_tile, sizeof(current_damage_tiles[tmp_index]));
+      current_damage_tiles_index[tmp_index] = 0;
       /* bit of explanation here
       * that part is super expensive in term of CPU because of loops + division
       * looks like divisions like eating the NES CPU cycles
@@ -1571,23 +1576,23 @@ void manage_point()
         }      
       }*/
       
-      if (tmp_score[current_player] >= damageList[step_p_counter[current_player]])
+      if (tmp_score[tmp_index] >= damageList[step_p_counter[tmp_index]])
       {
-        tmp_score2[current_player] = tmp_score[current_player] / damageList[step_p_counter[current_player]];
-        if (tmp_score2[current_player] > 0 )
+        tmp_score2[tmp_index] = tmp_score[tmp_index] / damageList[step_p_counter[tmp_index]];
+        if (tmp_score2[tmp_index] > 0 )
         {
           //we use tmp_mask because it is there, avoiding declaring something else
-          for (tmp_mask = 0; tmp_mask < (tmp_score2[current_player]) && current_damage_tiles_index[current_player] < 6 ; ++tmp_mask)
+          for (tmp_mask = 0; tmp_mask < (tmp_score2[tmp_index]) && current_damage_tiles_index[tmp_index] < 6 ; ++tmp_mask)
           {
-            current_damage_tiles[current_player][current_damage_tiles_index[current_player]] = damageTile[step_p_counter[current_player]];
-            ++current_damage_tiles_index[current_player];
+            current_damage_tiles[tmp_index][current_damage_tiles_index[tmp_index]] = damageTile[step_p_counter[tmp_index]];
+            ++current_damage_tiles_index[tmp_index];
           }
         }
-        tmp_score[current_player] %= damageList[step_p_counter[current_player]];
+        tmp_score[tmp_index] %= damageList[step_p_counter[tmp_index]];
       }
 
-      if (current_damage_tiles_index[current_player] >= 6 )
-        step_p_counter[current_player] = 9; // to be sure we don't go in 3 to 9 again, as it will be update outside
+      if (current_damage_tiles_index[tmp_index] >= 6 )
+        step_p_counter[tmp_index] = 9; // to be sure we don't go in 3 to 9 again, as it will be update outside
       break;
     case 10:
       //display damages
@@ -1599,15 +1604,15 @@ void manage_point()
       {
         //set_metatile(gp_j,current_damage_tiles[current_player][gp_j]);
         //set_metatile is only valid for vertical vrambuf_put !
-        //for horital just fill manually ntbuf1 & 2 :)
-        ntbuf1[gp_j*2] = current_damage_tiles[current_player][gp_j];
-        ntbuf1[gp_j*2+1] = current_damage_tiles[current_player][gp_j]+2;
-        ntbuf2[gp_j*2] = current_damage_tiles[current_player][gp_j]+1;
-        ntbuf2[gp_j*2+1] = current_damage_tiles[current_player][gp_j]+3;
+        //for horizontal just fill manually ntbuf1 & 2 :)
+        ntbuf1[gp_j*2] = current_damage_tiles[tmp_index][gp_j];
+        ntbuf1[gp_j*2+1] = current_damage_tiles[tmp_index][gp_j]+2;
+        ntbuf2[gp_j*2] = current_damage_tiles[tmp_index][gp_j]+1;
+        ntbuf2[gp_j*2+1] = current_damage_tiles[tmp_index][gp_j]+3;
       }
-      addr = NTADR_A((20)-nt_x_offset[current_player], 0);
+      addr = NTADR_A((20)-nt_x_offset[tmp_index], 0);
       vrambuf_put(addr, ntbuf1, 12);
-      addr = NTADR_A((20)-nt_x_offset[current_player], 1);
+      addr = NTADR_A((20)-nt_x_offset[tmp_index], 1);
       vrambuf_put(addr, ntbuf2, 12);
       break;
   }
