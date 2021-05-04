@@ -1043,23 +1043,23 @@ byte check_board(void)
           //look left
           /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
             boards[current_player][gp_i-1][gp_j] |= FLAG;*/
-          if (gp_i>0 && (*cell_address - 0xD) == OJAMA)
-            *cell_address |= FLAG;
+          if (gp_i>0 && *(cell_address - 0xD) == OJAMA)
+            *(cell_address - 0xD) |= FLAG;
           //look right
           /*if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
             boards[current_player][gp_i+1][gp_j] |= FLAG*/
-          if (gp_i<5 && (*cell_address + 0xD) == OJAMA)
-            *cell_address |= FLAG;
+          if (gp_i<5 && *(cell_address + 0xD) == OJAMA)
+            *(cell_address + 0xD) |= FLAG;
           //look up
           /*if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
             boards[current_player][gp_i][gp_j-1] |= FLAG;*/
-          if (gp_j>0 && (*cell_address - 1) == OJAMA)
-            *cell_address |= FLAG;
+          if (gp_j>0 && *(cell_address - 1) == OJAMA)
+            *(cell_address - 1) |= FLAG;
           //look down
           /*if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
             boards[current_player][gp_i][gp_j+1] |= FLAG;*/
-          if (gp_j<12 && (*cell_address + 1) == OJAMA)
-            *cell_address |= FLAG;
+          if (gp_j<12 && *(cell_address + 1) == OJAMA)
+            *(cell_address + 1) |= FLAG;
         }
         --cell_address;
         --tmp_cell_address;
@@ -2325,6 +2325,11 @@ void handle_controler_and_sprites()
     step_p[0] = FLUSH;
     step_p_counter[0] = 255;
     actor_dx[1][0] = -1;
+  }
+  if (pad&PAD_SELECT)
+  {
+    play_bayoen();
+    ojamas[0] = 210;
   }
   
   previous_pad[current_player] = pad;
