@@ -65,7 +65,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //with 8 bits we have 2 pairs
 //So we need an array length of 64 bytes/char to stock everything, amazing !
 #define PUYOLISTLENGTH 64
-#define DEBUG 0 // Currently P2 game is broken, need to check why.
+#define DEBUG 1 // Currently P2 game is broken, need to check why.
 /// GLOBAL VARIABLES
 byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
@@ -2637,10 +2637,10 @@ void main(void)
       else
       {
         //we need to move oam_id to not have an offset, should be a better way though...
-        //oam_id = oam_meta_spr(actor_x[current_player][0], actor_y[current_player][0], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+0)*2))&3) + blind_offset]);
-        //oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[((puyo_list[(p_puyo_list_index[current_player]>>1)]>>((((p_puyo_list_index[current_player]%2)*2)+1)*2))&3) + blind_offset]);
-        oam_id = oam_meta_spr(actor_x[current_player][0],actor_y[current_player][0], oam_id, puyoSeq[displayed_pairs[current_player][0] + blind_offset]);
-        oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[displayed_pairs[current_player][1] + blind_offset]); 
+        //oam_id = oam_meta_spr(actor_x[current_player][0],actor_y[current_player][0], oam_id, puyoSeq[displayed_pairs[current_player][2] + blind_offset]);
+        //oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[displayed_pairs[current_player][3] + blind_offset]); 
+        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][2] + blind_offset]);
+        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][3] + blind_offset]); 
       }
 
       //flush step, that's supposing one opponent has lost
