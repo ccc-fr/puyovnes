@@ -1905,7 +1905,6 @@ void update_next()
     
     if (gp_i != 2)
     {
-      //tmp_color = (puyo_list[((p_puyo_list_index[current_player]+1+(gp_j/2))>>1)]>>(((((p_puyo_list_index[current_player]+1+(gp_j/2))%2)*2)+gp_j%2)*2))&3;
       tmp_color = displayed_pairs[current_player][gp_j];
       set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
     }
@@ -2053,7 +2052,7 @@ void init_round()
     actor_y[gp_i][1] = start_pos_y[gp_i][1]/*1*16*/;
     actor_dx[gp_i][1] = 0;
     actor_dy[gp_i][1] = 1;
-    p_puyo_list_index[gp_i] = 0;
+    //p_puyo_list_index[gp_i] = 0;//done in the WAIT state now.
     
     previous_pad[gp_i] = 0;
     input_delay_PAD_A[gp_i] = 0;
@@ -2564,11 +2563,7 @@ void main(void)
         {
           // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
           // puyo_list       p1_puyo_list_index
-          // (p1_puyo_list_index>>1) retourne le bon index puisqu'on a 4 puyos par index, soit 2 paires
-          // ensuite on décale sur le bon élément de l'index 
-          // 2 bits pour chaque puyo=> on décale à droite (0>>0, 1>>2, 2>>4,3>>6)
-          // Donc si p_puyo_list_index est pair on décale déjà de 4, sinon de 0, et si i est à 0 on décale encore de 2
-          // et on fait & 3 pour ne garder que les 2 premiers bits  
+          // cd update_next for displayed_pairs constructions
           //Debug => on bloque p2
           if (debug  && current_player != 0)
           {
@@ -2976,7 +2971,7 @@ void main(void)
           actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
           actor_dy[current_player][0] = 1;
           actor_dy[current_player][1] = 1;
-          p_puyo_list_index[current_player] = (++p_puyo_list_index[current_player])%64;
+          ++p_puyo_list_index[current_player];
           /*
           step_p1 = SHOW_NEXT;*/
           step_p[current_player] = FALL_OJAMA;
@@ -3072,7 +3067,7 @@ void main(void)
             actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
             actor_dy[current_player][0] = 1;
             actor_dy[current_player][1] = 1;
-            p_puyo_list_index[current_player] = (++p_puyo_list_index[current_player])%64;
+            ++p_puyo_list_index[current_player];
             //step_p1 = SHOW_NEXT;
             step_p[current_player] = FALL_OJAMA;
             step_p_counter[current_player] = 0;
