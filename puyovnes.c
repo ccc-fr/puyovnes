@@ -65,7 +65,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //with 8 bits we have 2 pairs
 //So we need an array length of 64 bytes/char to stock everything, amazing !
 #define PUYOLISTLENGTH 64
-#define DEBUG 1 // Currently P2 game is broken, need to check why.
+#define DEBUG 0 // Currently P2 game is broken, need to check why.
 /// GLOBAL VARIABLES
 byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
@@ -2488,9 +2488,11 @@ void main(void)
               bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
               break;
             case 2: //music
-              music_selected_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              music_selected_ptr = (menu_pos_y[menu_pos_x] & 0x1) ? music1:  NULL;
               music_ptr = music_selected_ptr;
               cur_duration = 0;
+              if (menu_pos_y[menu_pos_x] & 0x2)
+                debug = 1;
               break;
             case 3: //color blind
               blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
@@ -2511,9 +2513,11 @@ void main(void)
               bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
               break;
             case 2: //music
-              music_selected_ptr = menu_pos_y[menu_pos_x] ? music1:  NULL;
+              music_selected_ptr = (menu_pos_y[menu_pos_x]& 0x1) ? music1:  NULL;
               music_ptr = music_selected_ptr;
               cur_duration = 0;
+              if (menu_pos_y[menu_pos_x] & 0x2)
+                debug = 1;
               break;
             case 3: //color blind
               blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
