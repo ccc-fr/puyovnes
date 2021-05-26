@@ -179,7 +179,7 @@ byte wins[2]; // number of round won by each player.
 byte ready[2]; //indicates if a player is ok to play the next round
 unsigned long int ojamas[4];// 2 pockets of ojama per player, but what is displayed is always the sum of both. Warikomi rule.
 byte step_ojama_fall[2];
-byte should_destroy;
+byte should_destroy[2]; //also for both players, or there is a risk that they remove the in current check_all result.
 byte blind_offset; //offset to apply to get the correct sprite
 byte sprite_addr[2][2]; //keep track of the addr of the sprite tile to convert from sprite to tile
 byte current_color;
@@ -2067,6 +2067,8 @@ void init_round()
     current_player = gp_i;
     nb_puyos_destroyed[gp_i] = 0;
     nb_group[gp_i] = 0;
+    should_destroy[0] = 0;
+    should_destroy[1] = 0;
     //update_next();
   }
 
@@ -2945,7 +2947,7 @@ void main(void)
         //should_destroy = (check_board( ((actor_x[current_player][0]>>3) - 2) >> 1, ((actor_y[current_player][0]>>3)+1)>>1) > 0);
         x = (actor_x[current_player][0]>>4) - pos_x_offset[current_player];
         y = ((actor_y[current_player][0]>>3)+1)>>1;
-        should_destroy = (check_board() > 0);
+        should_destroy[current_player] = (check_board() > 0);
         //if both puyo had the same color it's useless to perform the second check....No because of splits !
         /*if ( (boards[current_player][((actor_x[current_player][1]>>3) - 2) >> 1][((actor_y[current_player][1]>>3)+1)>>1] & 8) != 8)
           should_destroy = (check_board( ((actor_x[current_player][1]>>3) - 2) >> 1, ((actor_y[current_player][1]>>3)+1)>>1) > 0) || should_destroy;*/
@@ -2953,9 +2955,9 @@ void main(void)
         {
           x = (actor_x[current_player][1]>>4) - pos_x_offset[current_player];
           y = ((actor_y[current_player][1]>>3)+1)>>1;
-          should_destroy = (check_board() > 0) || should_destroy;
+          should_destroy[current_player] = (check_board() > 0) || should_destroy[current_player];
         }
-        if (should_destroy)
+        if (should_destroy[current_player])
         {
           step_p_counter[current_player] = 0;
           step_p[current_player] = DESTROY;
@@ -2965,7 +2967,7 @@ void main(void)
           actor_y[current_player][0] = 254;
           actor_x[current_player][1] = 254;
           actor_y[current_player][1] = 254;
-          should_destroy = 0;
+          should_destroy[current_player] = 0;
         }
         else
         {
@@ -3022,7 +3024,7 @@ void main(void)
               {
                 x = i;
                 y = j;
-                should_destroy = (check_board() > 0) || should_destroy ;
+                should_destroy[current_player] = (check_board() > 0) || should_destroy[current_player] ;
               }  
             }
           }
@@ -3040,7 +3042,7 @@ void main(void)
               {
                 x = i;
                 y = j;
-                should_destroy = (check_board() > 0) || should_destroy ;
+                should_destroy[current_player] = (check_board() > 0) || should_destroy[current_player] ;
               }
             }
           }
@@ -3058,7 +3060,7 @@ void main(void)
               {
                 x = i;
                 y = j;
-                should_destroy = (check_board() > 0) || should_destroy ;
+                should_destroy[current_player] = (check_board() > 0) || should_destroy[current_player] ;
               }
             }
           }
@@ -3067,11 +3069,11 @@ void main(void)
         else
         {
           //test is over, let's destroy if necessary
-          if (should_destroy)
+          if (should_destroy[current_player])
           {
             step_p_counter[current_player] = 0;
             step_p[current_player] = DESTROY;
-            should_destroy = 0;
+            should_destroy[current_player] = 0;
           }
           else
           {
