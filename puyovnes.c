@@ -3010,46 +3010,56 @@ void main(void)
             --i;
           }*/
           i = step_p_counter[current_player] / 13;
-          if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
+          if ( (check_all_column_list[current_player] & (1<<i)) > 0)
           {
-            j = 13 - (step_p_counter[current_player] % 13);
-            cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
-            //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
-            if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
+            j = 12 - (step_p_counter[current_player] % 13);
+            //if j == 0 the not tested as it is the hidden line above screen
+            if (j)
             {
-              x = i;
-              y = j;
-              should_destroy = (check_board() > 0) || should_destroy ;
-            }  
-          }
-          ++step_p_counter[current_player];
-
-          i = step_p_counter[current_player] / 13;
-          if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
-          {
-            j = 13 - (step_p_counter[current_player] % 13);
-            cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
-            //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
-            if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
-            {
-              x = i;
-              y = j;
-              should_destroy = (check_board() > 0) || should_destroy ;
+              cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
+              //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+              if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
+              {
+                x = i;
+                y = j;
+                should_destroy = (check_board() > 0) || should_destroy ;
+              }  
             }
           }
           ++step_p_counter[current_player];
 
           i = step_p_counter[current_player] / 13;
-          if (/*1 |*/ (check_all_column_list[current_player] & (1<<i)) > 0)
+          if ( (check_all_column_list[current_player] & (1<<i)) > 0)
           {
-            j = 13 - (step_p_counter[current_player] % 13);
-            cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
-            //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
-            if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
+            j = 12 - (step_p_counter[current_player] % 13);
+            if (j)
             {
-              x = i;
-              y = j;
-              should_destroy = (check_board() > 0) || should_destroy ;
+              cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
+              //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+              if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
+              {
+                x = i;
+                y = j;
+                should_destroy = (check_board() > 0) || should_destroy ;
+              }
+            }
+          }
+          ++step_p_counter[current_player];
+
+          i = step_p_counter[current_player] / 13;
+          if ( (check_all_column_list[current_player] & (1<<i)) > 0)
+          {
+            j = 12 - (step_p_counter[current_player] % 13);
+            if (j)
+            {
+              cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
+              //if (((boards[current_player][i][j] & 7) != EMPTY) && ((boards[current_player][i][j] & FLAG) != FLAG))
+              if (((*cell_address & 7) != EMPTY) && ((*cell_address & FLAG) != FLAG))
+              {
+                x = i;
+                y = j;
+                should_destroy = (check_board() > 0) || should_destroy ;
+              }
             }
           }
           ++step_p_counter[current_player];
