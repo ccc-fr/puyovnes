@@ -150,6 +150,14 @@ DEF_METASPRITE_2x2(puyo_heart, 0xcc, 0);//red
 DEF_METASPRITE_2x2(puyo_rabbit_ghost, 0xd4, 1);//blue
 DEF_METASPRITE_2x2(puyo_angry, 0xd0, 2);//green
 DEF_METASPRITE_2x2(puyo_yellow_bis, 0xd8, 3);//yellow
+//DEF_METASPRITE_2x2(behind, 0x00, OAM_BEHIND);//yellow
+//defined by hand to be sure to have the transparent first sprite in the assets
+const unsigned char behind[]={\
+        0,      0,      0,   OAM_BEHIND, \
+        0,      8,      0,   OAM_BEHIND, \
+        8,      0,      0,   OAM_BEHIND, \
+        8,      8,      0,   OAM_BEHIND, \
+        128};
 //not needed
 /*DEF_METASPRITE_2x2(ojama, 0xdc, 0);
 DEF_METASPRITE_2x2(puyo_pop, 0xe0, 0);*/
@@ -262,8 +270,8 @@ const byte* music_selected_ptr = NULL;
 //end of music bloc
 
 //le const machin const permet de placer l'info en rom et donc de gagner de la place en théorie
-const unsigned char* const puyoSeq[8] = {
-  puyo_red, puyo_blue, puyo_green, puyo_yellow, puyo_heart, puyo_rabbit_ghost, puyo_angry, puyo_yellow_bis
+const unsigned char* const puyoSeq[9] = {
+  puyo_red, puyo_blue, puyo_green, puyo_yellow, puyo_heart, puyo_rabbit_ghost, puyo_angry, puyo_yellow_bis, behind
 };
 //1:    0xfc   ojama
 //6:    0xf8   big ojama
@@ -2643,10 +2651,13 @@ void main(void)
       else
       {
         //we need to move oam_id to not have an offset, should be a better way though...
-        //oam_id = oam_meta_spr(actor_x[current_player][0],actor_y[current_player][0], oam_id, puyoSeq[displayed_pairs[current_player][2] + blind_offset]);
-        //oam_id = oam_meta_spr(actor_x[current_player][1], actor_y[current_player][1], oam_id, puyoSeq[displayed_pairs[current_player][3] + blind_offset]); 
-        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][2] + blind_offset]);
-        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][3] + blind_offset]); 
+        //oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][2] + blind_offset]);
+        //oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][3] + blind_offset]); 
+        //We use the behind to set the sprite behind the background and avoir visual glitch.
+        //Note: we should use the oam_meta_sprite_pal to do that, but the oam_id is not followed the same way as with oam_meta_spr...
+        //behind is the last element of our metasprite list.
+        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[8]);
+        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[8]); 
       }
 
       //flush step, that's supposing one opponent has lost
