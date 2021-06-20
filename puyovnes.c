@@ -1158,6 +1158,8 @@ void fall_board()
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
  
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ ! un if > 6 else serait-il mieux ?
+  //on remplace par la techique A%B = A - B * (A/B) ? comme on ne fait pas la div c'est peut-être moins interessant
+  //une méthode est indiquée là : http://homepage.cs.uiowa.edu/~jones/bcd/mod.shtml mais pas sûr de l'intéret
   offset_address = board_address + (current_player*0x4E) + tmp_counter*0xD;
   for (gp_j = 12 ; gp_j < 255; --gp_j)
   {
@@ -3028,7 +3030,10 @@ void main(void)
           i = step_p_counter[current_player] / 13;
           if ( (check_all_column_list[current_player] & (1<<i)) > 0)
           {
-            j = 12 - (step_p_counter[current_player] % 13);
+            //j = 12 - (step_p_counter[current_player] % 13);
+            //https://embeddedgurus.com/stack-overflow/2011/02/efficient-c-tip-13-use-the-modulus-operator-with-caution/
+            //C = A % B is equivalent to C = A – B * (A / B).
+            j = 12 - (step_p_counter[current_player] - 13 * (i));
             //if j == 0 the not tested as it is the hidden line above screen
             if (j)
             {
@@ -3047,7 +3052,8 @@ void main(void)
           i = step_p_counter[current_player] / 13;
           if ( (check_all_column_list[current_player] & (1<<i)) > 0)
           {
-            j = 12 - (step_p_counter[current_player] % 13);
+            //j = 12 - (step_p_counter[current_player] % 13);
+            j = 12 - (step_p_counter[current_player] - 13 * (i));
             if (j)
             {
               cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
@@ -3065,7 +3071,8 @@ void main(void)
           i = step_p_counter[current_player] / 13;
           if ( (check_all_column_list[current_player] & (1<<i)) > 0)
           {
-            j = 12 - (step_p_counter[current_player] % 13);
+            //j = 12 - (step_p_counter[current_player] % 13);
+            j = 12 - (step_p_counter[current_player] - 13 * (i));
             if (j)
             {
               cell_address = board_address + (current_player?0x4E:0) + (i*0xD) + j;
