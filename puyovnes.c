@@ -1590,6 +1590,10 @@ void manage_point()
       if (tmp_score[tmp_index] >= damageList[step_p_counter[tmp_index]])
       {
         tmp_score2[tmp_index] = tmp_score[tmp_index] / damageList[step_p_counter[tmp_index]];
+         //optimisation following https://embeddedgurus.com/stack-overflow/2011/02/efficient-c-tip-13-use-the-modulus-operator-with-caution/
+        // C = A % B is equivalent to C = A – B * (A / B).
+        //tmp_score[tmp_index] %= damageList[step_p_counter[tmp_index]];
+        tmp_score[tmp_index] -= damageList[step_p_counter[tmp_index]] * (tmp_score2[tmp_index]);
         if (tmp_score2[tmp_index] > 0 )
         {
           //we use tmp_mask because it is there, avoiding declaring something else
@@ -1599,7 +1603,6 @@ void manage_point()
             ++current_damage_tiles_index[tmp_index];
           }
         }
-        tmp_score[tmp_index] %= damageList[step_p_counter[tmp_index]];
       }
 
       if (current_damage_tiles_index[tmp_index] >= 6 )
