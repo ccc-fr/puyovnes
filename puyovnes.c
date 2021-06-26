@@ -228,6 +228,8 @@ byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_
 unsigned long int tmp_score[2], tmp_score2[2];
 //variable for fall_board
 byte fall, can_fall, previous_empty, puyo_found;
+// indicates if the damage board needs o be refreshed. 0 = no refresh, 1 and above refresh needed or in progress
+byte step_refresh_ojama_display;
 
 //
 // MUSIC ROUTINES
@@ -355,6 +357,7 @@ byte fall_ojama(void); //fall ojama damage on the player field
 void flush(void); // flush loser screen into under the play field
 void init_round(void); //set actors, column_height and other things before a round
 void put_str(unsigned int adr, const char *str);
+void refresh_ojama_display(void); // refresh the ojama display above players playfield
 
 //music bloc definition
 byte next_music_byte() {
@@ -1377,10 +1380,11 @@ void fall_board()
           play_bayoen();
           //temporary solution, as it takes too much time there ! maybe 60000 cycles for point counting alone...
           //Maybe adding a AC step, if size of rom allows it... 
-          for ( step_p_counter[current_player] = 2; step_p_counter[current_player] < 11;  step_p_counter[current_player] ++)
+          /*for ( step_p_counter[current_player] = 2; step_p_counter[current_player] < 11;  step_p_counter[current_player] ++)
           {
             manage_point();
-          }
+          }*/
+          step_refresh_ojama_display = 1;
           /*step_p_counter[current_player] = 2;
           manage_point();
           step_p_counter[current_player] = 3;
@@ -1393,10 +1397,9 @@ void fall_board()
       {
         //FALL_OJAMA case, we go to show_next,
         step_p[current_player] = SHOW_NEXT;
-        //we set 0 because the show_next with that counter at 1 will update ojama display list with manage_point
-        //TODO is this what we want ?!
-        step_p_counter[current_player] = 1;
+        step_refresh_ojama_display = 1;
         step_ojama_fall[current_player] = 0;
+        step_p_counter[current_player] = 0;
       }
     }
     
@@ -1420,11 +1423,6 @@ void manage_point()
   //1 : update hit and score, play sound
   //2 : compute the damage over opponent board
   //3 : update the tiles based on 2
-  
-  //depeding on thep step, we look at current player of the opposite player
-  //on SHOW_NEXT we update the above current_player own ojama line
-  //on other steps we update the opponent ojama line
-  tmp_index = (step_p[current_player] == SHOW_NEXT) ? (1 - current_player) : current_player;
    
   switch (step_p_counter[current_player])
   {
@@ -1489,8 +1487,21 @@ void manage_point()
       nb_puyos_destroyed[current_player] = 0;
       mask_color_destroyed = mask_color_destroyed & ((current_player == 0) ? 0xf0 : 0xf) /*0xF0*/;
       nb_group[current_player] = 0;
+      step_refresh_ojama_display = 1; // to start the refresh_ojama_display
       break;
-    case 2: //compute the list of tile damage over opponent board
+  }
+}
+
+//Refresh both ojama damage display above player fields
+//use step_refresh_ojama_display the step
+//if it is reset to 1 then the points have been updates and it needs to be redone from scratch, sadly for the performance and all...
+void refresh_ojama_display()
+{
+  tmp_index =  (step_refresh_ojama_display >= 10) ? 1 : 0;
+  switch (step_refresh_ojama_display)
+  {
+    case 1: //compute the list of tile damage over opponent board
+    case 10:
       //the number of ojama depends of the score
       //see https://www.bayoen.fr/wiki/Tableau_des_dommages
       //would be neater to put addresses into an enum...
@@ -1561,13 +1572,20 @@ void manage_point()
       * /!\ /!\ /!\ /!\ /!\it may cause issues if damage from other player get the points be modified .../!\/!\/!\/!\/!\
       */
       break;
-    case 3://1440
-    case 4://720
-    case 5://360
-    case 6://180
-    case 7://30
-    case 8://6
-    case 9://1
+    case 2://1440
+    case 3://720
+    case 4://360
+    case 5://180
+    case 6://30
+    case 7://6
+    case 8://1
+    case 11://1440 p2
+    case 12://720 p2
+    case 13:// 360 p2
+    case 14://180 p2
+    case 15://30 p2
+    case 16://6 p2
+    case 17://1 p2
       /*for ( gp_i = 0; gp_i < 7  && gp_j < 6 ; ++gp_i)
       {
         if (tmp_score[current_player] >= damageList[gp_i])
@@ -1610,7 +1628,8 @@ void manage_point()
       if (current_damage_tiles_index[tmp_index] >= 6 )
         step_p_counter[tmp_index] = 9; // to be sure we don't go in 3 to 9 again, as it will be update outside
       break;
-    case 10:
+    case 9:
+    case 18://p2
       //display damages
       //note: at some point we will have to deal with too much things updated simultaneously
       memset(ntbuf1, 0, sizeof(ntbuf1));
@@ -1631,7 +1650,15 @@ void manage_point()
       addr = NTADR_A((20)-nt_x_offset[tmp_index], 1);
       vrambuf_put(addr, ntbuf2, 12);
       break;
+    default: //0 or something else : quit
+      break;
   }
+  //increment to next step
+  if (step_refresh_ojama_display != 0)
+    step_refresh_ojama_display++;
+  //end of refresh
+  if (step_refresh_ojama_display > 18)
+    step_refresh_ojama_display = 0;
 }
 
 //fall ojama damage on the player field
@@ -2674,6 +2701,9 @@ void main(void)
         //init step, we copy current boards into tmp_boards, and set the floor tiles too
         if (step_p_counter[current_player] == 255)
         {
+          //to prevent visual glitch of screen jumping
+          step_refresh_ojama_display = 0; 
+          //
           cell_address = board_address + (current_player ? 0x4E:0);
           tmp_cell_address = tmp_boards_address;
           for ( i = 0; i < 6; ++i)
@@ -2868,62 +2898,41 @@ void main(void)
       //update the next pair to come in the middle of the field
       if (step_p[current_player] == SHOW_NEXT)
       { 
-        //if we came from fall_board after a fall_ojama, we have to update the ojama display list first
-        //(a bit of a hack for show_next initial purpose...)
-        if( step_p_counter[current_player] >= 2 && step_p_counter[current_player] <= 10) 
+        //either the screen is filled and party is over, or we just continue
+        if (boards[current_player][2][1] == EMPTY)
         {
-          manage_point();
-          if (step_p_counter[current_player] == 10)
-            step_p_counter[current_player] = 0;
-          else
-            ++step_p_counter[current_player];
+          update_next();
+          step_p[current_player] = PLAY;
         }
         else
         {
-          //either the screen is filled and party is over, or we just continue
-          if (boards[current_player][2][1] == EMPTY)
-          {
-            update_next();
-            step_p[current_player] = PLAY;
+          //end of the road...
+          //that player lose !
+          step_p[current_player] = FLUSH;
+          step_p_counter[current_player] = 255;
+          //hide sprites
+          memset(actor_x, 254, sizeof(actor_x));
+          memset(actor_y, 254, sizeof(actor_y));
+          play_flush(); // play sound of flush
+          if (current_player == 0)          
+          { 
+            actor_dx[0][0] = 1;// stop action of the other player
+            actor_dx[0][1] = 1;
+            actor_dy[0][0] = 0;
+            actor_dy[0][1] = 0;
+            step_p[1] = WAIT;
+            ++wins[1];
           }
           else
           {
-            //end of the road...
-            //that player lose !
-            step_p[current_player] = FLUSH;
-            step_p_counter[current_player] = 255;
-            //hide sprites
-            /*actor_x[0][0] = 254;
-            actor_x[0][1] = 254;
-            actor_x[1][0] = 254;
-            actor_x[1][1] = 254;
-            actor_y[0][0] = 254;
-            actor_y[0][1] = 254;
-            actor_y[1][0] = 254;
-            actor_y[1][1] = 254;*/
-            memset(actor_x, 254, sizeof(actor_x));
-            memset(actor_y, 254, sizeof(actor_y));
-            play_flush(); // play sound of flush
-            if (current_player == 0)          
-            { 
-              actor_dx[0][0] = 1;// stop action of the other player
-              actor_dx[0][1] = 1;
-              actor_dy[0][0] = 0;
-              actor_dy[0][1] = 0;
-              step_p[1] = WAIT;
-              ++wins[1];
-            }
-            else
-            {
-              actor_dx[1][0] = 1;// stop action of the other player
-              actor_dx[1][1] = 1;
-              actor_dy[1][0] = 0;
-              actor_dy[1][1] = 0;
-              step_p[0] = WAIT;
-              ++wins[0];
-            }
-          }   
-        }
+            actor_dx[1][0] = 1;// stop action of the other player
+            actor_dx[1][1] = 1;
+            actor_dy[1][0] = 0;
+            actor_dy[1][1] = 0;
+            step_p[0] = WAIT;
+            ++wins[0];
+          }
+        }     
         continue;
       }
 
@@ -2936,7 +2945,7 @@ void main(void)
         manage_point();
         ++step_p_counter[current_player];
         
-        if (step_p_counter[current_player] == 11)
+        if (step_p_counter[current_player] == 2)
         {
           step_p[current_player] = FALL;
           step_p_counter[current_player] = 0;
@@ -3159,6 +3168,9 @@ void main(void)
         
       }
     }
+    //refresh ojama display
+    if (step_refresh_ojama_display != 0)
+      refresh_ojama_display();
   }
 }
 
