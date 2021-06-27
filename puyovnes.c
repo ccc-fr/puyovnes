@@ -1606,27 +1606,32 @@ void refresh_ojama_display()
           }
         }      
       }*/
-      
-      if (tmp_score[tmp_index] >= damageList[step_p_counter[tmp_index]])
+      //we need to compute the correct index for damagelist, we will use gp_i
+      gp_i = (step_refresh_ojama_display > 10) ? step_refresh_ojama_display - 11 : step_refresh_ojama_display - 2;
+      if (tmp_score[tmp_index] >= damageList[gp_i])
       {
-        tmp_score2[tmp_index] = tmp_score[tmp_index] / damageList[step_p_counter[tmp_index]];
+        tmp_score2[tmp_index] = tmp_score[tmp_index] / damageList[gp_i];
          //optimisation following https://embeddedgurus.com/stack-overflow/2011/02/efficient-c-tip-13-use-the-modulus-operator-with-caution/
         // C = A % B is equivalent to C = A – B * (A / B).
         //tmp_score[tmp_index] %= damageList[step_p_counter[tmp_index]];
-        tmp_score[tmp_index] -= damageList[step_p_counter[tmp_index]] * (tmp_score2[tmp_index]);
+        tmp_score[tmp_index] -= damageList[gp_i] * (tmp_score2[tmp_index]);
         if (tmp_score2[tmp_index] > 0 )
         {
           //we use tmp_mask because it is there, avoiding declaring something else
           for (tmp_mask = 0; tmp_mask < (tmp_score2[tmp_index]) && current_damage_tiles_index[tmp_index] < 6 ; ++tmp_mask)
           {
-            current_damage_tiles[tmp_index][current_damage_tiles_index[tmp_index]] = damageTile[step_p_counter[tmp_index]];
+            current_damage_tiles[tmp_index][current_damage_tiles_index[tmp_index]] = damageTile[gp_i];
             ++current_damage_tiles_index[tmp_index];
           }
         }
       }
 
       if (current_damage_tiles_index[tmp_index] >= 6 )
-        step_p_counter[tmp_index] = 9; // to be sure we don't go in 3 to 9 again, as it will be update outside
+      {
+        // to be sure we don't go in 2 to 8 or 11 to 17  again as no more room for damage tiles
+        // the index is 1 below the next step as it is updated below outside the switch case (step_refresh_ojama_display)
+        step_refresh_ojama_display = (step_refresh_ojama_display > 10) ? 11 : 8; 
+      }
       break;
     case 9:
     case 18://p2
@@ -2120,6 +2125,7 @@ void init_round()
   }
   
   mask_color_destroyed = 0;
+  step_refresh_ojama_display = 0;
 
   return;
 }
