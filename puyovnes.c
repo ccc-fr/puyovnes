@@ -1636,7 +1636,12 @@ void refresh_ojama_display()
     case 9:
     case 18://p2
       //display damages
-      //note: at some point we will have to deal with too much things updated simultaneously
+      // if we are updating bg tiles somewhere else then we do not update
+      // the state we want to avoid are DESTROY, FALL, POINT,  SHOW_NEXT, POINT and FALL_OJAMA
+      // so every step between 4 and 9 included, the missing case on PLAY when sprites are changed to bg will be handled there.
+      if (step_p[0] >= 4 && step_p[0] <= 9 && step_p[1] >= 4 && step_p[1] <= 9)
+        return;// by returning we con't update the step_refresh_ojama_display step so we will start again from here on the next frame
+      
       memset(ntbuf1, 0, sizeof(ntbuf1));
       memset(ntbuf2, 0, sizeof(ntbuf2));
 
@@ -3171,7 +3176,8 @@ void main(void)
         step_p[current_player] = CHECK;
         play_puyo_fix(); //play sound of puyo fixing into position
         timer_grace_period[current_player] = GRACE_PERIOD; 
-        
+        //that continue allows to avoid refresh_ojama_display just after and updating too much vrambuf_put at the same time
+        continue;
       }
     }
     //refresh ojama display
