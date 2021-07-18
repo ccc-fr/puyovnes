@@ -2616,6 +2616,8 @@ void main(void)
       if (step_p[current_player] == PLAY)
       {
         handle_controler_and_sprites();
+        //we will registrer the number of puyo without something below them
+        tmp_counter = 0 ;
         for (i = 0 ; i < 2 ; ++i)
         {
           // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
@@ -2627,6 +2629,7 @@ void main(void)
             --actor_y[current_player][i];
           }
           
+          //refresh sprites display
           sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
           oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
           
@@ -2665,11 +2668,15 @@ void main(void)
             }    
           }
           
-          if (actor_dy[current_player][i] != 0 &&
+          if (/*actor_dy[current_player][i] != 0 &&*/
               (((column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset) < actor_y[current_player][i]))
              )
           {
-            actor_dy[current_player][i] = 0; 
+            //if one puyo is blocked then both must be as we will start the grace_period
+            //actor_dy[current_player][i] = 0; 
+            /*actor_dy[current_player][0] = 0; 
+            actor_dy[current_player][1] = 0; */
+            ++tmp_counter;
             actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset;
             column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] -= 16;
             //Ne fonctionne bizarrement pas !
@@ -2678,8 +2685,24 @@ void main(void)
           }
           
         }
+        
+        if (tmp_counter != 0)
+        {
+          //qu'on est un ou deux puyo de bloqué ou bloque les deux.
+          actor_dy[current_player][0] = 0; 
+          actor_dy[current_player][1] = 0; 
+          if (previous_pad[current_player]&PAD_DOWN)
+            timer_grace_period[current_player] = 0;
+          else
+            --timer_grace_period[current_player];
+        }
+        else
+        {
+          //if 2 puyos are free again, basically meeting a free column, we reset the timer_grace_period
+          timer_grace_period[current_player] = GRACE_PERIOD;
+        }
 
-        if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0))
+        /*if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0))
         {
           if (previous_pad[current_player]&PAD_DOWN)
             timer_grace_period[current_player] = 0;
@@ -2688,7 +2711,7 @@ void main(void)
          //commenté pas sûr que ce soit utile....
          // if (actor_x[current_player][1] == 0 && timer_grace_period[current_player] == 0)
            // column_height[current_player][(actor_x[current_player][1]>>4) - pos_x_offset[current_player]] = actor_y[current_player][1];
-        }
+        }*/
 
       }
       else
@@ -3136,7 +3159,7 @@ void main(void)
         continue;
       }
 
-      if ( step_p[current_player] == PLAY && actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 && timer_grace_period[current_player] == 0 )
+      if ( step_p[current_player] == PLAY /*&& actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 */&& timer_grace_period[current_player] == 0 )
       {
         //vrambuf_clear();
         memset(ntbuf1, 0, sizeof(ntbuf1));
