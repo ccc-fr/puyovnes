@@ -207,7 +207,7 @@ char input_delay_PAD_B[2]; //to avoid multiple input on one press
 char column_height[2][6];
 char column_height_offset;
 //constant for puyo physics
-#define GRACE_PERIOD 32
+#define GRACE_PERIOD /*32*/ 64
 #define MAX_FALLING_BACK_UP 8
 byte timer_grace_period[2];
 byte counter_falling_back_up[2];
@@ -2613,7 +2613,7 @@ void main(void)
     for (current_player = 0 ; current_player < 2 ; ++current_player)
     {
 
-      if (step_p[current_player] == PLAY)
+      if (step_p[current_player] == PLAY && timer_grace_period[current_player] != 255)
       {
         handle_controler_and_sprites();
         //we will registrer the number of puyo without something below them
@@ -2624,7 +2624,7 @@ void main(void)
           // puyo_list       p1_puyo_list_index
           // cd update_next for displayed_pairs constructions
           //Debug => on bloque p2
-          if (debug  && current_player != 0)
+          if (debug && current_player != 0)
           {
             --actor_y[current_player][i];
           }
@@ -2633,7 +2633,7 @@ void main(void)
           sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
           oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
           
-          if (actor_dy[current_player][i] != 0) 
+          if (actor_dy[current_player][i] != 0 && timer_grace_period[current_player] == GRACE_PERIOD) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
           //test relative to column_height
@@ -2686,9 +2686,37 @@ void main(void)
           
         }
         
-        if (tmp_counter != 0)
+        switch (tmp_counter)
         {
-          //qu'on est un ou deux puyo de bloqué ou bloque les deux.
+          case 0://if 2 puyos are free again, basically meeting a free column, we reset the timer_grace_period
+            timer_grace_period[current_player] = GRACE_PERIOD;
+            break;
+          case 1://qu'on ait un ou deux puyo de bloqué on bloque les deux.
+            if (timer_grace_period[current_player] != 0)
+            {
+              actor_dy[current_player][0] = 0; 
+              actor_dy[current_player][1] = 0; 
+              if (previous_pad[current_player]&PAD_DOWN)
+                timer_grace_period[current_player] = 0;
+              else
+                --timer_grace_period[current_player];
+            }
+            else
+            {
+              //if the puyo is blocked we animate it, if not it must goes one step lower
+              //do we use step_p_counter[current_player] for the animation ? 
+              //the fall and animation of each puyo is asynchronous, 2 counters ?
+            }
+            break;
+          case 2: // The 2 puyos are stopped we go to sprite to bg tile conversion,
+              //but the animation of the puyos must be stop finished first !
+              timer_grace_period[current_player] = 255;
+            break;
+        }
+        
+        /*if (tmp_counter != 0)
+        {
+          //qu'on ait un ou deux puyo de bloqué on bloque les deux.
           actor_dy[current_player][0] = 0; 
           actor_dy[current_player][1] = 0; 
           if (previous_pad[current_player]&PAD_DOWN)
@@ -2698,9 +2726,9 @@ void main(void)
         }
         else
         {
-          //if 2 puyos are free again, basically meeting a free column, we reset the timer_grace_period
+          
           timer_grace_period[current_player] = GRACE_PERIOD;
-        }
+        }*/
 
         /*if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0))
         {
@@ -3159,7 +3187,7 @@ void main(void)
         continue;
       }
 
-      if ( step_p[current_player] == PLAY /*&& actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 */&& timer_grace_period[current_player] == 0 )
+      if ( step_p[current_player] == PLAY /*&& actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 */&& timer_grace_period[current_player] == 255 )
       {
         //vrambuf_clear();
         memset(ntbuf1, 0, sizeof(ntbuf1));
