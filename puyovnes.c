@@ -220,6 +220,8 @@ char str[32];
 byte current_damage_tiles[2][6];
 byte current_damage_tiles_index[2]; //the table indicate the player, the index is pointing at which current_damage_tiles we will fill.
 
+//indexes only used in main
+char i,j;	// actor index
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
 byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y, tmp_color;
@@ -2427,7 +2429,6 @@ void handle_controler_and_sprites()
 
 void main(void)
 {
-  char i,j;	// actor index
   //register word addr;
 
   setup_graphics();
@@ -2633,7 +2634,7 @@ void main(void)
           sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
           oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
           
-          if (actor_dy[current_player][i] != 0 && timer_grace_period[current_player] == GRACE_PERIOD) 
+          if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
           //test relative to column_height
@@ -2676,12 +2677,17 @@ void main(void)
             //actor_dy[current_player][i] = 0; 
             /*actor_dy[current_player][0] = 0; 
             actor_dy[current_player][1] = 0; */
-            ++tmp_counter;
-            actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset;
+            tmp_counter += 1 << i; //power of two to know if something is below or not, usefull for fall animation
+            //pas la peine de réinit la hauteur, on le fera après
+            //actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset;
+            
+            //on ne changera la hauteur de la colonne qu'une fois les puyos fixés !
+            /*
             column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] -= 16;
-            //Ne fonctionne bizarrement pas !
+            //Ne fonctionne bizarrement pas ! 
             if ((column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] > floor_y)  ||  ((column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]])  <= 0) )
               column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] = 0;
+            */
           }
           
         }
@@ -2692,6 +2698,8 @@ void main(void)
             timer_grace_period[current_player] = GRACE_PERIOD;
             break;
           case 1://qu'on ait un ou deux puyo de bloqué on bloque les deux.
+          case 2:
+          case 3:
             if (timer_grace_period[current_player] != 0)
             {
               actor_dy[current_player][0] = 0; 
@@ -2706,11 +2714,48 @@ void main(void)
               //if the puyo is blocked we animate it, if not it must goes one step lower
               //do we use step_p_counter[current_player] for the animation ? 
               //the fall and animation of each puyo is asynchronous, 2 counters ?
+              if ((tmp_counter & 1) && (step_p_counter[current_player] & 0xf) < 8)
+              {
+                //first puyo is blocked and must be animated
+                if ((step_p_counter[current_player] & 0xf) < 4)
+                  actor_dy[current_player][0] = 2;
+                else
+                  actor_dy[current_player][0] = -2;
+                ++step_p_counter[current_player];
+              }
+              else
+              {
+                //not blocked ? it has to fall !
+                actor_dy[current_player][0] = 2;
+              }
+              
+              if ((tmp_counter & 2) && (step_p_counter[current_player] & 0xf0) < 0x80)
+              {
+                //second puyo is blocked and must be animated
+                //first puyo is blocked and must be animated
+                if ((step_p_counter[current_player] & 0xf0) < 0x40)
+                  actor_dy[current_player][1] = 2;
+                else
+                  actor_dy[current_player][1] = -2;
+                step_p_counter[current_player] += 0x10;
+              }
+              else
+              {
+                //not blocked ? it has to fall !
+                actor_dy[current_player][1] = 2;
+              }
+              
+              if ( (step_p_counter[current_player] & 0xf) >= 0x8 && (step_p_counter[current_player] & 0xf0) >= 0x80 )
+              {
+                //when animation is finished go to transformation
+                // The 2 puyos are stopped we go to sprite to bg tile conversion,
+                //but the animation of the puyos must be stop finished first !
+                timer_grace_period[current_player] = 255;
+              }
+              
             }
             break;
-          case 2: // The 2 puyos are stopped we go to sprite to bg tile conversion,
-              //but the animation of the puyos must be stop finished first !
-              timer_grace_period[current_player] = 255;
+          default: 
             break;
         }
         
@@ -2750,8 +2795,11 @@ void main(void)
         //We use the behind to set the sprite behind the background and avoir visual glitch.
         //Note: we should use the oam_meta_sprite_pal to do that, but the oam_id is not followed the same way as with oam_meta_spr...
         //behind is the last element of our metasprite list.
-        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[8]);
-        oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[8]); 
+        if (timer_grace_period[current_player] != 255)
+        {
+          oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[8]);
+          oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[8]);
+        }
       }
 
       //flush step, that's supposing one opponent has lost
