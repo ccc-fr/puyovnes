@@ -204,7 +204,7 @@ char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
 char input_delay_PAD_A[2]; //to avoid multiple input on one press
 char input_delay_PAD_B[2]; //to avoid multiple input on one press
 //char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy =>indeed, changing for double table
-char column_height[2][6];
+/*char*/byte column_height[2][6]; //char signed ? byte unsigned
 char column_height_offset;
 //constant for puyo physics
 #define GRACE_PERIOD /*32*/ 64
@@ -2629,6 +2629,10 @@ void main(void)
           {
             --actor_y[current_player][i];
           }
+          else
+          {
+            actor_y[current_player][i] = actor_y[current_player][i];
+          }
           
           //refresh sprites display
           sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
@@ -2660,17 +2664,17 @@ void main(void)
             if (i == 0)
             {
               if (actor_y[current_player][i] < actor_y[current_player][1])
-                column_height_offset = -16;
+                column_height_offset = 16;
             } 
             else
             {
               if (actor_y[current_player][i] < actor_y[current_player][0])
-                column_height_offset = -16;
+                column_height_offset = 16;
             }    
           }
           
           if (/*actor_dy[current_player][i] != 0 &&*/
-              (((column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset) < actor_y[current_player][i]))
+              (((column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < actor_y[current_player][i]))
              )
           {
             //if one puyo is blocked then both must be as we will start the grace_period
@@ -2688,6 +2692,10 @@ void main(void)
             if ((column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] > floor_y)  ||  ((column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]])  <= 0) )
               column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] = 0;
             */
+          }
+          else
+          {
+            tmp_counter = tmp_counter;
           }
           
         }
@@ -2714,10 +2722,10 @@ void main(void)
               //if the puyo is blocked we animate it, if not it must goes one step lower
               //do we use step_p_counter[current_player] for the animation ? 
               //the fall and animation of each puyo is asynchronous, 2 counters ?
-              if ((tmp_counter & 1) && (step_p_counter[current_player] & 0xf) < 8)
+              if ((tmp_counter & 1) && (step_p_counter[current_player] & 0xf) < 6)
               {
                 //first puyo is blocked and must be animated
-                if ((step_p_counter[current_player] & 0xf) < 4)
+                if ((step_p_counter[current_player] & 0xf) < 3)
                   actor_dy[current_player][0] = 2;
                 else
                   actor_dy[current_player][0] = -2;
@@ -2725,15 +2733,16 @@ void main(void)
               }
               else
               {
-                //not blocked ? it has to fall !
-                actor_dy[current_player][0] = 2;
+                //not blocked and steps over 6 ? it has to fall !
+                if ((step_p_counter[current_player] & 0xf) < 6)
+                  actor_dy[current_player][0] = 2;
               }
               
-              if ((tmp_counter & 2) && (step_p_counter[current_player] & 0xf0) < 0x80)
+              if ((tmp_counter & 2) && (step_p_counter[current_player] & 0xf0) < 0x60)
               {
                 //second puyo is blocked and must be animated
                 //first puyo is blocked and must be animated
-                if ((step_p_counter[current_player] & 0xf0) < 0x40)
+                if ((step_p_counter[current_player] & 0xf0) < 0x30)
                   actor_dy[current_player][1] = 2;
                 else
                   actor_dy[current_player][1] = -2;
@@ -2741,11 +2750,12 @@ void main(void)
               }
               else
               {
-                //not blocked ? it has to fall !
-                actor_dy[current_player][1] = 2;
+                //not blocked and steps over 6 ? it has to fall !
+                if ((step_p_counter[current_player] & 0xf0) < 0x60)
+                  actor_dy[current_player][1] = 2;
               }
               
-              if ( (step_p_counter[current_player] & 0xf) >= 0x8 && (step_p_counter[current_player] & 0xf0) >= 0x80 )
+              if ( (step_p_counter[current_player] & 0xf) >= 0x6 && (step_p_counter[current_player] & 0xf0) >= 0x60 )
               {
                 //when animation is finished go to transformation
                 // The 2 puyos are stopped we go to sprite to bg tile conversion,
