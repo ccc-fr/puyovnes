@@ -2639,7 +2639,7 @@ void main(void)
           oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
           
           if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
-            actor_y[current_player][i] += (actor_dy[current_player][i] + ((previous_pad[current_player]&PAD_DOWN)? 2 : 0));
+            actor_y[current_player][i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? 2 : 0));
 
           //test relative to column_height
           /*if (actor_dy[current_player][i] != 0 && column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] < actor_y[current_player][i])
@@ -2713,7 +2713,13 @@ void main(void)
               actor_dy[current_player][0] = 0; 
               actor_dy[current_player][1] = 0; 
               if (previous_pad[current_player]&PAD_DOWN)
+              {
                 timer_grace_period[current_player] = 0;
+                //we need to adjust in case the down button is pressed
+                //wip fix !
+                //actor_dy[current_player][0] = -1; 
+                //actor_dy[current_player][1] = -1;
+              }
               else
                 --timer_grace_period[current_player];
             }
@@ -2727,14 +2733,16 @@ void main(void)
                 //first puyo is blocked and must be animated
                 if ((step_p_counter[current_player] & 0xf) < 3)
                   actor_dy[current_player][0] = 2;
-                else
+                else if((step_p_counter[current_player] & 0xf) < 6)
                   actor_dy[current_player][0] = -2;
+                else
+                  actor_dy[current_player][0] = 0;
                 ++step_p_counter[current_player];
               }
               else
               {
                 //not blocked and steps over 6 ? it has to fall !
-                if ((step_p_counter[current_player] & 0xf) < 6)
+                if ((step_p_counter[current_player] & 0xf) < 7)
                   actor_dy[current_player][0] = 2;
               }
               
@@ -2744,8 +2752,10 @@ void main(void)
                 //first puyo is blocked and must be animated
                 if ((step_p_counter[current_player] & 0xf0) < 0x30)
                   actor_dy[current_player][1] = 2;
-                else
+                else if ((step_p_counter[current_player] & 0xf0) < 0x60)
                   actor_dy[current_player][1] = -2;
+                else
+                  actor_dy[current_player][1] = 0;
                 step_p_counter[current_player] += 0x10;
               }
               else
