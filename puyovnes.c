@@ -3023,6 +3023,7 @@ void main(void)
         {
           update_next();
           step_p[current_player] = PLAY;
+          step_p_counter[current_player] = 0;
         }
         else
         {
