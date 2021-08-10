@@ -2722,7 +2722,7 @@ void main(void)
               //if the puyo is blocked we animate it, if not it must goes one step lower
               //do we use step_p_counter[current_player] for the animation ? 
               //the fall and animation of each puyo is asynchronous, 2 counters ?
-              if ((tmp_counter & 1) && (step_p_counter[current_player] & 0xf) < 6)
+              if ((tmp_counter & 1) && (step_p_counter[current_player] & 0xf) < 7)
               {
                 //first puyo is blocked and must be animated
                 if ((step_p_counter[current_player] & 0xf) < 3)
@@ -2738,7 +2738,7 @@ void main(void)
                   actor_dy[current_player][0] = 2;
               }
               
-              if ((tmp_counter & 2) && (step_p_counter[current_player] & 0xf0) < 0x60)
+              if ((tmp_counter & 2) && (step_p_counter[current_player] & 0xf0) < 0x70)
               {
                 //second puyo is blocked and must be animated
                 //first puyo is blocked and must be animated
@@ -2751,11 +2751,11 @@ void main(void)
               else
               {
                 //not blocked and steps over 6 ? it has to fall !
-                if ((step_p_counter[current_player] & 0xf0) < 0x60)
+                if ((step_p_counter[current_player] & 0xf0) < 0x70)
                   actor_dy[current_player][1] = 2;
               }
               
-              if ( (step_p_counter[current_player] & 0xf) >= 0x6 && (step_p_counter[current_player] & 0xf0) >= 0x60 )
+              if ( (step_p_counter[current_player] & 0xf) >= 0x7 && (step_p_counter[current_player] & 0xf0) >= 0x70 )
               {
                 //when animation is finished go to transformation
                 // The 2 puyos are stopped we go to sprite to bg tile conversion,
