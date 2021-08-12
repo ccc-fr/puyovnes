@@ -2634,12 +2634,12 @@ void main(void)
             actor_y[current_player][i] = actor_y[current_player][i];
           }
           
-          //refresh sprites display
-          sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
-          oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
-          
           if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
             actor_y[current_player][i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? 2 : 0));
+          
+           //refresh sprites display
+          sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
+          oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
 
           //test relative to column_height
           /*if (actor_dy[current_player][i] != 0 && column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] < actor_y[current_player][i])
@@ -2716,9 +2716,33 @@ void main(void)
               {
                 timer_grace_period[current_player] = 0;
                 //we need to adjust in case the down button is pressed
-                //wip fix !
-                //actor_dy[current_player][0] = -1; 
-                //actor_dy[current_player][1] = -1;
+                //wip fix ! I hate it ! too much code redundant with above !
+                if (actor_x[current_player][0] == actor_x[current_player][1])
+                {
+                  if (actor_y[current_player][0] < actor_y[current_player][1])
+                  {
+                    actor_y[current_player][1] = column_height[current_player][(actor_x[current_player][1]) >> 4] + 1;
+                    actor_y[current_player][0] = actor_y[current_player][1] - 16;
+                  }
+                  else
+                  {
+                    actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0]) >> 4] + 1;
+                    actor_y[current_player][1] = actor_y[current_player][0] - 16;
+                  }
+                }
+                else
+                {
+                  if (tmp_counter == 1)
+                  {
+                    actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0]) >> 4] + 1;
+                    actor_y[current_player][1] = actor_y[current_player][0];
+                  }
+                  else
+                  {
+                    actor_y[current_player][1] = column_height[current_player][(actor_x[current_player][1]) >> 4] + 1;
+                    actor_y[current_player][0] = actor_y[current_player][1];
+                  }
+                }
               }
               else
                 --timer_grace_period[current_player];
