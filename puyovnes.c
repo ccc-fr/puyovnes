@@ -2619,6 +2619,13 @@ void main(void)
         handle_controler_and_sprites();
         //we will registrer the number of puyo without something below them
         tmp_counter = 0 ;
+        //let's save some compute time and rom space by saving the current column_height of the two pairs in gp_i and gp_j
+        //not optimal still have to compute it one more time in the loop below
+        //column_height of actor_x[current_player][0]
+        gp_i = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player]];
+        //column_height of actor_x[current_player][1]
+        gp_j = column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player]];
+        
         for (i = 0 ; i < 2 ; ++i)
         {
           // puyoseq[0] == red, 1 blue, 2  green, 3 yellow, the good one is taken from
@@ -2658,6 +2665,7 @@ void main(void)
           //we will replace that by managing the only cases where column height may be different from "normal"
           //ie when puyos are on the same X but different y, and only when the puyo considered is on top of the other
           //it will give us an offset that we can apply later in our test
+          
           column_height_offset = 0;
           if (actor_x[current_player][0] == actor_x[current_player][1])
           {
@@ -2721,12 +2729,12 @@ void main(void)
                 {
                   if (actor_y[current_player][0] < actor_y[current_player][1])
                   {
-                    actor_y[current_player][1] = column_height[current_player][(actor_x[current_player][1]) >> 4] + 1;
+                    actor_y[current_player][1] = gp_j + 1;
                     actor_y[current_player][0] = actor_y[current_player][1] - 16;
                   }
                   else
                   {
-                    actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0]) >> 4] + 1;
+                    actor_y[current_player][0] = gp_i + 1;
                     actor_y[current_player][1] = actor_y[current_player][0] - 16;
                   }
                 }
@@ -2734,12 +2742,12 @@ void main(void)
                 {
                   if (tmp_counter == 1)
                   {
-                    actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0]) >> 4] + 1;
+                    actor_y[current_player][0] = gp_i + 1;
                     actor_y[current_player][1] = actor_y[current_player][0];
                   }
                   else
                   {
-                    actor_y[current_player][1] = column_height[current_player][(actor_x[current_player][1]) >> 4] + 1;
+                    actor_y[current_player][1] = gp_j + 1;
                     actor_y[current_player][0] = actor_y[current_player][1];
                   }
                 }
