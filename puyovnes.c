@@ -2712,6 +2712,8 @@ void main(void)
         {
           case 0://if 2 puyos are free again, basically meeting a free column, we reset the timer_grace_period
             timer_grace_period[current_player] = GRACE_PERIOD;
+            actor_dy[current_player][0] = 1; 
+            actor_dy[current_player][1] = 1;
             break;
           case 1://qu'on ait un ou deux puyo de bloqué on bloque les deux.
           case 2:
