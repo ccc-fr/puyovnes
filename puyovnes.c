@@ -323,7 +323,7 @@ const byte const nt_x_offset[2] = {2,18};
 //shift for color table
 const byte const shift[2] = {0,4};
 const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
-const byte const floor_y = 190;
+const byte const floor_y = /*190*/192;
 const byte next_columns_y[5] = {4,6,8,10,12};
 
 
@@ -1335,7 +1335,7 @@ void fall_board()
     {
       //if puyo_found keep the height of the first puyo found, with no fall
       //this is the heighest in the stack.
-      column_height[current_player][tmp_counter] = ((puyo_found-1)*16) - 2;
+      column_height[current_player][tmp_counter] = ((puyo_found-1)*16) /*- 2*/;
     }
     
     if (step_p_counter[current_player] == 11)
@@ -3298,6 +3298,8 @@ void main(void)
         memset(attrbuf, 0, sizeof(attrbuf));
         /*column_height[(actor_x[0]>>4) - 1] -= 16;
         column_height[(actor_x[1]>>4) - 1] -= 16;*/
+        actor_y[current_player][0] +=2;
+        actor_y[current_player][1] +=2;
 
         //set_metatile(0,0xd8);
         //test !
@@ -3305,9 +3307,9 @@ void main(void)
         set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
-        attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3)+1);
+        attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3) /*+1*/);
         
-        addr = NTADR_A((actor_x[current_player][0]>>3), (actor_y[current_player][0]>>3)+1);
+        addr = NTADR_A((actor_x[current_player][0]>>3), (actor_y[current_player][0]>>3) /*+1*/);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
@@ -3317,9 +3319,9 @@ void main(void)
         //set_metatile(1,0xd8);
         set_metatile(0,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
     
-        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3)+1);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3) /*+1*/);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
         
-        addr = NTADR_A((actor_x[current_player][1]>>3), (actor_y[current_player][1]>>3)+1);
+        addr = NTADR_A((actor_x[current_player][1]>>3), (actor_y[current_player][1]>>3) /*+1*/);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
