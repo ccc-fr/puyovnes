@@ -2527,6 +2527,9 @@ void main(void)
         pad = pad_poll(0);
         if (pad&PAD_START)
         {
+          ppu_off();//désactiver le rendering est nécessaire pour éviter les glitchs visuels, mais ça fait une frame noire/léger clignottement
+          build_field();
+          ppu_on_all();
           --step_p_counter[0];
           play_bayoen();
           oam_clear();
