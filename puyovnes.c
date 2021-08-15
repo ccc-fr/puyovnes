@@ -1335,7 +1335,7 @@ void fall_board()
     {
       //if puyo_found keep the height of the first puyo found, with no fall
       //this is the heighest in the stack.
-      column_height[current_player][tmp_counter] = ((puyo_found-1)*16) /*- 2*/;
+      column_height[current_player][tmp_counter] = ((puyo_found-1)/**16*/<< 4) /*- 2*/;
     }
     
     if (step_p_counter[current_player] == 11)
@@ -2294,7 +2294,19 @@ void handle_controler_and_sprites()
     else
     {
       //left or right movement with both actor on the same x
-      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
+      //need to determine which one is the lowest/highest
+      if (actor_y[current_player][0] < actor_y[current_player][1])
+      {  
+        gp_i = actor_y[current_player][1];
+        gp_j = 1;// boolean to indicate that 0 is inferior to one
+      }
+      else
+      {
+        gp_i = actor_y[current_player][0];
+        gp_j = 0;// boolean to inidicate than 1 is inferior to 0
+      }
+      
+      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player<<7))) && (gp_i <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2304,7 +2316,7 @@ void handle_controler_and_sprites()
           actor_x[current_player][1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (gp_i <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2321,7 +2333,7 @@ void handle_controler_and_sprites()
       { 
         //we need to know if puyo[0] is above or below puyo[1]
         // the lowest value is higher on the screen !
-        if (actor_y[current_player][0] < actor_y[current_player][1])
+        if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/)
         {
           //going from up to left
           ///are we on the side left side?
@@ -2366,7 +2378,7 @@ void handle_controler_and_sprites()
       }
       if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
-        if (actor_y[current_player][0] < actor_y[current_player][1])
+        if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/)
         {
           // going from up to right
           /*actor_dx[current_player][0] = actor_x[current_player][0];*/
