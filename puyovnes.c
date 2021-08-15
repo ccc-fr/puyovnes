@@ -631,11 +631,11 @@ void update_boards()
   byte * base_address = board_address + (current_player? 0x4E:0);
   
   //boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
-  cell_address = base_address + ((((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((actor_y[current_player][0]>>3)+1)>>1);
+  cell_address = base_address + ((((current_actor_x[0]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((current_actor_y[0]>>3)+1)>>1);
   *cell_address = return_sprite_color(current_player<<1);
 
   //boards[current_player][((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][1]>>3)+1)>>1] = return_sprite_color((current_player<<1)+1);
-  cell_address = base_address + ((((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((actor_y[current_player][1]>>3)+1)>>1);
+  cell_address = base_address + ((((current_actor_x[1]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((current_actor_y[1]>>3)+1)>>1);
   *cell_address = return_sprite_color((current_player<<1)+1);
   return;
 }
@@ -2179,28 +2179,28 @@ void handle_controler_and_sprites()
 
   //you have to look at the leftmost or rightmost puyo
   //p1 puyo 0 & 1, p2 puyo 2 & 3, 0 and 2 are the puyo rotating around 1 et 3
-  if (actor_x[current_player][0] < actor_x[current_player][1])
+  if (current_actor_x[0] < current_actor_x[1])
   {
     //left/right, shift by 128px, <<7, for p2
-    if ( pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
+    if ( pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (current_actor_y[0] <= column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
     {
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
       {
         /*actor_dx[current_player][0] = actor_x[current_player][0];
         actor_dx[current_player][1] = actor_x[current_player][1];*/
-        actor_x[current_player][0] -= 16;
-        actor_x[current_player][1] -= 16;
+        current_actor_x[0] -= 16;
+        current_actor_x[1] -= 16;
       }
     }
-    else if ( pad&PAD_RIGHT && (actor_x[current_player][1] < (96+(current_player<<7))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] + 1]) )
+    else if ( pad&PAD_RIGHT && (current_actor_x[1] < (96+(current_player<<7))) && (current_actor_y[1] <= column_height[current_player][(current_actor_x[1] >> 4) - pos_x_offset[current_player] + 1]) )
     {
       if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
         /*actor_dx[current_player][0] = actor_x[current_player][0];
         actor_dx[current_player][1] = actor_x[current_player][1];*/
-        actor_x[current_player][0] += 16;
-        actor_x[current_player][1] += 16;       
+        current_actor_x[0] += 16;
+        current_actor_x[1] += 16;       
       }
     }
 
@@ -2214,16 +2214,16 @@ void handle_controler_and_sprites()
       //you have to press each time        
       /*actor_dx[current_player][0] = actor_x[current_player][0];*/
       
-      actor_x[current_player][0] += 16;
-      actor_y[current_player][0] += 16;
+      current_actor_x[0] += 16;
+      current_actor_y[0] += 16;
       //Another thing must be checked : the height column below puyo 0 !
       //we need to raise both puyo above the topmost puyo of the column (or the ground)
       //kind of "ground kick" or "floor" kick
       //seriously not optimized :-/
-      if ((actor_y[current_player][0] > column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      if ((current_actor_y[0] > column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
-        actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1];
-        actor_y[current_player][1] = actor_y[current_player][0] - 16;
+        current_actor_y[0] = column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
+        current_actor_y[1] = current_actor_y[0] - 16;
       }
       
     }
@@ -2232,8 +2232,8 @@ void handle_controler_and_sprites()
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
       /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-      actor_y[current_player][0] -= 16;
-      actor_x[current_player][0] += 16;
+      current_actor_y[0] -= 16;
+      current_actor_x[0] += 16;
     }   
   }
   else
@@ -2241,28 +2241,28 @@ void handle_controler_and_sprites()
 
    // (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 1])
 
-    if (actor_x[current_player][0] != actor_x[current_player][1])
+    if (current_actor_x[0] != current_actor_x[1])
     {
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+(current_player<<7))) && (actor_y[current_player][1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+(current_player<<7))) && (current_actor_y[1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
          /* actor_dx[current_player][0] = actor_x[current_player][0];
           actor_dx[current_player][1] = actor_x[current_player][1];*/
-          actor_x[current_player][0] -= 16;
-          actor_x[current_player][1] -= 16;
+          current_actor_x[0] -= 16;
+          current_actor_x[1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (actor_y[current_player][0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (current_actor_y[0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
          /* actor_dx[current_player][0] = actor_x[current_player][0];
           actor_dx[current_player][1] = actor_x[current_player][1];*/
-          actor_x[current_player][0] += 16;
-          actor_x[current_player][1] += 16;   
+          current_actor_x[0] += 16;
+          current_actor_x[1] += 16;   
         }
       }
 
@@ -2272,24 +2272,24 @@ void handle_controler_and_sprites()
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go over the 2nd puyo
        /* actor_dx[current_player][0] = actor_x[current_player][0];*/
-        actor_y[current_player][0] -= 16;
-        actor_x[current_player][0] -= 16;
+        current_actor_y[0] -= 16;
+        current_actor_x[0] -= 16;
       }
       if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go under the 2nd puyo
         /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-        actor_y[current_player][0] += 16;
-        actor_x[current_player][0] -= 16; 
+        current_actor_y[0] += 16;
+        current_actor_x[0] -= 16; 
         //Another thing must be checked : the height column below puyo 0 !
         //we need to raise both puyo above the topmost puyo of the column (or the ground)
         //kind of "ground kick" or "floor" kick
         //seriously not optimized :-/
-        if ((actor_y[current_player][0] > column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+        if ((current_actor_y[0] > column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
         {
-          actor_y[current_player][0] = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1];
-          actor_y[current_player][1] = actor_y[current_player][0] - 16;
+          current_actor_y[0] = column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
+          current_actor_y[1] = current_actor_y[0] - 16;
         }
       }   
     }
@@ -2297,14 +2297,14 @@ void handle_controler_and_sprites()
     {
       //left or right movement with both actor on the same x
       //need to determine which one is the lowest/highest
-      if (actor_y[current_player][0] < actor_y[current_player][1])
+      if (current_actor_y[0] < current_actor_y[1])
       {  
-        gp_i = actor_y[current_player][1];
+        gp_i = current_actor_y[1];
         gp_j = 1;// boolean to indicate that 0 is inferior to one
       }
       else
       {
-        gp_i = actor_y[current_player][0];
+        gp_i = current_actor_y[0];
         gp_j = 0;// boolean to inidicate than 1 is inferior to 0
       }
       
@@ -2314,8 +2314,8 @@ void handle_controler_and_sprites()
         {
           /*actor_dx[current_player][0] = actor_x[current_player][0];
           actor_dx[current_player][1] = actor_x[current_player][1];*/
-          actor_x[current_player][0] -= 16;
-          actor_x[current_player][1] -= 16;
+          current_actor_x[0] -= 16;
+          current_actor_x[1] -= 16;
         }
       }
       else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (gp_i <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
@@ -2324,8 +2324,8 @@ void handle_controler_and_sprites()
         {
           /*actor_dx[current_player][0] = actor_x[current_player][0];
           actor_dx[current_player][1] = actor_x[current_player][1];*/
-          actor_x[current_player][0] += 16;
-          actor_x[current_player][1] += 16;
+          current_actor_x[0] += 16;
+          current_actor_x[1] += 16;
         }
       }
       
@@ -2347,34 +2347,34 @@ void handle_controler_and_sprites()
             if top puyo is above column height before turning
             but below after, then we should raised both puyos (floor kick)
           */
-          if (actor_x[current_player][0] == (16+(current_player<<7)))
+          if (current_actor_x[0] == (16+(current_player<<7)))
           {
             //wall kick
             /*actor_dx[current_player][1] = actor_x[current_player][1];*/
-            actor_x[current_player][1] += 16;
-            actor_y[current_player][0] += 16;           
+            current_actor_x[1] += 16;
+            current_actor_y[0] += 16;           
           }
           else
           {
             /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-            actor_x[current_player][0] -= 16;
-            actor_y[current_player][0] += 16;
+            current_actor_x[0] -= 16;
+            current_actor_y[0] += 16;
           }
         }
         else
         {  //going down to right
-          if (actor_x[current_player][0] == (96+(current_player<<7)))
+          if (current_actor_x[0] == (96+(current_player<<7)))
           {
             //wall kick
             /*actor_dx[current_player][1] = actor_x[current_player][1];*/
-            actor_x[current_player][1] -= 16;
-            actor_y[current_player][0] -= 16;
+            current_actor_x[1] -= 16;
+            current_actor_y[0] -= 16;
           }
           else
           {
             /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-            actor_x[current_player][0] += 16;
-            actor_y[current_player][0] -= 16; 
+            current_actor_x[0] += 16;
+            current_actor_y[0] -= 16; 
           }
         }
       }
@@ -2387,29 +2387,29 @@ void handle_controler_and_sprites()
           if (actor_x[current_player][0] == (96+(current_player<<7)))
           {
             //wall kick on t he right side
-            actor_x[current_player][1] -= 16;
-            actor_y[current_player][0] += 16;  
+            current_actor_x[1] -= 16;
+            current_actor_y[0] += 16;  
           }
           else
           {
-            actor_x[current_player][0] += 16;
-            actor_y[current_player][0] += 16;  
+            current_actor_x[0] += 16;
+            current_actor_y[0] += 16;  
           }
         }
         else
         {
           //going from down to left
           /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-          if (actor_x[current_player][0] == (16+(current_player<<7)))
+          if (current_actor_x[0] == (16+(current_player<<7)))
           {
             //wall kick on the left side
-            actor_x[current_player][1] += 16;
-            actor_y[current_player][0] -= 16;
+            current_actor_x[1] += 16;
+            current_actor_y[0] -= 16;
           }
           else
           {
-            actor_x[current_player][0] -= 16;
-            actor_y[current_player][0] -= 16;
+            current_actor_x[0] -= 16;
+            current_actor_y[0] -= 16;
           }
         }   
       } 
@@ -3290,10 +3290,10 @@ void main(void)
           }
           else
           {
-            actor_x[current_player][0] = start_pos_x[current_player]/*3*16*/;
-            actor_y[current_player][0] = start_pos_y[current_player][0]/*0*/;
-            actor_x[current_player][1] = start_pos_x[current_player]/*3*16*/;
-            actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
+            current_actor_x[0] = start_pos_x[current_player]/*3*16*/;
+            current_actor_y[0] = start_pos_y[current_player][0]/*0*/;
+            current_actor_x[1] = start_pos_x[current_player]/*3*16*/;
+            current_actor_y[1] = start_pos_y[current_player][1]/*16*/;
             actor_dy[current_player][0] = 1;
             actor_dy[current_player][1] = 1;
             ++p_puyo_list_index[current_player];
@@ -3316,8 +3316,8 @@ void main(void)
         memset(attrbuf, 0, sizeof(attrbuf));
         /*column_height[(actor_x[0]>>4) - 1] -= 16;
         column_height[(actor_x[1]>>4) - 1] -= 16;*/
-        actor_y[current_player][0] +=2;
-        actor_y[current_player][1] +=2;
+        current_actor_y[0] +=2;
+        current_actor_y[1] +=2;
 
         //set_metatile(0,0xd8);
         //test !
@@ -3325,9 +3325,9 @@ void main(void)
         set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
         //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
         //attrbuf should take the color for 4 tiles !
-        attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), actor_x[current_player][0]>>3,(actor_y[current_player][0]>>3) /*+1*/);
+        attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), current_actor_x[0]>>3,(current_actor_y[0]>>3) /*+1*/);
         
-        addr = NTADR_A((actor_x[current_player][0]>>3), (actor_y[current_player][0]>>3) /*+1*/);
+        addr = NTADR_A((current_actor_x[0]>>3), (current_actor_y[0]>>3) /*+1*/);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
@@ -3337,9 +3337,9 @@ void main(void)
         //set_metatile(1,0xd8);
         set_metatile(0,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
     
-        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), actor_x[current_player][1]>>3, (actor_y[current_player][1]>>3) /*+1*/);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), current_actor_x[1]>>3, (current_actor_y[1]>>3) /*+1*/);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
         
-        addr = NTADR_A((actor_x[current_player][1]>>3), (actor_y[current_player][1]>>3) /*+1*/);
+        addr = NTADR_A((current_actor_x[1]>>3), (current_actor_y[1]>>3) /*+1*/);
         vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
         vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
         vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
