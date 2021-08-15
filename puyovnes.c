@@ -132,6 +132,8 @@ byte * tmp_cell_address;
 byte * current_board_address;
 byte * current_tmp_board_address;
 byte * offset_address;
+byte * current_actor_x;
+byte * current_actor_y;
 
 
 // buffers that hold vertical slices of nametable data
@@ -2625,6 +2627,10 @@ void main(void)
 
     for (current_player = 0 ; current_player < 2 ; ++current_player)
     {
+      //current_actor_x points to the current player so we don't have to do a [][] but only a [] which should be faster and avoid
+      //some code
+      current_actor_x = &actor_x[current_player][0]; //current_actor_x points to the current player x
+      current_actor_y = &actor_y[current_player][0]; //current_actor_x points to the current player y
 
       if (step_p[current_player] == PLAY && timer_grace_period[current_player] != 255)
       {
@@ -2634,9 +2640,9 @@ void main(void)
         //let's save some compute time and rom space by saving the current column_height of the two pairs in gp_i and gp_j
         //not optimal still have to compute it one more time in the loop below
         //column_height of actor_x[current_player][0]
-        gp_i = column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player]];
+        gp_i = column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player]];
         //column_height of actor_x[current_player][1]
-        gp_j = column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player]];
+        gp_j = column_height[current_player][(current_actor_x[1] >> 4) - pos_x_offset[current_player]];
         
         for (i = 0 ; i < 2 ; ++i)
         {
@@ -2646,19 +2652,19 @@ void main(void)
           //Debug => on bloque p2
           if (debug && current_player != 0)
           {
-            --actor_y[current_player][i];
+            --current_actor_y[i];
           }
           else
           {
-            actor_y[current_player][i] = actor_y[current_player][i];
+            current_actor_y[i] = current_actor_y[i];
           }
           
           if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
-            actor_y[current_player][i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? 2 : 0));
+            current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? 2 : 0));
           
            //refresh sprites display
           sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
-          oam_id = oam_meta_spr(actor_x[current_player][i], actor_y[current_player][i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
+          oam_id = oam_meta_spr(current_actor_x[i], current_actor_y[i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
 
           //test relative to column_height
           /*if (actor_dy[current_player][i] != 0 && column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] < actor_y[current_player][i])
@@ -2679,22 +2685,22 @@ void main(void)
           //it will give us an offset that we can apply later in our test
           
           column_height_offset = 0;
-          if (actor_x[current_player][0] == actor_x[current_player][1])
+          if (current_actor_x[0] == current_actor_x[1])
           {
             if (i == 0)
             {
-              if (actor_y[current_player][i] < actor_y[current_player][1])
+              if (current_actor_y[i] < current_actor_y[1])
                 column_height_offset = 16;
             } 
             else
             {
-              if (actor_y[current_player][i] < actor_y[current_player][0])
+              if (current_actor_y[i] < current_actor_y[0])
                 column_height_offset = 16;
             }    
           }
           
           if (/*actor_dy[current_player][i] != 0 &&*/
-              (((column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < actor_y[current_player][i]))
+              (((column_height[current_player][(current_actor_x[i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < current_actor_y[i]))
              )
           {
             //if one puyo is blocked then both must be as we will start the grace_period
@@ -2739,30 +2745,30 @@ void main(void)
                 timer_grace_period[current_player] = 0;
                 //we need to adjust in case the down button is pressed
                 //wip fix ! I hate it ! too much code redundant with above !
-                if (actor_x[current_player][0] == actor_x[current_player][1])
+                if (current_actor_x[0] == current_actor_x[1])
                 {
-                  if (actor_y[current_player][0] < actor_y[current_player][1])
+                  if (current_actor_y[0] < current_actor_y[1])
                   {
-                    actor_y[current_player][1] = gp_j + 1;
-                    actor_y[current_player][0] = actor_y[current_player][1] - 16;
+                    current_actor_y[1] = gp_j + 1;
+                    current_actor_y[0] = current_actor_y[1] - 16;
                   }
                   else
                   {
-                    actor_y[current_player][0] = gp_i + 1;
-                    actor_y[current_player][1] = actor_y[current_player][0] - 16;
+                    current_actor_y[0] = gp_i + 1;
+                    current_actor_y[1] = current_actor_y[0] - 16;
                   }
                 }
                 else
                 {
                   if (tmp_counter == 1)
                   {
-                    actor_y[current_player][0] = gp_i + 1;
-                    actor_y[current_player][1] = actor_y[current_player][0];
+                    current_actor_y[0] = gp_i + 1;
+                    current_actor_y[1] = current_actor_y[0];
                   }
                   else
                   {
-                    actor_y[current_player][1] = gp_j + 1;
-                    actor_y[current_player][0] = actor_y[current_player][1];
+                    current_actor_y[1] = gp_j + 1;
+                    current_actor_y[0] = current_actor_y[1];
                   }
                 }
               }
@@ -3147,16 +3153,16 @@ void main(void)
         nb_group[current_player] = 0;//if the group is over 4 puyos add the part over in this variable.
 
         //should_destroy = (check_board( ((actor_x[current_player][0]>>3) - 2) >> 1, ((actor_y[current_player][0]>>3)+1)>>1) > 0);
-        x = (actor_x[current_player][0]>>4) - pos_x_offset[current_player];
-        y = ((actor_y[current_player][0]>>3)+1)>>1;
+        x = (current_actor_x[0]>>4) - pos_x_offset[current_player];
+        y = ((current_actor_y[0]>>3)+1)>>1;
         should_destroy[current_player] = (check_board() > 0);
         //if both puyo had the same color it's useless to perform the second check....No because of splits !
         /*if ( (boards[current_player][((actor_x[current_player][1]>>3) - 2) >> 1][((actor_y[current_player][1]>>3)+1)>>1] & 8) != 8)
           should_destroy = (check_board( ((actor_x[current_player][1]>>3) - 2) >> 1, ((actor_y[current_player][1]>>3)+1)>>1) > 0) || should_destroy;*/
-        if ( (boards[current_player][(actor_x[current_player][1]>>4) - pos_x_offset[current_player]][((actor_y[current_player][1]>>3)+1)>>1] & 8) != 8)
+        if ( (boards[current_player][(current_actor_x[1]>>4) - pos_x_offset[current_player]][((current_actor_y[1]>>3)+1)>>1] & 8) != 8)
         {
-          x = (actor_x[current_player][1]>>4) - pos_x_offset[current_player];
-          y = ((actor_y[current_player][1]>>3)+1)>>1;
+          x = (current_actor_x[1]>>4) - pos_x_offset[current_player];
+          y = ((current_actor_y[1]>>3)+1)>>1;
           should_destroy[current_player] = (check_board() > 0) || should_destroy[current_player];
         }
         if (should_destroy[current_player])
@@ -3165,18 +3171,18 @@ void main(void)
           step_p[current_player] = DESTROY;
           //let's move sprites to not have them on screen when things explode
           //according to https://wiki.nesdev.com/w/index.php/PPU_OAM, we have to put them between EF and FF on Y and F9 anf FF on X
-          actor_x[current_player][0] = 254;
-          actor_y[current_player][0] = 254;
-          actor_x[current_player][1] = 254;
-          actor_y[current_player][1] = 254;
+          current_actor_x[0] = 254;
+          current_actor_y[0] = 254;
+          current_actor_x[1] = 254;
+          current_actor_y[1] = 254;
           should_destroy[current_player] = 0;
         }
         else
         {
-          actor_x[current_player][0] = start_pos_x[current_player]/*3*16*/;
-          actor_y[current_player][0] = start_pos_y[current_player][0]/*0*/;
-          actor_x[current_player][1] = start_pos_x[current_player]/*3*16*/;
-          actor_y[current_player][1] = start_pos_y[current_player][1]/*16*/;
+          current_actor_x[0] = start_pos_x[current_player]/*3*16*/;
+          current_actor_y[0] = start_pos_y[current_player][0]/*0*/;
+          current_actor_x[1] = start_pos_x[current_player]/*3*16*/;
+          current_actor_y[1] = start_pos_y[current_player][1]/*16*/;
           actor_dy[current_player][0] = 1;
           actor_dy[current_player][1] = 1;
           ++p_puyo_list_index[current_player];
