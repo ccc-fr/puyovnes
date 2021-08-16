@@ -1184,7 +1184,7 @@ void fall_board()
     // every columne are separated by 0xD (13) and every line by just one
     cell_address = (offset_address + gp_j); //player index missing there !
     gp_i = *cell_address;
-    //peut-être qu'on peu calculer l'adresse suivante à la main ?
+    //peut-être qu'on peut calculer l'adresse suivante à la main ?
     if ((gp_i & 7) == EMPTY) 
     {
       can_fall = 1;
@@ -1692,7 +1692,7 @@ byte fall_ojama()
   offset_address = board_address + (current_player*0x4E) /*+ tmp_counter*0xD*/;
 
   tmp_counter = 0; // top_line_space
-  if ((step_ojama_fall[current_player] == 0 && step_p[~current_player & 1] != PLAY) )
+  if ((step_ojama_fall[current_player] == 0 && step_p[~current_player & 1] != PLAY && step_p[~current_player & 1] != FALL_OJAMA) )
   {
     //inutile de continuer on passe à SHOW_NEXT
     step_p[current_player] = SHOW_NEXT;
