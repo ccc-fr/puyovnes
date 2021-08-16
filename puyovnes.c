@@ -134,6 +134,7 @@ byte * current_tmp_board_address;
 byte * offset_address;
 byte * current_actor_x;
 byte * current_actor_y;
+byte * current_column_height;
 
 
 // buffers that hold vertical slices of nametable data
@@ -1270,8 +1271,8 @@ void fall_board()
     //if (step_p[current_player] != FALL_OJAMA)
     step_p_counter[current_player] = tmp_counter;
     //As it fall the height of the column must be lowered:
-    if (column_height[current_player][tmp_counter] < floor_y) //let's avoid going under the floor
-      column_height[current_player][tmp_counter] +=16;
+    if (current_column_height[tmp_counter] < floor_y) //let's avoid going under the floor
+      current_column_height[tmp_counter] +=16;
     
    if (current_player != 0)
     {
@@ -1331,13 +1332,13 @@ void fall_board()
     //so if nothing fall and we reach 11 (5th column) then a full "loop" as been done and we can continue
     if (puyo_found == 0)
     {  
-      column_height[current_player][tmp_counter] = floor_y;
+      current_column_height[tmp_counter] = floor_y;
     }
     else
     {
       //if puyo_found keep the height of the first puyo found, with no fall
       //this is the heighest in the stack.
-      column_height[current_player][tmp_counter] = ((puyo_found-1)/**16*/<< 4) /*- 2*/;
+      current_column_height[tmp_counter] = ((puyo_found-1)/**16*/<< 4) /*- 2*/;
     }
     
     if (step_p_counter[current_player] == 11)
@@ -1692,7 +1693,8 @@ byte fall_ojama()
   offset_address = board_address + (current_player*0x4E) /*+ tmp_counter*0xD*/;
 
   tmp_counter = 0; // top_line_space
-  if ((step_ojama_fall[current_player] == 0 && step_p[~current_player & 1] != PLAY && step_p[~current_player & 1] != FALL_OJAMA) )
+  tmp_counter_2 = step_p[~current_player & 1]; //to save some cycles
+  if ((step_ojama_fall[current_player] == 0 && tmp_counter_2 != PLAY && tmp_counter_2 != FALL_OJAMA) )
   {
     //inutile de continuer on passe à SHOW_NEXT
     step_p[current_player] = SHOW_NEXT;
@@ -2182,7 +2184,7 @@ void handle_controler_and_sprites()
   if (current_actor_x[0] < current_actor_x[1])
   {
     //left/right, shift by 128px, <<7, for p2
-    if ( pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (current_actor_y[0] <= column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
+    if ( pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (current_actor_y[0] <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
     {
       //add a bit of delay before going again to left
       if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
@@ -2193,7 +2195,7 @@ void handle_controler_and_sprites()
         current_actor_x[1] -= 16;
       }
     }
-    else if ( pad&PAD_RIGHT && (current_actor_x[1] < (96+(current_player<<7))) && (current_actor_y[1] <= column_height[current_player][(current_actor_x[1] >> 4) - pos_x_offset[current_player] + 1]) )
+    else if ( pad&PAD_RIGHT && (current_actor_x[1] < (96+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player] + 1]) )
     {
       if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
       {
@@ -2220,9 +2222,9 @@ void handle_controler_and_sprites()
       //we need to raise both puyo above the topmost puyo of the column (or the ground)
       //kind of "ground kick" or "floor" kick
       //seriously not optimized :-/
-      if ((current_actor_y[0] > column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+      if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
-        current_actor_y[0] = column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
+        current_actor_y[0] = current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
         current_actor_y[1] = current_actor_y[0] - 16;
       }
       
@@ -2245,7 +2247,7 @@ void handle_controler_and_sprites()
     {
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+(current_player<<7))) && (current_actor_y[1] <= column_height[current_player][(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2255,7 +2257,7 @@ void handle_controler_and_sprites()
           current_actor_x[1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (current_actor_y[0] <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (current_actor_y[0] <= current_column_height[(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2286,9 +2288,9 @@ void handle_controler_and_sprites()
         //we need to raise both puyo above the topmost puyo of the column (or the ground)
         //kind of "ground kick" or "floor" kick
         //seriously not optimized :-/
-        if ((current_actor_y[0] > column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+        if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
         {
-          current_actor_y[0] = column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
+          current_actor_y[0] = current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
           current_actor_y[1] = current_actor_y[0] - 16;
         }
       }   
@@ -2308,7 +2310,7 @@ void handle_controler_and_sprites()
         gp_j = 0;// boolean to inidicate than 1 is inferior to 0
       }
       
-      if (pad&PAD_LEFT && (actor_x[current_player][0] > (16+(current_player<<7))) && (gp_i <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
       {
         if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2318,7 +2320,7 @@ void handle_controler_and_sprites()
           current_actor_x[1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (gp_i <= column_height[current_player][(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
       {
         if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
         {
@@ -2341,7 +2343,7 @@ void handle_controler_and_sprites()
           ///are we on the side left side?
           /*
             We should add test against the column height if we are not on left
-            if column height is < of top puyo then we should walk kick
+            if column height is < of top puyo then we should wall kick
             if we wall kick we should check right column height, if the column
             is not free then the puyo should swap.
             if top puyo is above column height before turning
@@ -2384,7 +2386,7 @@ void handle_controler_and_sprites()
         {
           // going from up to right
           /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-          if (actor_x[current_player][0] == (96+(current_player<<7)))
+          if (current_actor_x[0] == (96+(current_player<<7)))
           {
             //wall kick on t he right side
             current_actor_x[1] -= 16;
@@ -2634,6 +2636,7 @@ void main(void)
       //some code
       current_actor_x = &actor_x[current_player][0]; //current_actor_x points to the current player x
       current_actor_y = &actor_y[current_player][0]; //current_actor_x points to the current player y
+      current_column_height = &column_height[current_player][0];
 
       if (step_p[current_player] == PLAY && timer_grace_period[current_player] != 255)
       {
@@ -2643,9 +2646,9 @@ void main(void)
         //let's save some compute time and rom space by saving the current column_height of the two pairs in gp_i and gp_j
         //not optimal still have to compute it one more time in the loop below
         //column_height of actor_x[current_player][0]
-        gp_i = column_height[current_player][(current_actor_x[0] >> 4) - pos_x_offset[current_player]];
+        gp_i = current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player]];
         //column_height of actor_x[current_player][1]
-        gp_j = column_height[current_player][(current_actor_x[1] >> 4) - pos_x_offset[current_player]];
+        gp_j = current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player]];
         
         for (i = 0 ; i < 2 ; ++i)
         {
@@ -2703,7 +2706,7 @@ void main(void)
           }
           
           if (/*actor_dy[current_player][i] != 0 &&*/
-              (((column_height[current_player][(current_actor_x[i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < current_actor_y[i]))
+              (((current_column_height[(current_actor_x[i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < current_actor_y[i]))
              )
           {
             //if one puyo is blocked then both must be as we will start the grace_period
