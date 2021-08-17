@@ -2328,30 +2328,37 @@ void handle_controler_and_sprites()
       //if (pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
       if (pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY) )
       {
-        if (tmp_counter_2 < 0xD0 && gp_i < 0xD0 && (gp_i <= tmp_counter_2))
+        if (tmp_counter_2 < 0xD0 && gp_i < 0xD0 && (gp_i <= (tmp_counter_2 + 1)) || (gp_i > 0xD0 && (gp_i <= tmp_counter_2 + 1))) // the + 1 is to compensate the test being value < floor somewhere else, maybe to adjust later
         {
           current_actor_x[0] -= 16;
           current_actor_x[1] -= 16;
-        }
-        //if tmp_counter_2 > 0xD0 then the hidden row is filled
-        else if (gp_i > 0xD0 && (gp_i <= tmp_counter_2))
-        {
-          current_actor_x[0] -= 16;
-          current_actor_x[1] -= 16;
+        
+        //let's update current position values
+          tmp_counter_3 = tmp_counter;
+          tmp_counter = tmp_counter_2;
+          --gp_k;
+          if (gp_k == 0) //we are at the leftmost column, so the wall is nearby
+            tmp_counter_2 = 0xF0; // 0xFO is our test to "max height" => wall height
+          else
+            tmp_counter_2 = current_column_height[gp_k-1]; //column height left to the puyo
         }
       }
       //else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
       else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)  )
       {
-        if ( tmp_counter_3 < 0xD0 && gp_i < 0xD0 && (gp_i <= tmp_counter_3))
+        if ( tmp_counter_3 < 0xD0 && gp_i < 0xD0 && (gp_i <= (tmp_counter_3 + 1)) || (gp_i > 0xD0 && (gp_i <= tmp_counter_3 + 1)))
         {
           current_actor_x[0] += 16;
           current_actor_x[1] += 16;
-        }
-        else if (gp_i > 0xD0 && (gp_i <= tmp_counter_3))
-        {
-          current_actor_x[0] += 16;
-          current_actor_x[1] += 16;
+          
+          //let's update current position values
+          tmp_counter_2 = tmp_counter;
+          tmp_counter = tmp_counter_3;
+          ++gp_k;
+          if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
+            tmp_counter_3 = 0xF0; // 0xFO is our test to "max height" => wall height
+          else
+            tmp_counter_3 = current_column_height[gp_k+1]; //column height left to the puyo
         }
       }
       
@@ -2373,34 +2380,55 @@ void handle_controler_and_sprites()
             if top puyo is above column height before turning
             but below after, then we should raised both puyos (floor kick)
           */
-          if (current_actor_x[0] == (16+(current_player<<7)))
+          /*
+           you can only go left if the lowest puyo is above the "free space" on left column, otherwise it will wall kick
+           here gp_i is that lowest
+          */
+          //if (current_actor_x[0] == (16+(current_player<<7)))
+          if ( tmp_counter_2 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_2 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_2 + 1)))
           {
-            //wall kick
-            /*actor_dx[current_player][1] = actor_x[current_player][1];*/
-            current_actor_x[1] += 16;
-            current_actor_y[0] += 16;           
+            current_actor_x[0] -= 16;
+            current_actor_y[0] += 16;         
           }
           else
           {
-            /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-            current_actor_x[0] -= 16;
-            current_actor_y[0] += 16;
+            //wall kick, but only if there is space on the right !
+            if (tmp_counter_3 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_3 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_3 + 1)) )
+            {
+              current_actor_x[1] += 16;
+              current_actor_y[0] += 16;
+            }
+            else
+            {
+              //Can't wall kick ! So we are just inverting colors
+              current_actor_y[1] = current_actor_y[0];
+              current_actor_y[0] = gp_i; //gp_i was equal to current_actor_y[1] in that scenario 
+            }
           }
         }
         else
-        {  //going down to right
-          if (current_actor_x[0] == (96+(current_player<<7)))
+        {  //going down to right, the test is different, basically if the column is front of the above puyo is free then we can go, otherwise wk
+          //so we have to increment gp_i to match with the above puyo, not the lowest
+          gp_i += 16;
+          if ( tmp_counter_3 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_3 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_3 + 1)))
           {
             //wall kick
-            /*actor_dx[current_player][1] = actor_x[current_player][1];*/
-            current_actor_x[1] -= 16;
-            current_actor_y[0] -= 16;
+            current_actor_x[0] += 16;
+            current_actor_y[0] -= 16;   
           }
           else
           {
-            /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-            current_actor_x[0] += 16;
-            current_actor_y[0] -= 16; 
+            //wall kick, but only if there is space on the left !
+            if (tmp_counter_2 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_2 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_2 + 1)) )
+            {
+              current_actor_x[1] -= 16;
+              current_actor_y[0] -= 16;
+            }
+            else
+            {
+              current_actor_y[1] = current_actor_y[0];
+              current_actor_y[0] -= 16/*gp_i*/; //gp_i was equal to current_actor_y[1] in that scenario 
+            }
           }
         }
       }
