@@ -2328,7 +2328,7 @@ void handle_controler_and_sprites()
       //if (pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
       if (pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY) )
       {
-        if (tmp_counter_2 < 0xD0 && gp_i < 0xD0 && (gp_i <= (tmp_counter_2 + 1)) || (gp_i > 0xD0 && (gp_i <= tmp_counter_2 + 1))) // the + 1 is to compensate the test being value < floor somewhere else, maybe to adjust later
+        if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0 ) || (gp_i > 0xD0))) // the + 1 is to compensate the test being value < floor somewhere else, maybe to adjust later
         {
           current_actor_x[0] -= 16;
           current_actor_x[1] -= 16;
@@ -2346,7 +2346,7 @@ void handle_controler_and_sprites()
       //else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
       else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)  )
       {
-        if ( tmp_counter_3 < 0xD0 && gp_i < 0xD0 && (gp_i <= (tmp_counter_3 + 1)) || (gp_i > 0xD0 && (gp_i <= tmp_counter_3 + 1)))
+        if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
         {
           current_actor_x[0] += 16;
           current_actor_x[1] += 16;
@@ -2385,7 +2385,7 @@ void handle_controler_and_sprites()
            here gp_i is that lowest
           */
           //if (current_actor_x[0] == (16+(current_player<<7)))
-          if ( tmp_counter_2 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_2 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_2 + 1)))
+          if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] += 16;         
@@ -2393,7 +2393,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (tmp_counter_3 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_3 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_3 + 1)) )
+            if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
             {
               current_actor_x[1] += 16;
               current_actor_y[0] += 16;
@@ -2409,17 +2409,16 @@ void handle_controler_and_sprites()
         else
         {  //going down to right, the test is different, basically if the column is front of the above puyo is free then we can go, otherwise wk
           //so we have to increment gp_i to match with the above puyo, not the lowest
-          gp_i += 16;
-          if ( tmp_counter_3 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_3 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_3 + 1)))
+          gp_i -= 16;
+          if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
           {
-            //wall kick
             current_actor_x[0] += 16;
             current_actor_y[0] -= 16;   
           }
           else
           {
             //wall kick, but only if there is space on the left !
-            if (tmp_counter_2 < 0xD0 && gp_i< 0xD0 && (gp_i <= tmp_counter_2 + 1) || (gp_i> 0xD0 && (gp_i <= tmp_counter_2 + 1)) )
+            if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] -= 16;
@@ -2437,33 +2436,54 @@ void handle_controler_and_sprites()
         if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/)
         {
           // going from up to right
-          /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-          if (current_actor_x[0] == (96+(current_player<<7)))
+          /*
+           you can only go right if the lowest puyo is above the "free space" on right column, otherwise it will wall kick
+           here gp_i is that lowest
+          */
+          if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
           {
-            //wall kick on t he right side
-            current_actor_x[1] -= 16;
-            current_actor_y[0] += 16;  
+            current_actor_x[0] += 16;
+            current_actor_y[0] += 16;         
           }
           else
           {
-            current_actor_x[0] += 16;
-            current_actor_y[0] += 16;  
+            //wall kick, but only if there is space on the right !
+            if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+            {
+              current_actor_x[1] -= 16;
+              current_actor_y[0] += 16;
+            }
+            else
+            {
+              //Can't wall kick ! So we are just inverting colors
+              current_actor_y[1] = current_actor_y[0];
+              current_actor_y[0] = gp_i; //gp_i was equal to current_actor_y[1] in that scenario 
+            }
           }
         }
         else
         {
-          //going from down to left
-          /*actor_dx[current_player][0] = actor_x[current_player][0];*/
-          if (current_actor_x[0] == (16+(current_player<<7)))
+          //going down to left, the test is different, basically if the column is front of the above puyo is free then we can go, otherwise wk
+          //so we have to increment gp_i to match with the above puyo, not the lowest
+          gp_i -= 16;
+          if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
           {
-            //wall kick on the left side
-            current_actor_x[1] += 16;
-            current_actor_y[0] -= 16;
+            current_actor_x[0] -= 16;
+            current_actor_y[0] -= 16;   
           }
           else
           {
-            current_actor_x[0] -= 16;
-            current_actor_y[0] -= 16;
+            //wall kick, but only if there is space on the right !
+            if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+            {
+              current_actor_x[1] += 16;
+              current_actor_y[0] -= 16;
+            }
+            else
+            {
+              current_actor_y[1] = current_actor_y[0];
+              current_actor_y[0] -= 16/*gp_i*/; //gp_i was equal to current_actor_y[1] in that scenario 
+            }
           }
         }   
       } 
