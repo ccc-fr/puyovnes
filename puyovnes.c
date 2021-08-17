@@ -2299,6 +2299,20 @@ void handle_controler_and_sprites()
     {
       //left or right movement with both actor on the same x
       //need to determine which one is the lowest/highest
+      //and the column_height of current x, x before and x after
+      gp_k = (current_actor_x[0] >> 4) - pos_x_offset[current_player];
+      tmp_counter = current_column_height[gp_k]; // column height below the puyo
+      
+      if (gp_k == 0) //we are at the leftmost column, so the wall is nearby
+        tmp_counter_2 = 0xF0; // 0xFO is our test to "max height" => wall height
+      else
+        tmp_counter_2 = current_column_height[gp_k-1]; //column height left to the puyo
+      
+      if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
+        tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
+      else
+        tmp_counter_3 = current_column_height[gp_k+1]; 
+                             
       if (current_actor_y[0] < current_actor_y[1])
       {  
         gp_i = current_actor_y[1];
@@ -2310,22 +2324,32 @@ void handle_controler_and_sprites()
         gp_j = 0;// boolean to inidicate than 1 is inferior to 0
       }
       
-      if (pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
+      //as the height as been computed before we don't need to check for wall anymore
+      //if (pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY) )
       {
-        if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
+        if (tmp_counter_2 < 0xD0 && gp_i < 0xD0 && (gp_i <= tmp_counter_2))
         {
-          /*actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];*/
+          current_actor_x[0] -= 16;
+          current_actor_x[1] -= 16;
+        }
+        //if tmp_counter_2 > 0xD0 then the hidden row is filled
+        else if (gp_i > 0xD0 && (gp_i <= tmp_counter_2))
+        {
           current_actor_x[0] -= 16;
           current_actor_x[1] -= 16;
         }
       }
-      else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+      //else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)  )
       {
-        if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
+        if ( tmp_counter_3 < 0xD0 && gp_i < 0xD0 && (gp_i <= tmp_counter_3))
         {
-          /*actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];*/
+          current_actor_x[0] += 16;
+          current_actor_x[1] += 16;
+        }
+        else if (gp_i > 0xD0 && (gp_i <= tmp_counter_3))
+        {
           current_actor_x[0] += 16;
           current_actor_x[1] += 16;
         }
