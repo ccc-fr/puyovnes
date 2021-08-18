@@ -2181,28 +2181,63 @@ void handle_controler_and_sprites()
 
   //you have to look at the leftmost or rightmost puyo
   //p1 puyo 0 & 1, p2 puyo 2 & 3, 0 and 2 are the puyo rotating around 1 et 3
+  
+  //with puyo side to each other, we need only the height of the column below [1]
+  gp_k = (current_actor_x[1] >> 4) - pos_x_offset[current_player];
+  tmp_counter = current_column_height[gp_k]; // column height below the puyo
+  
+  gp_i = current_actor_y[1];
+  
   if (current_actor_x[0] < current_actor_x[1])
   {
+    //[0] is left to [1]
+    //tmp_counter_2, indicating the height of the column to the left of [0] is then in gp_k-2, so column 0 or above only accessible for gp_k>=2, otherwise wall height
+    if (gp_k >= 2)
+      tmp_counter_2 = current_column_height[gp_k-2];
+    else
+      tmp_counter_2 = 0xF0;
+    //same thinking behind the right column, only got one if gp_k != 5
+    if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
+      tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
+    else
+      tmp_counter_3 = current_column_height[gp_k+1];
+    
     //left/right, shift by 128px, <<7, for p2
-    if ( pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (current_actor_y[0] <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
+    if ( pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY))
     {
       //add a bit of delay before going again to left
-      if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
+      //if ((current_actor_x[0] > (16+(current_player<<7))) && (current_actor_y[0] <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]))
+      if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
       {
-        /*actor_dx[current_player][0] = actor_x[current_player][0];
-        actor_dx[current_player][1] = actor_x[current_player][1];*/
         current_actor_x[0] -= 16;
         current_actor_x[1] -= 16;
+        //refresh the values for our next calculous
+        --gp_k;
+        /*if (gp_k >= 2)
+          tmp_counter_2 = current_column_height[gp_k-2];
+        else
+          tmp_counter_2 = 0xF0;
+        tmp_counter_3 = tmp_counter;*/
+       //tmp_counter_2 et tmp_counter_3 ne sont pas utilisés dans la suite
+        tmp_counter = current_column_height[gp_k];
       }
     }
-    else if ( pad&PAD_RIGHT && (current_actor_x[1] < (96+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player] + 1]) )
+    else if ( pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY))
     {
-      if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
+      //if ((current_actor_x[1] < (96+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player] + 1]))
+      if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
       {
-        /*actor_dx[current_player][0] = actor_x[current_player][0];
-        actor_dx[current_player][1] = actor_x[current_player][1];*/
         current_actor_x[0] += 16;
-        current_actor_x[1] += 16;       
+        current_actor_x[1] += 16;
+        //refresh the values for our next calculous
+        ++gp_k;
+        /*if (gp_k == 5)
+          tmp_counter_3 = 0xF0;
+        else
+          tmp_counter_3 = current_column_height[gp_k+1];
+        tmp_counter_2 = current_column_height[gp_k-2];*/
+        //tmp_counter_2 et tmp_counter_3 ne sont pas utilisés dans la suite
+        tmp_counter = current_column_height[gp_k]; // devrait être égal à tmp_counter_3 si on veut sauver des cycles.
       }
     }
 
@@ -2222,9 +2257,10 @@ void handle_controler_and_sprites()
       //we need to raise both puyo above the topmost puyo of the column (or the ground)
       //kind of "ground kick" or "floor" kick
       //seriously not optimized :-/
-      if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+      //if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+      if (current_actor_y[0] >= tmp_counter + 1)
       {
-        current_actor_y[0] = current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
+        current_actor_y[0] = tmp_counter;
         current_actor_y[1] = current_actor_y[0] - 16;
       }
       
@@ -2241,30 +2277,41 @@ void handle_controler_and_sprites()
   else
   {
 
-   // (actor_y[(i*2)+1] <= column_height[(actor_x[(i*2)+1] >> 4) - 1])
-
     if (current_actor_x[0] != current_actor_x[1])
     {
+      //[0] is right to [1]
+      //tmp_counter_3, indicating the height of the column to the right of [0] is then in gp_k+2, so column 5 or lower only accessible for gp_k<=3, otherwise wall height
+      if (gp_k <= 3)
+        tmp_counter_3 = current_column_height[gp_k+2];
+      else
+        tmp_counter_3 = 0xF0;
+      //same thinking behind the left column, only got one if gp_k != 0
+      if (gp_k == 0) //we are at the rightmost column, so the wall is nearby
+        tmp_counter_2 = 0xF0; // 0xFO is our test to "max height"=> wall height
+      else
+        tmp_counter_2 = current_column_height[gp_k-1];
+      
       //actor_x i is more to the right than actor_x i+1
       //going left or right
-      if (pad&PAD_LEFT && (actor_x[current_player][1] > (16+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]) )
+      if (pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY))
       {
-        if (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY)
+        //if ((actor_x[current_player][1] > (16+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]))
+        if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
         {
-         /* actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];*/
           current_actor_x[0] -= 16;
           current_actor_x[1] -= 16;
+          --gp_k;
+          tmp_counter = current_column_height[gp_k]; //techniquement c'est tmp_counter_2 si on veut sauver des cycles...
         }
       }
-      else if (pad&PAD_RIGHT && (actor_x[current_player][0] < (96+(current_player<<7))) && (current_actor_y[0] <= current_column_height[(actor_x[current_player][0] >> 4) - pos_x_offset[current_player] + 1]) )
+      else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY))
       {
-        if (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)
+        if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
         {
-         /* actor_dx[current_player][0] = actor_x[current_player][0];
-          actor_dx[current_player][1] = actor_x[current_player][1];*/
           current_actor_x[0] += 16;
-          current_actor_x[1] += 16;   
+          current_actor_x[1] += 16;
+          ++gp_k;
+          tmp_counter = current_column_height[gp_k];
         }
       }
 
@@ -2288,9 +2335,9 @@ void handle_controler_and_sprites()
         //we need to raise both puyo above the topmost puyo of the column (or the ground)
         //kind of "ground kick" or "floor" kick
         //seriously not optimized :-/
-        if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+        if (current_actor_y[0] >= tmp_counter + 1)
         {
-          current_actor_y[0] = current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1];
+          current_actor_y[0] = tmp_counter;
           current_actor_y[1] = current_actor_y[0] - 16;
         }
       }   
