@@ -135,6 +135,7 @@ byte * offset_address;
 byte * current_actor_x;
 byte * current_actor_y;
 byte * current_column_height;
+byte * current_displayed_pairs;
 
 
 // buffers that hold vertical slices of nametable data
@@ -1930,23 +1931,23 @@ void update_next()
   */
   if (p_puyo_list_index[current_player] & 1)
   {
-    displayed_pairs[current_player][0] = (puyo_list[gp_i] & 0xc) >> 2;
-    displayed_pairs[current_player][1] = puyo_list[gp_i] & 0x3;
-    displayed_pairs[current_player][2] = puyo_list[gp_j] >> 6;
-    displayed_pairs[current_player][3] = (puyo_list[gp_j] >> 4) & 0x3;
+    current_displayed_pairs[0] = (puyo_list[gp_i] & 0xc) >> 2;
+    current_displayed_pairs[1] = puyo_list[gp_i] & 0x3;
+    current_displayed_pairs[2] = puyo_list[gp_j] >> 6;
+    current_displayed_pairs[3] = (puyo_list[gp_j] >> 4) & 0x3;
     //impair, we must take the 4 rightmost bits of p_puyo_list_index[current_player]+1
-    displayed_pairs[current_player][4] = (puyo_list[gp_j] & 0xc) >> 2;
-    displayed_pairs[current_player][5] = puyo_list[gp_j] & 0x3;
+    current_displayed_pairs[4] = (puyo_list[gp_j] & 0xc) >> 2;
+    current_displayed_pairs[5] = puyo_list[gp_j] & 0x3;
   }
   else
   {
-    displayed_pairs[current_player][0] = puyo_list[gp_i] >> 6;
-    displayed_pairs[current_player][1] = (puyo_list[gp_i] >> 4) & 0x3;
-    displayed_pairs[current_player][2] = (puyo_list[gp_i] & 0xc) >> 2;
-    displayed_pairs[current_player][3] = puyo_list[gp_i] & 0x3;
+    current_displayed_pairs[0] = puyo_list[gp_i] >> 6;
+    current_displayed_pairs[1] = (puyo_list[gp_i] >> 4) & 0x3;
+    current_displayed_pairs[2] = (puyo_list[gp_i] & 0xc) >> 2;
+    current_displayed_pairs[3] = puyo_list[gp_i] & 0x3;
     //pair, we must take the  4 leftmost bits of p_puyo_list_index[current_player]+1
-    displayed_pairs[current_player][4] = puyo_list[gp_j] >> 6;
-    displayed_pairs[current_player][5] = (puyo_list[gp_j] >> 4) & 0x3;
+    current_displayed_pairs[4] = puyo_list[gp_j] >> 6;
+    current_displayed_pairs[5] = (puyo_list[gp_j] >> 4) & 0x3;
   }
       
   //using the gp_i here curiously does not work, I don't know why
@@ -2756,6 +2757,7 @@ void main(void)
       current_actor_x = &actor_x[current_player][0]; //current_actor_x points to the current player x
       current_actor_y = &actor_y[current_player][0]; //current_actor_x points to the current player y
       current_column_height = &column_height[current_player][0];
+      current_displayed_pairs = &displayed_pairs[current_player][0];
 
       if (step_p[current_player] == PLAY && timer_grace_period[current_player] != 255)
       {
@@ -2788,7 +2790,7 @@ void main(void)
             current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? 2 : 0));
           
            //refresh sprites display
-          sprite_addr[current_player][i] = displayed_pairs[current_player][i] + blind_offset;
+          sprite_addr[current_player][i] = current_displayed_pairs[i] + blind_offset;
           oam_id = oam_meta_spr(current_actor_x[i], current_actor_y[i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
 
           //test relative to column_height
