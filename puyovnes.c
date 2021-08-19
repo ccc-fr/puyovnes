@@ -2110,6 +2110,11 @@ void build_field()
     put_str(NTADR_C(4,19), "Music         O  1      ");
     put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
     put_str(NTADR_C(6,24), "Press start to begin!");
+    put_str(NTADR_C(9,26), "Alpha v20210819");
+    sprintf(str,"ccc 2021");
+    vram_adr(NTADR_C(11,27));
+    vram_put(0x10);
+    vrambuf_put(NTADR_C(12,27),str,10);
   }
   //the address of the boards, will be usefull in fall_board()
   board_address = &boards[0][0][0];
