@@ -632,13 +632,28 @@ void update_boards()
   //get the column number right
   byte * base_address = board_address + (current_player? 0x4E:0);
   
-  //boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
-  cell_address = base_address + ((((current_actor_x[0]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((current_actor_y[0]>>3)+1)>>1);
-  *cell_address = return_sprite_color(current_player<<1);
+  //we must not update the tile for sprite outside the board, so if y > 0xD0 (floor at 0xc0) and less than 0xF0 which is cell 0
+  //so we compute first in gp_i the y of our sprite and test it
+  gp_i = (((current_actor_y[0]>>3)+1)>>1); //the number of cells in the board to shift, if "under 0", between f0 and 0 the result is 15, 0xF that is in fact the cell 0
+  if (gp_i == 0xF)
+    gp_i =0;
+  gp_j = nt_x_offset[current_player]; //Save the cycles ? save 8 bytes in all scenario
+  if (gp_i < 0xD) //size of the table : 13, so from 0 to 12, 13 and 14 should not generate an update
+  {
+    //boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
+    cell_address = base_address + ((((current_actor_x[0]>>3) - gp_j) >> 1) * 0xD) + gp_i;
+    *cell_address = return_sprite_color(current_player<<1);
+  }
 
-  //boards[current_player][((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][1]>>3)+1)>>1] = return_sprite_color((current_player<<1)+1);
-  cell_address = base_address + ((((current_actor_x[1]>>3) - nt_x_offset[current_player]) >> 1) * 0xD) + (((current_actor_y[1]>>3)+1)>>1);
-  *cell_address = return_sprite_color((current_player<<1)+1);
+  gp_i = (((current_actor_y[1]>>3)+1)>>1);
+   if (gp_i == 0xF)
+    gp_i =0;
+  if (gp_i < 0xD)
+  {
+    //boards[current_player][((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][1]>>3)+1)>>1] = return_sprite_color((current_player<<1)+1);
+    cell_address = base_address + ((((current_actor_x[1]>>3) - gp_j) >> 1) * 0xD) + gp_i;
+    *cell_address = return_sprite_color((current_player<<1)+1);
+  }
   return;
 }
 
@@ -679,7 +694,9 @@ byte check_board(void)
   current_color = *cell_address;
 
   //OJAMA are not destroyed by being linked by 4 !
-  if (current_color == OJAMA)
+  //also if y == 0 then the puyo is hidden in the upper row and should not be checked !
+  //0xc0 is the floor max, so anything above 0xD0 should not be considered too
+  if (current_color == OJAMA || y == 0 || y >= 0xD0)
     return 0;
 
   //tmp_boards contains flag of the currently looked color
@@ -744,7 +761,6 @@ byte check_board(void)
   gp_i = (y - 1);
   cell_address = current_board_address + (x*0xD) + gp_i;
   tmp_cell_address = tmp_boards_address + (x*0xF) + gp_i;
-
   while ( gp_i > 0 )
   {
     if ( /*tmp_boards[x][gp_i]*/ *tmp_cell_address != FLAG)
@@ -1164,6 +1180,7 @@ void fall_board()
   previous_empty = 0;
   puyo_found = 0;
   fall= 0;
+  gp_k = 0; // the actual number of puyo found
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
  
   tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ ! un if > 6 else serait-il mieux ?
@@ -1195,6 +1212,7 @@ void fall_board()
     else
     {
       puyo_found = gp_j; // on est obligé de continuer à checker si empty à cause de ça, il nous faut la hauteur du puyo le plus haut
+      ++gp_k;
       //c'est pour ça que l'ancienne version, avec la double boucle, était en fait plus rapide, elle ne retestait pas après
       //avoir trouvé le premier puyo qui était forcément le plus haut.
       if (!fall && can_fall)
@@ -1333,7 +1351,10 @@ void fall_board()
     //so if nothing fall and we reach 11 (5th column) then a full "loop" as been done and we can continue
     if (puyo_found == 0)
     {  
-      current_column_height[tmp_counter] = floor_y;
+      if (gp_k == 0) // if gp_k still at 0 then there is no puyo in that column, otherwise it is full even on hidden row
+        current_column_height[tmp_counter] = floor_y;
+      else
+        current_column_height[tmp_counter] = 0xf0;
     }
     else
     {
@@ -2755,7 +2776,7 @@ void main(void)
       //current_actor_x points to the current player so we don't have to do a [][] but only a [] which should be faster and avoid
       //some code
       current_actor_x = &actor_x[current_player][0]; //current_actor_x points to the current player x
-      current_actor_y = &actor_y[current_player][0]; //current_actor_x points to the current player y
+      current_actor_y = &actor_y[current_player][0]; //current_actor_y points to the current player y
       current_column_height = &column_height[current_player][0];
       current_displayed_pairs = &displayed_pairs[current_player][0];
 
@@ -3445,32 +3466,37 @@ void main(void)
         column_height[(actor_x[1]>>4) - 1] -= 16;*/
         current_actor_y[0] +=2;
         current_actor_y[1] +=2;
-
-        //set_metatile(0,0xd8);
-        //test !
-        //puyoSeq contient l'adresse des data du sprite, et l'adresse de la tile est à cette adresse +2
-        set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
-        //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
-        //attrbuf should take the color for 4 tiles !
-        attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), current_actor_x[0]>>3,(current_actor_y[0]>>3) /*+1*/);
         
-        addr = NTADR_A((current_actor_x[0]>>3), (current_actor_y[0]>>3) /*+1*/);
-        vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-        vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+        if (current_actor_y[0] >= 0x10 && current_actor_y[0] < 0xD0)
+        {
+          //set_metatile(0,0xd8);
+          //test !
+          //puyoSeq contient l'adresse des data du sprite, et l'adresse de la tile est à cette adresse +2
+          set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
+          //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
+          //attrbuf should take the color for 4 tiles !
+          attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), current_actor_x[0]>>3,(current_actor_y[0]>>3) /*+1*/);
+
+          addr = NTADR_A((current_actor_x[0]>>3), (current_actor_y[0]>>3) /*+1*/);
+          vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+          vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+          vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+        }
         //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
         //like here
         //attribute_table[(((actor_y[0]>>3)+1)<<1) + ((actor_x[0]>>3)>>2)] = attrbuf[0];
         //set_metatile(1,0xd8);
-        set_metatile(0,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
-    
-        attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), current_actor_x[1]>>3, (current_actor_y[1]>>3) /*+1*/);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
-        
-        addr = NTADR_A((current_actor_x[1]>>3), (current_actor_y[1]>>3) /*+1*/);
-        vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
-        vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-        vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
+        if (current_actor_y[1] >= 0x10 && current_actor_y[1] < 0xD0)
+        {
+          set_metatile(0,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
 
+          attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), current_actor_x[1]>>3, (current_actor_y[1]>>3) /*+1*/);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+
+          addr = NTADR_A((current_actor_x[1]>>3), (current_actor_y[1]>>3) /*+1*/);
+          vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
+          vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
+          vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
+        }
         //updating the board, if things are done correctly attrbuf contains the color to be used
         //Still need to convert coordinates ! And not overwrite the value for the opponent board !
         update_boards();
