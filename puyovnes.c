@@ -3136,17 +3136,17 @@ void main(void)
               //wait for player to press the start or A button and switch to PLAY state.
               for (i = 0; i< 2; ++i)
               {
-                if (ready[i] != 1 )
+                if (ready[i] != 1)
                 {
                   pad = pad_poll(i);
-                  if (pad&PAD_A)
+                  if (pad&PAD_A || (debug && i == 1 && ready[0] == 1))
                   {
                     ready[i] = 1;
                     sprintf(str,"       ");
                     addr = NTADR_A((i==0)?4:20,10);
                     vrambuf_put(addr,str,7);
                   }
-                }
+                }       
               }
               if (ready[0] == 1 && ready[1] == 1)
               {
