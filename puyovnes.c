@@ -330,7 +330,31 @@ const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
 const byte const floor_y = /*190*/192;
 const byte next_columns_y[5] = {4,6,8,10,12};
 
+//menu logo
+//white points
+const byte logo_whites[10][3]={
+  {0x3F,0x7,0xF3},
+  {0x40,0x87,0xF3},
+  {0x9A,0x47,0xF3},
+  {0xAD,0x47,0xF3},
+  {0xA4,0xC7,0xF3},
+  {0x9B,0x47,0xF3},
+  {0x80,0x44,0x3},
+  {0x80,0x44,0x3},
+  {0x42,0x80,0x0},
+  {0x3F,0x0,0x0}
+};
 
+//red points
+const byte logo_reds[8]={
+  0x7E,
+  0xCB,
+  0x81,
+  0x80,
+  0xC9,
+  0xFF,
+  0xFF,
+  0x7E};
 
 //declaration des fonctions, il parait que ça aide
 word nt2attraddr(word a);
@@ -346,6 +370,7 @@ byte check_board(void);
 byte destroy_board(void);
 void fall_board(void);
 void manage_point(void);
+void build_menu(void);
 void build_field(void);
 void setup_graphics(void);
 void handle_controler_and_sprites(void);
@@ -2004,11 +2029,97 @@ void update_next()
   return;
 }
 
+void build_menu()
+{
+   memset(attribute_table,bg_pal,sizeof(attribute_table));
+  // copy attribute table from PRG ROM to VRAM
+  vram_write(attribute_table, sizeof(attribute_table));
+  
+  put_str(NTADR_C(11,13), "Puyo VNES");
+  put_str(NTADR_C(4,15), "Border style  1  2  3  4");
+  put_str(NTADR_C(4,17), "Border color  1  2  3  4");
+  put_str(NTADR_C(4,19), "Music         O  1      ");
+  put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
+  put_str(NTADR_C(6,24), "Press start to begin!");
+  put_str(NTADR_C(9,26), "Alpha v20210819");
+  
+  //logo white points
+  for (i = 2; i < 12; ++i)
+  {
+    for (j = 0; j < 3; ++j)
+    {
+      x=4+(8*j);
+      vram_adr(NTADR_C(x,i));
+      gp_i = logo_whites[i-2][j];
+      for (gp_j = 0; gp_j < 8; ++gp_j)
+      {
+        if ((gp_i & 0x80) == 0x80)
+          vram_put(0x01); //l'adresse avance toute seule, rien a faire en théorie
+        else
+          //il faut faire avancer l'adresse pour aller au prochain bit
+          vram_adr(NTADR_C(x+gp_j+1,i));
+        gp_i <<= 1; //Bitshift pour tester le bit suivant
+      }
+    }
+  }
+  
+  //logo for red points
+  for (i = 3; i< 11; ++i)
+  {
+    vram_adr(NTADR_C(5,i));
+    gp_i = logo_reds[i-3];
+    for (gp_j = 0; gp_j < 8; ++gp_j)
+    {
+      if ((gp_i & 0x80) == 0x80)
+        vram_put(0x03); //l'adresse avance toute seule, rien a faire en théorie
+      else
+        //il faut faire avancer l'adresse pour aller au prochain bit
+        vram_adr(NTADR_C(5+gp_j+1,i));
+      gp_i <<= 1; //Bitshift pour tester le bit suivant
+    }
+  }
+  
+  //bottom grey of the NES
+  vram_adr(NTADR_C(17,10));
+  for (i = 0; i<11; ++i)
+    vram_put(0x06);
+  vram_adr(NTADR_C(18,11));
+  for (i = 0; i<9; ++i)
+    vram_put(0x06);
+  //cap
+  vram_adr(NTADR_C(18,8));
+  for (i = 0; i<6; ++i)
+    vram_put(0xA0);
+  vram_adr(NTADR_C(18,9));
+  for (i = 0; i<6; ++i)
+    vram_put(0xA1);
+  vram_adr(NTADR_C(17,8));
+  vram_put(0xA3);
+  vram_adr(NTADR_C(17,9));
+  vram_put(0xA3);
+  //black
+  vram_adr(NTADR_C(24,10));
+  vram_put(0x00);vram_put(0x00);
+  vram_adr(NTADR_C(24,11));
+  vram_put(0x00);vram_put(0x00);
+  //vent holes
+  for (i = 3; i < 8; ++i)
+  {
+    vram_adr(NTADR_C(24,i));
+    vram_put(0x8C);vram_put(0x8C);
+  }
+  
+  sprintf(str,"ccc 2021");
+  vram_adr(NTADR_C(11,27));
+  vram_put(0x10);
+  vrambuf_put(NTADR_C(12,27),str,10);
+ 
+}
 
 void build_field()
 {
   //byte i, x, y;
-  byte x, y;
+  //byte x, y; //déjà déclaré globalement et utilisé pour le x et y du CHECK
   //Filling up boards with EMPTY => done on wait now
   /*for (x = 0; x < 6; ++x)
   {
@@ -2097,25 +2208,9 @@ void build_field()
     }
     
   }
-  
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
   
-  //only draw menu if necessary
-  if (step_p[0] == SETUP)
-  {
-    put_str(NTADR_C(11,10), "Puyo VNES");
-    put_str(NTADR_C(4,15), "Border style  1  2  3  4");
-    put_str(NTADR_C(4,17), "Border color  1  2  3  4");
-    put_str(NTADR_C(4,19), "Music         O  1      ");
-    put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
-    put_str(NTADR_C(6,24), "Press start to begin!");
-    put_str(NTADR_C(9,26), "Alpha v20210819");
-    sprintf(str,"ccc 2021");
-    vram_adr(NTADR_C(11,27));
-    vram_put(0x10);
-    vrambuf_put(NTADR_C(12,27),str,10);
-  }
   //the address of the boards, will be usefull in fall_board()
   board_address = &boards[0][0][0];
   tmp_boards_address = &tmp_boards[0][0];
@@ -2597,6 +2692,7 @@ void main(void)
   // draw message  
   /*vram_adr(NTADR_A(2,3));
   vram_write("HELLO BAYOEN", 12);*/
+  build_menu();
   build_field();
   generate_rng();
   debug = DEBUG;
@@ -3050,8 +3146,8 @@ void main(void)
               //tmp_boards[i][j] = *cell_address;
               tmp_cell_address[j] = *cell_address;
               // incrementing by 0x0D in the column loop is unecessary, as basically doing +1 at the end of one column move to the beginning of the next
-              //++cell_address;
-              cell_address +=1;
+              ++cell_address;
+              //cell_address +=1;
             }
             /*tmp_boards[i][0] = boards[current_player][i][0];
             tmp_boards[i][1] = boards[current_player][i][1];
