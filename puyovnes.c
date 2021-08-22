@@ -70,8 +70,19 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 byte debug;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
-typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
-typedef enum Step {SETUP, 	//0
+//enum replaced by #define as enum are int, 16 bits and slower
+//see https://github.com/ilmenit/CC65-Advanced-Optimizations#06---get-rid-of-enums---296-ticks-3-speedup
+//typedef enum CellType {PUYO_RED, PUYO_BLUE, PUYO_GREEN, PUYO_YELLOW, OJAMA, EMPTY, PUYO_POP};
+//Celltype
+#define PUYO_RED 0
+#define PUYO_BLUE 1
+#define PUYO_GREEN 2
+#define PUYO_YELLOW 3
+#define OJAMA 4
+#define EMPTY 5
+#define PUYO_POP 6
+
+/*typedef enum Step {SETUP, 	//0
                    PLAY, 	//1 
                    CHECK, 	//2
                    CHECK_ALL, 	//3
@@ -81,7 +92,20 @@ typedef enum Step {SETUP, 	//0
                    SHOW_NEXT, 	//7
                    FALL_OJAMA, 	//8
                    FLUSH, 	//9
-                   WAIT}; 	//A
+                   WAIT}; 	//A*/
+//steps
+#define SETUP 0
+#define PLAY 1 	        //1 
+#define CHECK 2 	//2
+#define CHECK_ALL 3 	//3
+#define DESTROY 4 	//4
+#define FALL 5 	        //5
+#define POINT 6 	//6
+#define SHOW_NEXT 7 	//7
+#define FALL_OJAMA 8 	//8
+#define FLUSH 9 	//9
+#define WAIT 0xA 	//A
+
 /*byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles*/
 byte seg_char;		// character to draw
@@ -2008,7 +2032,7 @@ void update_next()
     
     if (gp_i != 2)
     {
-      tmp_color = displayed_pairs[current_player][gp_j];
+      tmp_color = current_displayed_pairs[gp_j];
       set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
     }
     else
