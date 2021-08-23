@@ -161,6 +161,7 @@ byte * current_actor_y;
 byte * current_column_height;
 byte * current_displayed_pairs;
 byte * base_address; // for update_boards
+byte * current_current_damage_tiles; // for refresh_ojama_display
 
 
 // buffers that hold vertical slices of nametable data
@@ -1590,6 +1591,8 @@ void manage_point()
 void refresh_ojama_display()
 {
   tmp_index =  (step_refresh_ojama_display >= 10) ? 1 : 0;
+  current_current_damage_tiles = &current_damage_tiles[tmp_index][0];
+
   switch (step_refresh_ojama_display)
   {
     case 1: //compute the list of tile damage over opponent board
@@ -1712,7 +1715,8 @@ void refresh_ojama_display()
           //we use tmp_mask because it is there, avoiding declaring something else
           for (tmp_mask = 0; tmp_mask < (tmp_score2[tmp_index]) && current_damage_tiles_index[tmp_index] < 6 ; ++tmp_mask)
           {
-            current_damage_tiles[tmp_index][current_damage_tiles_index[tmp_index]] = damageTile[gp_i];
+            //current_damage_tiles[tmp_index][current_damage_tiles_index[tmp_index]] = damageTile[gp_i];
+            current_current_damage_tiles[current_damage_tiles_index[tmp_index]] = damageTile[gp_i];
             ++current_damage_tiles_index[tmp_index];
           }
         }
@@ -1742,14 +1746,22 @@ void refresh_ojama_display()
         //set_metatile(gp_j,current_damage_tiles[current_player][gp_j]);
         //set_metatile is only valid for vertical vrambuf_put !
         //for horizontal just fill manually ntbuf1 & 2 :)
-        ntbuf1[gp_j*2] = current_damage_tiles[tmp_index][gp_j];
+       /* ntbuf1[gp_j*2] = current_damage_tiles[tmp_index][gp_j];
         ntbuf1[gp_j*2+1] = current_damage_tiles[tmp_index][gp_j]+2;
         ntbuf2[gp_j*2] = current_damage_tiles[tmp_index][gp_j]+1;
-        ntbuf2[gp_j*2+1] = current_damage_tiles[tmp_index][gp_j]+3;
+        ntbuf2[gp_j*2+1] = current_damage_tiles[tmp_index][gp_j]+3;*/
+        tmp_counter = current_current_damage_tiles[gp_j];
+        gp_k = gp_j<<1;
+        ntbuf1[gp_k] = tmp_counter;
+        ntbuf1[gp_k+1] = tmp_counter+2;
+        ntbuf2[gp_k] = tmp_counter+1;
+        ntbuf2[gp_k+1] = tmp_counter+3;
+        
       }
-      addr = NTADR_A((20)-nt_x_offset[tmp_index], 0);
+      tmp_counter = (20)-nt_x_offset[tmp_index]; //no need to compute it twice
+      addr = NTADR_A(tmp_counter, 0);
       vrambuf_put(addr, ntbuf1, 12);
-      addr = NTADR_A((20)-nt_x_offset[tmp_index], 1);
+      addr = NTADR_A(tmp_counter, 1);
       vrambuf_put(addr, ntbuf2, 12);
       break;
     default: //0 or something else : quit
