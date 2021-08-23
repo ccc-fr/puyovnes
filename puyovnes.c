@@ -68,6 +68,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 #define DEBUG 0 // Currently P2 game is broken, need to check why.
 /// GLOBAL VARIABLES
 byte debug;
+byte ia;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 //enum replaced by #define as enum are int, 16 bits and slower
@@ -422,6 +423,7 @@ void flush(void); // flush loser screen into under the play field
 void init_round(void); //set actors, column_height and other things before a round
 void put_str(unsigned int adr, const char *str);
 void refresh_ojama_display(void); // refresh the ojama display above players playfield
+void ia_move(void);// "IA" to avoid having the P2 lose too quickly
 
 //music bloc definition
 byte next_music_byte() {
@@ -2737,6 +2739,24 @@ void handle_controler_and_sprites()
   previous_pad[current_player] = pad;
 }
 
+//check for the lowest column_height and put the pair there
+void ia_move()
+{
+  tmp_counter = current_column_height[0];
+  tmp_counter_2 = 0;
+  for (gp_i = 1; gp_i <6; ++gp_i)
+  {
+    if (current_column_height[gp_i] > tmp_counter)
+    {
+      tmp_counter = current_column_height[gp_i];
+      tmp_counter_2 = gp_i;
+    }
+  }
+  tmp_counter = (9 << 4) + (tmp_counter_2 << 4);
+  current_actor_x[0]= tmp_counter;
+  current_actor_x[1]= tmp_counter;
+}
+
 void main(void)
 {
   //register word addr;
@@ -2819,16 +2839,8 @@ void main(void)
       vram_adr(0x0);
       return rd;
 }*/
-    
-    //get input
-    oam_id = 0;
-
-    if (oam_id!=0) 
-      oam_hide_rest(oam_id);
-    // ensure VRAM buffer is cleared
-    ppu_wait_nmi();
-    vrambuf_clear();
-     //set sound
+  
+       //set sound
     if (!music_ptr && music_selected_ptr != NULL) start_music(music_selected_ptr);//=> ne boucle pas si on l'active pas !
     {
       //read next 8 bytes from music to fill music2[]
@@ -2839,6 +2851,15 @@ void main(void)
        play_music();
     }
     
+    //get input
+    oam_id = 0;
+
+    if (oam_id!=0) 
+      oam_hide_rest(oam_id);
+    // ensure VRAM buffer is cleared
+    ppu_wait_nmi();
+    vrambuf_clear();
+  
     //maybe put that in another while loop at the beginning to avoid a useless test
     //good for testing only here
     if (step_p[0] == SETUP)
@@ -2889,9 +2910,15 @@ void main(void)
               cur_duration = 0;
               if (menu_pos_y[menu_pos_x] & 0x2)
                 debug = 1;
+              else
+                debug = 0;
               break;
             case 3: //color blind
               blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
+              if (menu_pos_y[menu_pos_x] & 0x2)
+                ia = 1;
+              else
+                ia = 0;
               break;
           }
         }
@@ -2919,6 +2946,10 @@ void main(void)
               break;
             case 3: //color blind
               blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
+              if (menu_pos_y[menu_pos_x] & 0x2)
+                ia = 1;
+              else
+                ia = 0;
               break;
           }
         }
@@ -3420,6 +3451,8 @@ void main(void)
           update_next();
           step_p[current_player] = PLAY;
           step_p_counter[current_player] = 0;
+          if (!debug && ia && current_player == 1)
+            ia_move();
         }
         else
         {
