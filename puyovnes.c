@@ -106,6 +106,7 @@ byte ia;
 #define FALL_OJAMA 8 	//8
 #define FLUSH 9 	//9
 #define WAIT 0xA 	//A
+#define UPDATE_HEIGHT 0xB  //B
 
 /*byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles*/
@@ -121,7 +122,7 @@ byte x, y; //position in the board of the puyo to check;
 //we will use array for these new to easily switch from p1 to p2
 byte step_p[2];
 byte step_p_counter[2];
-
+byte column_height[2][6];
 // attribute table in PRG ROM
 byte attribute_table[64];/* = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // rows 0-3
@@ -235,7 +236,7 @@ char input_delay_PAD_RIGHT[2]; //to avoid multiple input on one press
 char input_delay_PAD_A[2]; //to avoid multiple input on one press
 char input_delay_PAD_B[2]; //to avoid multiple input on one press
 //char column_height[12]; // heigth of the stack, 0 to 5 p1, 6 to 11 P2, may not be the best strategy =>indeed, changing for double table
-/*char*/byte column_height[2][6]; //char signed ? byte unsigned
+/*char*//*byte column_height[2][6];*/ //char signed ? byte unsigned
 char column_height_offset;
 //constant for puyo physics
 #define GRACE_PERIOD /*32*/ 64
@@ -1358,8 +1359,9 @@ void fall_board()
     //if (step_p[current_player] != FALL_OJAMA)
     step_p_counter[current_player] = tmp_counter;
     //As it fall the height of the column must be lowered:
-    if (current_column_height[tmp_counter] < floor_y) //let's avoid going under the floor
-      current_column_height[tmp_counter] +=16;
+    //utile ? sera recalculé plus tard normalement quand fall == 0
+    /*if (current_column_height[tmp_counter] < floor_y) //let's avoid going under the floor
+      current_column_height[tmp_counter] +=16;*/
     
    if (current_player != 0)
     {
@@ -1798,7 +1800,13 @@ byte fall_ojama()
   if ((step_ojama_fall[current_player] == 0 && tmp_counter_2 != PLAY && tmp_counter_2 != FALL_OJAMA) )
   {
     //inutile de continuer on passe à SHOW_NEXT
-    step_p[current_player] = SHOW_NEXT;
+    //step_p[current_player] = SHOW_NEXT;
+    //step_p_counter[current_player] = 0;
+    //wrong this to go for SHOW_NEXt, because column_height is recomputed in FALL
+    //so we won't add the ojama, but we are still doing fall
+    // but big issue, FALL leads to CHECK_ALL which lead to FALL_OJAMA, we "fall" into an infinite loop... 
+    //SO new state: UPDATE_HEIGHT, will call fall_board as it was from fall_ojama to be able to go to show_next
+    step_p[current_player] = UPDATE_HEIGHT;
     step_p_counter[current_player] = 0;
     return 0; //as we return 0 the ojama won't fall
   }
@@ -2267,8 +2275,8 @@ void build_field()
   vram_write(attribute_table, sizeof(attribute_table));
   
   //the address of the boards, will be usefull in fall_board()
-  board_address = &boards[0][0][0];
-  tmp_boards_address = &tmp_boards[0][0];
+  //board_address = &boards[0][0][0];
+  //tmp_boards_address = &tmp_boards[0][0];
 }
 
 void init_round()
@@ -2799,6 +2807,11 @@ void main(void)
   bg_tile = bg_tile_addr[0];
   bg_pal = 0;
   blind_offset = 0;
+  
+  //pointers
+  //the address of the boards, will be usefull in fall_board()
+  board_address = &boards[0][0][0];
+  tmp_boards_address = &tmp_boards[0][0];
   
   //init score and wins at 0
   memset(score,0,sizeof(score));
@@ -3435,7 +3448,7 @@ void main(void)
         continue;
       }
 
-      if (step_p[current_player] == FALL)
+      if (step_p[current_player] == FALL || step_p[current_player] == UPDATE_HEIGHT)
       {
         //execute before destroy to avoid doing destroy and fall consecutively
         fall_board();
@@ -3684,8 +3697,6 @@ void main(void)
         memset(ntbuf1, 0, sizeof(ntbuf1));
         memset(ntbuf2, 0, sizeof(ntbuf2));
         memset(attrbuf, 0, sizeof(attrbuf));
-        /*column_height[(actor_x[0]>>4) - 1] -= 16;
-        column_height[(actor_x[1]>>4) - 1] -= 16;*/
         current_actor_y[0] +=2;
         current_actor_y[1] +=2;
         
