@@ -264,6 +264,8 @@ unsigned long int tmp_score[2], tmp_score2[2];
 byte fall, can_fall, previous_empty, puyo_found;
 // indicates if the damage board needs o be refreshed. 0 = no refresh, 1 and above refresh needed or in progress
 byte step_refresh_ojama_display;
+// indicates if a soft_reset must be performed
+byte soft_reset;
 
 // Lookup tables to speed up the / and %  operation, there are filled at the end of the file
 const byte div_6_lookup[];
@@ -425,6 +427,7 @@ void init_round(void); //set actors, column_height and other things before a rou
 void put_str(unsigned int adr, const char *str);
 void refresh_ojama_display(void); // refresh the ojama display above players playfield
 void ia_move(void);// "IA" to avoid having the P2 lose too quickly
+void main(void);
 
 //music bloc definition
 byte next_music_byte() {
@@ -2104,7 +2107,7 @@ void build_menu()
   put_str(NTADR_C(4,19), "Music         O  1      ");
   put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
   put_str(NTADR_C(6,24), "Press start to begin!");
-  put_str(NTADR_C(9,26), "Alpha v20210819");
+  put_str(NTADR_C(9,26), "Alpha v20210825");
   
   //logo white points
   for (i = 2; i < 12; ++i)
@@ -2328,6 +2331,7 @@ void init_round()
 
 // setup PPU and tables
 void setup_graphics() {
+  ppu_off();
   // clear sprites
   oam_clear();
    // clear sprites
@@ -2728,6 +2732,11 @@ void handle_controler_and_sprites()
   //test play bayoen_sample
   if (pad&PAD_START)
   {
+    if (pad&PAD_SELECT && pad&PAD_B && pad&PAD_A)
+    { 
+      soft_reset = 1;
+      return;
+    }
     //step_p2 = FALL_OJAMA;
     /*step_p[1] = FALL_OJAMA;
     step_ojama_fall[1] = 0;
@@ -2767,8 +2776,10 @@ void ia_move()
 
 void main(void)
 {
+  //label for soft reset:
+  main_start:
   //register word addr;
-
+  soft_reset = 0; //reinit the soft reset value 
   setup_graphics();
   // draw message  
   /*vram_adr(NTADR_A(2,3));
@@ -3743,6 +3754,9 @@ void main(void)
     //refresh ojama display
     if (step_refresh_ojama_display != 0)
       refresh_ojama_display();
+    
+    if (soft_reset)
+      goto main_start;
   }
 }
 
