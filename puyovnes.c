@@ -1453,7 +1453,7 @@ void fall_board()
           score[current_player] += 2100;
 
           //WIP add the opponent ojama removal from current player stack !
-          if (current_player == 0)
+          /*if (current_player == 0)
           {
             ojamas[2] += 2100;
             if (ojamas[0] > 0)
@@ -1468,6 +1468,19 @@ void fall_board()
             {  
               ojamas[2] = (ojamas[2] - 2100 > ojamas[2] ) ? 0 : ojamas[2] - 2100 ;
             }
+          }*/
+          
+          gp_i = current_player << 1; //index for ojama[] of current_player 0=>0 1=>2
+          gp_j = ((current_player + 1) << 1) & 2; //index for ojama[] for opponent 0=>2; 1=>0
+          
+          if (ojamas[gp_i] >= 2100)
+          {
+            ojamas[gp_i] -= 2100;
+          }
+          else
+          {
+            ojamas[gp_j] += (2100 - ojamas[gp_i]);
+            ojamas[gp_i] = 0;
           }
 
           //TODO warikomi not handled yet
