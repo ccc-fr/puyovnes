@@ -266,6 +266,8 @@ byte fall, can_fall, previous_empty, puyo_found;
 byte step_refresh_ojama_display;
 // indicates if a soft_reset must be performed
 byte soft_reset;
+// value incremented by 1 every frame, then & 1 to know if when the player press down is should go down by 2 or 3 px (it alternates every frame)
+byte fall_speed;
 
 // Lookup tables to speed up the / and %  operation, there are filled at the end of the file
 const byte div_6_lookup[];
@@ -3009,6 +3011,9 @@ void main(void)
       
       continue;
     }
+    
+    //to get a 2.5px fall speed 
+    ++fall_speed;
 
     for (current_player = 0 ; current_player < 2 ; ++current_player)
     {
@@ -3047,7 +3052,7 @@ void main(void)
           }
           
           if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
-            current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? 2 : 0));
+            current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? (2+(fall_speed&1)) : 0));
           
            //refresh sprites display
           sprite_addr[current_player][i] = current_displayed_pairs[i] + blind_offset;
