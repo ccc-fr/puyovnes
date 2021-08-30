@@ -765,7 +765,8 @@ byte check_board(void)
   //OJAMA are not destroyed by being linked by 4 !
   //also if y == 0 then the puyo is hidden in the upper row and should not be checked !
   //0xc0 is the floor max, so anything above 0xD0 should not be considered too
-  if (current_color == OJAMA || y == 0 || y >= 0xD0)
+  //in fact x and y indicates position in the table, so for y between 0 to 12, with 0 taht must not be checked
+  if (current_color == OJAMA || y < 1 || y > 12)
     return 0;
 
   //tmp_boards contains flag of the currently looked color
@@ -2142,7 +2143,7 @@ void build_menu()
   put_str(NTADR_C(4,19), "Music         O  1      ");
   put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
   put_str(NTADR_C(6,24), "Press start to begin!");
-  put_str(NTADR_C(9,26), "Alpha v20210825");
+  put_str(NTADR_C(9,26), "Alpha v20210830");
   
   //logo white points
   for (i = 2; i < 12; ++i)
