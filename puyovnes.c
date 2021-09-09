@@ -2408,7 +2408,7 @@ void handle_controler_and_sprites()
   //p1 puyo 0 & 1, p2 puyo 2 & 3, 0 and 2 are the puyo rotating around 1 et 3
   
   //with puyo side to each other, we need only the height of the column below [1]
-  gp_k = (current_actor_x[1] >> 4) - pos_x_offset[current_player];
+  gp_k = (current_actor_x[1] >> 4) - pos_x_offset[current_player]; //column_index
   tmp_counter = current_column_height[gp_k]; // column height below the puyo
   
   gp_i = current_actor_y[1];
@@ -2483,10 +2483,22 @@ void handle_controler_and_sprites()
       //kind of "ground kick" or "floor" kick
       //seriously not optimized :-/
       //if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
-      if (current_actor_y[0] >= tmp_counter + 1)
+      if ((current_actor_y[0] > 0xD0 && tmp_counter <= 0xC0) || (current_actor_y[0] < 0xD0 && tmp_counter > 0xD0) )
+      {// the puyo and height are split between 0 and F0, which makes the bigger above and not below
+        // if the column height is above 0xC0 then it is above we don't need to kick
+        if ((tmp_counter <= 0xC0) && ((current_actor_y[0]+16) >= (tmp_counter + 1)))
+        {
+          current_actor_y[0] = tmp_counter;
+          current_actor_y[1] = current_actor_y[0] - 16;
+        }
+      }
+      else
       {
-        current_actor_y[0] = tmp_counter;
-        current_actor_y[1] = current_actor_y[0] - 16;
+        if (current_actor_y[0] >= tmp_counter + 1)
+        {
+          current_actor_y[0] = tmp_counter;
+          current_actor_y[1] = current_actor_y[0] - 16;
+        }
       }
       
     }
@@ -2560,10 +2572,23 @@ void handle_controler_and_sprites()
         //we need to raise both puyo above the topmost puyo of the column (or the ground)
         //kind of "ground kick" or "floor" kick
         //seriously not optimized :-/
-        if (current_actor_y[0] >= tmp_counter + 1)
+        if ((current_actor_y[0] > 0xD0 && tmp_counter <= 0xC0) || (current_actor_y[0] < 0xD0 && tmp_counter > 0xD0) )
+        {  // the puyo and height are split between 0 and F0, which makes the bigger above and not below
+          // if the column height is above 0xC0 then it is above we don't need to kick
+          if ((tmp_counter <= 0xC0) && ((current_actor_y[0]+16) >= (tmp_counter + 1)))
+          {
+            current_actor_y[0] = tmp_counter;
+            current_actor_y[1] = current_actor_y[0] - 16;
+          }
+        }
+        else
         {
-          current_actor_y[0] = tmp_counter;
-          current_actor_y[1] = current_actor_y[0] - 16;
+          // we are even with both between 0 and C0, or both between D0 and FF, nothing particular required
+          if (current_actor_y[0] >= tmp_counter + 1)
+          {
+            current_actor_y[0] = tmp_counter;
+            current_actor_y[1] = current_actor_y[0] - 16;
+          }
         }
       }   
     }
@@ -2584,16 +2609,36 @@ void handle_controler_and_sprites()
         tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
       else
         tmp_counter_3 = current_column_height[gp_k+1]; 
-                             
-      if (current_actor_y[0] < current_actor_y[1])
-      {  
-        gp_i = current_actor_y[1];
-        gp_j = 1;// boolean to indicate that 0 is inferior to one
+      
+      // ne pas oublier que la valeur la plus petite est en fait la plus haute.
+      // donc si [0] < [1] alors [0] est plus haut que [1]  
+      // not enough !
+      if ((current_actor_y[0] < 0xD0 && current_actor_y[1] <0xD0) || (current_actor_y[0] > 0xD0 && current_actor_y[1] > 0xD0))
+      {
+        if (current_actor_y[0] < current_actor_y[1] /*&& (current_actor_y[0] - current_actor_y[1] == 16)*/ )
+        {  
+          gp_i = current_actor_y[1]; //1 is below 0
+          gp_j = 1;// boolean to indicate that 0 is inferior to one
+        }
+        else
+        {
+          gp_i = current_actor_y[0]; //0 is below 1
+          gp_j = 0;// boolean to inidicate than 1 is inferior to 0
+        }
       }
       else
       {
-        gp_i = current_actor_y[0];
-        gp_j = 0;// boolean to inidicate than 1 is inferior to 0
+        //the one being above is the one >0xD0
+        if (current_actor_y[0] > 0xD0)
+        {
+          gp_i = current_actor_y[1]; //1 is below 0
+          gp_j = 1;// boolean to indicate that 0 is inferior to one
+        }
+        else
+        {
+          gp_i = current_actor_y[0]; //0 is below 1
+          gp_j = 0;// boolean to inidicate than 1 is inferior to 0
+        }
       }
       
       //as the height as been computed before we don't need to check for wall anymore
@@ -2657,7 +2702,7 @@ void handle_controler_and_sprites()
            here gp_i is that lowest
           */
           //if (current_actor_x[0] == (16+(current_player<<7)))
-          if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+          if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0))) ///!!!!!!!!!!ce test serait pas bon ?
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] += 16;         
@@ -3080,10 +3125,10 @@ void main(void)
           {
             --current_actor_y[i];
           }
-          else
+          /*else //only for debug
           {
             current_actor_y[i] = current_actor_y[i];
-          }
+          }*/
           
           if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
             current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? (2+(fall_speed&1)) : 0));
