@@ -174,14 +174,14 @@ char ntbuf2[PLAYROWS];	// right side
 char attrbuf[PLAYROWS/4];
 
 // nos sprites de puyo
-DEF_METASPRITE_2x2(puyo_red, 0xd8, 0);//red
-DEF_METASPRITE_2x2(puyo_blue, 0xd8, 1);//blue
-DEF_METASPRITE_2x2(puyo_green, 0xd8, 2);//green
-DEF_METASPRITE_2x2(puyo_yellow, 0xd8, 3);//yellow
-DEF_METASPRITE_2x2(puyo_heart, 0xcc, 0);//red
-DEF_METASPRITE_2x2(puyo_rabbit_ghost, 0xd4, 1);//blue
-DEF_METASPRITE_2x2(puyo_angry, 0xd0, 2);//green
-DEF_METASPRITE_2x2(puyo_yellow_bis, 0xd8, 3);//yellow
+DEF_METASPRITE_2x2(puyo_red, 0xd8, 0 | OAM_BEHIND);//red //OAM_BEHIND is for setting the sprite behind the BG in the attributes
+DEF_METASPRITE_2x2(puyo_blue, 0xd8, 1 | OAM_BEHIND);//blue
+DEF_METASPRITE_2x2(puyo_green, 0xd8, 2 | OAM_BEHIND);//green
+DEF_METASPRITE_2x2(puyo_yellow, 0xd8, 3 | OAM_BEHIND);//yellow
+DEF_METASPRITE_2x2(puyo_heart, 0xcc, 0 | OAM_BEHIND);//red
+DEF_METASPRITE_2x2(puyo_rabbit_ghost, 0xd4, 1 | OAM_BEHIND);//blue
+DEF_METASPRITE_2x2(puyo_angry, 0xd0, 2 | OAM_BEHIND);//green
+DEF_METASPRITE_2x2(puyo_yellow_bis, 0xd8, 3 | OAM_BEHIND);//yellow
 //DEF_METASPRITE_2x2(behind, 0x00, OAM_BEHIND);//yellow
 //defined by hand to be sure to have the transparent first sprite in the assets
 const unsigned char behind[]={\
@@ -3335,7 +3335,7 @@ void main(void)
         //we need to move oam_id to not have an offset, should be a better way though...
         //oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][2] + blind_offset]);
         //oam_id = oam_meta_spr(0, 0, oam_id, puyoSeq[displayed_pairs[current_player][3] + blind_offset]); 
-        //We use the behind to set the sprite behind the background and avoir visual glitch.
+        //We use the behind to set the sprite behind the background and avoid visual glitch.
         //Note: we should use the oam_meta_sprite_pal to do that, but the oam_id is not followed the same way as with oam_meta_spr...
         //behind is the last element of our metasprite list.
         if (timer_grace_period[current_player] != 255)
@@ -3485,7 +3485,7 @@ void main(void)
                 if (ready[i] != 1)
                 {
                   pad = pad_poll(i);
-                  if (pad&PAD_A || (debug && i == 1 && ready[0] == 1))
+                  if (pad&PAD_A || ((debug || ia) && i == 1 && ready[0] == 1))
                   {
                     ready[i] = 1;
                     sprintf(str,"       ");
