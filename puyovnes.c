@@ -3504,25 +3504,25 @@ void main(void)
               break;
             case 1:
               //reset the graphics => with a nice fade
-              /*if (step_p_counter[1] < 5)
+              if (step_p_counter[1] < 5)
               {
                 pal_bright(4-step_p_counter[1]);
               }
               else if (step_p_counter[1] == 5)
-              {*/
+              {
                 ppu_off();
               	build_field();
               	ppu_on_all();
-              /*}
+              }
               else if(step_p_counter[1] < 10)
               {
                 pal_bright(step_p_counter[1]-5);
               }
               else //from 6 to
-              {*/
+              {
                 step_p_counter[0] = 2;
-              /*}
-              ++step_p_counter[1];*/
+              }
+              ++step_p_counter[1];
               break;
             case 2:
                //randomize new pairs
