@@ -2292,55 +2292,31 @@ void build_menu()
  
 }
 
+//the build_field will take several steps
+//first a fade_in,
+//Then ppu_off, draw the field and ppu_on
+//the fade_out
+//it will take several frame to be achieved
 void build_field()
 {
-  //byte i, x, y;
-  //byte x, y; //déjà déclaré globalement et utilisé pour le x et y du CHECK
-  //Filling up boards with EMPTY => done on wait now
-  /*for (x = 0; x < 6; ++x)
-  {
-    for (y = 0; y < 13; ++y)
-    {
-      boards[0][x][y] = EMPTY;
-      boards[1][x][y] = EMPTY;
-      tmp_boards[x][y] = 0;
-    }
-  }*/
-  
   //initialize attribute table to 0;
   //0 color palette 0
   //85 color palette 1 (4 couleur par octets, 0b01010101)
   //170 color palette 2 0b10101010
   //255 color palette 3 0b11111111
-  memset(attribute_table,bg_pal,sizeof(attribute_table));
-  for (x = 0; x < PLAYCOLUMNS; x+=2)
+  if (step_p_counter[1] < 5)
   {
-    if (x == 0 || x == 30)
+    pal_bright(4-step_p_counter[1]);
+  }
+  else if (step_p_counter[1] == 5)
+  {
+    ppu_off();
+    memset(attribute_table,bg_pal,sizeof(attribute_table));
+    for (x = 0; x < PLAYCOLUMNS; x+=2)
     {
-      for (y = 0; y < PLAYROWS; y+=2)
+      if (x == 0 || x == 30)
       {
-        vram_adr(NTADR_A(x,y));
-        vram_put(bg_tile);
-        vram_put(bg_tile+2);
-        vram_adr(NTADR_A(x,y+1));
-        vram_put(bg_tile+1);
-        vram_put(bg_tile+3);
-      }
-    }
-    else if (x == 14 || x == 16) //14 et 16
-    {/* il faudra ici mettre les puyo à venir !*/
-      for (y = 0; y < PLAYROWS; y+=2)
-      {
-        if ( (y >= 4 && y <= 6) || (y >= 10 && y <= 12) )
-        {
-          vram_adr(NTADR_A(x,y));
-          vram_put(0xc8);
-          vram_put(0xca);
-          vram_adr(NTADR_A(x,y+1));
-          vram_put(0xc9);
-          vram_put(0xcb);
-        }
-        else
+        for (y = 0; y < PLAYROWS; y+=2)
         {
           vram_adr(NTADR_A(x,y));
           vram_put(bg_tile);
@@ -2350,46 +2326,75 @@ void build_field()
           vram_put(bg_tile+3);
         }
       }
-    }
-    else
-    {//le haut/ bas de l'air de jeu
-      vram_adr(NTADR_A(x,0));
-      vram_put(bg_tile);
-      vram_put(bg_tile+2);
-      vram_adr(NTADR_A(x,1));
-      vram_put(bg_tile+1);
-      vram_put(bg_tile+3);
-      vram_adr(NTADR_A(x,PLAYROWS-4));
-      vram_put(bg_tile);
-      vram_put(bg_tile+2);
-      vram_adr(NTADR_A(x,PLAYROWS-3));
-      vram_put(bg_tile+1);
-      vram_put(bg_tile+3);
-      vram_adr(NTADR_A(x,PLAYROWS-2));
-      vram_put(bg_tile);
-      vram_put(bg_tile+2);
-      vram_adr(NTADR_A(x,PLAYROWS-1));
-      vram_put(bg_tile+1);
-      vram_put(bg_tile+3);
-      //les deux terrains de jeu
-      for (y = 2; y < PLAYROWS - 4; y+=2)
-      {
-        vram_adr(NTADR_A(x,y));
-        vram_put(0);
-        vram_put(0);
-        vram_adr(NTADR_A(x,y+1));
-        vram_put(0);
-        vram_put(0);
+      else if (x == 14 || x == 16) //14 et 16
+      {/* il faudra ici mettre les puyo à venir !*/
+        for (y = 0; y < PLAYROWS; y+=2)
+        {
+          if ( (y >= 4 && y <= 6) || (y >= 10 && y <= 12) )
+          {
+            vram_adr(NTADR_A(x,y));
+            vram_put(0xc8);
+            vram_put(0xca);
+            vram_adr(NTADR_A(x,y+1));
+            vram_put(0xc9);
+            vram_put(0xcb);
+          }
+          else
+          {
+            vram_adr(NTADR_A(x,y));
+            vram_put(bg_tile);
+            vram_put(bg_tile+2);
+            vram_adr(NTADR_A(x,y+1));
+            vram_put(bg_tile+1);
+            vram_put(bg_tile+3);
+          }
+        }
+      }
+      else
+      {//le haut/ bas de l'air de jeu
+        vram_adr(NTADR_A(x,0));
+        vram_put(bg_tile);
+        vram_put(bg_tile+2);
+        vram_adr(NTADR_A(x,1));
+        vram_put(bg_tile+1);
+        vram_put(bg_tile+3);
+        vram_adr(NTADR_A(x,PLAYROWS-4));
+        vram_put(bg_tile);
+        vram_put(bg_tile+2);
+        vram_adr(NTADR_A(x,PLAYROWS-3));
+        vram_put(bg_tile+1);
+        vram_put(bg_tile+3);
+        vram_adr(NTADR_A(x,PLAYROWS-2));
+        vram_put(bg_tile);
+        vram_put(bg_tile+2);
+        vram_adr(NTADR_A(x,PLAYROWS-1));
+        vram_put(bg_tile+1);
+        vram_put(bg_tile+3);
+        //les deux terrains de jeu
+        for (y = 2; y < PLAYROWS - 4; y+=2)
+        {
+          vram_adr(NTADR_A(x,y));
+          vram_put(0);
+          vram_put(0);
+          vram_adr(NTADR_A(x,y+1));
+          vram_put(0);
+          vram_put(0);
+        }
       }
     }
-    
+    // copy attribute table from PRG ROM to VRAM
+    vram_write(attribute_table, sizeof(attribute_table));
+    ppu_on_all();
   }
-  // copy attribute table from PRG ROM to VRAM
-  vram_write(attribute_table, sizeof(attribute_table));
-  
-  //the address of the boards, will be usefull in fall_board()
-  //board_address = &boards[0][0][0];
-  //tmp_boards_address = &tmp_boards[0][0];
+  else if(step_p_counter[1] < 10)
+  {
+    pal_bright(step_p_counter[1]-5);
+  }
+  else
+  {
+    step_p_counter[0] = 2;
+  }
+  ++step_p_counter[1];
 }
 
 void init_round()
@@ -2940,7 +2945,7 @@ void main(void)
   /*vram_adr(NTADR_A(2,3));
   vram_write("HELLO BAYOEN", 12);*/
   build_menu();
-  build_field();
+  //build_field(); //à remplacer par build_credits ?
   generate_rng();
   debug = DEBUG;
   //we start by waiting each player to be ready
@@ -2991,6 +2996,7 @@ void main(void)
   
   // enable rendering
   ppu_on_all();
+  
   //ppu_wait_frame();
   //scroll(0,240);
   // infinite loop
@@ -3050,14 +3056,21 @@ void main(void)
         addr = NTADR_C(10,15);
         vrambuf_put(addr,str,11);*/
         pad = pad_poll(0);
-        if (pad&PAD_START)
+        if (pad&PAD_START || step_p_counter[1] < 255)
         {
-          ppu_off();//désactiver le rendering est nécessaire pour éviter les glitchs visuels, mais ça fait une frame noire/léger clignottement
+          //ppu_off();//désactiver le rendering est nécessaire pour éviter les glitchs visuels, mais ça fait une frame noire/léger clignottement
+          //on le fait dnas build_field maintenant. step_p_counter[1] nous sert à suivre l'évolution
+          if (step_p_counter[1] == 255)
+            step_p_counter[1] = 0;
+          
           build_field();
-          ppu_on_all();
-          step_p_counter[0]=239;
-          play_bayoen();
-          oam_clear();
+          //ppu_on_all();
+          if (step_p_counter[1] == 10)
+          { 
+            step_p_counter[0]=239;
+            play_bayoen();
+            oam_clear();
+          }
           continue;
         }
         if (pad& PAD_DOWN && menu_pos_x < 3 && input_delay_PAD_LEFT[0] == 0)
@@ -3503,26 +3516,7 @@ void main(void)
               step_p_counter[0] = 1;
               break;
             case 1:
-              //reset the graphics => with a nice fade
-              if (step_p_counter[1] < 5)
-              {
-                pal_bright(4-step_p_counter[1]);
-              }
-              else if (step_p_counter[1] == 5)
-              {
-                ppu_off();
-              	build_field();
-              	ppu_on_all();
-              }
-              else if(step_p_counter[1] < 10)
-              {
-                pal_bright(step_p_counter[1]-5);
-              }
-              else //from 6 to
-              {
-                step_p_counter[0] = 2;
-              }
-              ++step_p_counter[1];
+              build_field();
               break;
             case 2:
                //randomize new pairs
