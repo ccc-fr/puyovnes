@@ -69,6 +69,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 /// GLOBAL VARIABLES
 byte debug;
 byte ia;
+byte speed;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 //enum replaced by #define as enum are int, 16 bits and slower
@@ -165,6 +166,8 @@ byte * current_displayed_pairs;
 byte * base_address; // for update_boards
 byte * current_current_damage_tiles; // for refresh_ojama_display
 byte * gp_address; //general purpose address for random access to table value for instance.
+byte * gp_address_2; //general purpose address for random access to table value for instance.
+
 
 
 // buffers that hold vertical slices of nametable data
@@ -203,8 +206,8 @@ byte p_puyo_list_index[2];
 byte displayed_pairs[2][6];
 
 // actor x/y positions
-byte actor_x[2][2];
-byte actor_y[2][2];
+byte actor_x[3][2];
+byte actor_y[3][2];
 // actor x/y deltas per frame (signed)
 sbyte actor_dx[2][2];
 sbyte actor_dy[2][2];
@@ -248,7 +251,7 @@ byte counter_falling_back_up[2];
 byte bg_tile;//address of top left, bottom left+1, top right+2, bottom right+4
 byte bg_pal;//0 color palette 0, 85 color palette 1 (4 couleur par octets, 0b01010101), 170 color palette 2 0b10101010, 255 color palette 3 0b11111111
 byte menu_pos_x;
-byte menu_pos_y[4];
+byte menu_pos_y[5];
 char str[32];
 byte current_damage_tiles[2][6];
 byte current_damage_tiles_index[2]; //the table indicate the player, the index is pointing at which current_damage_tiles we will fill.
@@ -456,12 +459,12 @@ void play_music() {
           // see which pulse generator is free
           if (!(chs & 1))
           {
-            APU_PULSE_DECAY(0, period, DUTY_25, 2, 10);
+            APU_PULSE_DECAY(0, period, DUTY_25, 4, 10);
             chs |= 1;
           } 
           else if (!(chs & 2))
           {
-            APU_PULSE_DECAY(1, period, DUTY_25, 2, 10);
+            APU_PULSE_DECAY(1, period, DUTY_25, 4, 10);
             chs |= 2;
           }
         //}
@@ -478,7 +481,7 @@ void play_music() {
         if (note == 0xff)
           music_ptr = NULL;
         // set duration until next note
-        cur_duration = note & 63;
+        cur_duration = ((note-speed) & 63);
         // reset channel used mask
         chs = 0;
       }
@@ -2216,7 +2219,8 @@ void build_menu()
   put_str(NTADR_C(4,17), "Border color  1  2  3  4");
   put_str(NTADR_C(4,19), "Music         O  1      ");
   put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
-  put_str(NTADR_C(6,24), "Press start to begin!");
+  put_str(NTADR_C(4,23), "Speed         0  1");
+  put_str(NTADR_C(6,25), "Press start to begin!");
   put_str(NTADR_C(9,26), "Alpha v20210830");
   
   //logo white points
@@ -2968,17 +2972,20 @@ void main(void)
   actor_x[0][1] = 135;
   actor_x[1][0] = 135;
   actor_x[1][1] = 165;
+  actor_x[2][0] = 135;
   actor_y[0][0] = 119;
   actor_y[0][1] = 135;
   actor_y[1][0] = 151;
   actor_y[1][1] = 167;
+  actor_y[2][0] = 183;
   check_all_column_list[0] = 0;
   check_all_column_list[1] = 0;
   input_delay_PAD_LEFT[0] = 0; //to prevent multiple inputs
   bg_tile = bg_tile_addr[0];
   bg_pal = 0;
   blind_offset = 0;
-  
+  ia = 0;
+  speed = 0;
   //pointers
   //the address of the boards, will be usefull in fall_board()
   board_address = &boards[0][0][0];
@@ -3049,6 +3056,8 @@ void main(void)
     //good for testing only here
     if (step_p[0] == SETUP)
     {
+      gp_address = &actor_x[0][0];
+      gp_address_2  = &actor_y[0][0];
       if (step_p_counter[0] == 255)
       {
         scroll(0,240);//y==256 bottom screen,0 top //wrong, the bottom is 240 !
@@ -3056,7 +3065,7 @@ void main(void)
         addr = NTADR_C(10,15);
         vrambuf_put(addr,str,11);*/
         pad = pad_poll(0);
-        if (pad&PAD_START || step_p_counter[1] < 255)
+        if ((pad&PAD_START) || step_p_counter[1] < 255)
         {
           //ppu_off();//désactiver le rendering est nécessaire pour éviter les glitchs visuels, mais ça fait une frame noire/léger clignottement
           //on le fait dnas build_field maintenant. step_p_counter[1] nous sert à suivre l'évolution
@@ -3073,20 +3082,21 @@ void main(void)
           }
           continue;
         }
-        if (pad& PAD_DOWN && menu_pos_x < 3 && input_delay_PAD_LEFT[0] == 0)
+        if ((pad&PAD_DOWN) && menu_pos_x < 4 && input_delay_PAD_LEFT[0] == 0)
         {  
            ++menu_pos_x;
            input_delay_PAD_LEFT[0] = 8;
         }
-        if (pad& PAD_UP && menu_pos_x > 0 && input_delay_PAD_LEFT[0] == 0)
+        if ((pad&PAD_UP) && menu_pos_x > 0 && input_delay_PAD_LEFT[0] == 0)
         {
           --menu_pos_x;
           input_delay_PAD_LEFT[0] = 8;
         }
-        if (pad& PAD_RIGHT && menu_pos_y[menu_pos_x] < 3 && input_delay_PAD_LEFT[0] == 0)
+        if ((pad&PAD_RIGHT) && menu_pos_y[menu_pos_x] < 3 && input_delay_PAD_LEFT[0] == 0)
         {
           ++menu_pos_y[menu_pos_x];
-          actor_x[menu_pos_x/2][menu_pos_x%2] += 24;
+          //actor_x[menu_pos_x/2][menu_pos_x%2] += 24;
+          gp_address[menu_pos_x] +=24;
           input_delay_PAD_LEFT[0] = 8;
           switch (menu_pos_x)
           {
@@ -3112,12 +3122,19 @@ void main(void)
               else
                 ia = 0;
               break;
+            case 4:
+              if (menu_pos_y[menu_pos_x] & 0x1)
+                speed = 1;
+              else
+                speed = 0;
+              break;          
           }
         }
         if (pad& PAD_LEFT && menu_pos_y[menu_pos_x] > 0 && input_delay_PAD_LEFT[0] == 0)
         {
           --menu_pos_y[menu_pos_x];
-          actor_x[menu_pos_x/2][menu_pos_x%2] -= 24;
+          //actor_x[menu_pos_x/2][menu_pos_x%2] -= 24;
+          gp_address[menu_pos_x] -=24;
           input_delay_PAD_LEFT[0] = 8;
           switch (menu_pos_x)
           {
@@ -3143,6 +3160,12 @@ void main(void)
               else
                 ia = 0;
               break;
+            case 4:
+              if (menu_pos_y[menu_pos_x] & 0x1)
+                speed = 1;
+              else
+                speed = 0;
+              break;
           }
         }
         // menu's sprites
@@ -3152,10 +3175,13 @@ void main(void)
 					unsigned char chrnum, unsigned char attr,
 					unsigned char sprid);*/
         oam_id = oam_spr(16, actor_y[0][0]+16*menu_pos_x, 0xAE, 0, oam_id );
-        oam_id = oam_spr(actor_x[0][0], actor_y[0][0], 0xAF, 0, oam_id);
+        for ( i = 0; i < 5; ++i)
+          oam_id = oam_spr(gp_address[i], gp_address_2[i], 0xAF, 0, oam_id);
+        /*oam_id = oam_spr(actor_x[0][0], actor_y[0][0], 0xAF, 0, oam_id);
         oam_id = oam_spr(actor_x[0][1], actor_y[0][1], 0xAF, 0, oam_id);
         oam_id = oam_spr(actor_x[1][0], actor_y[1][0], 0xAF, 0, oam_id);
         oam_id = oam_spr(actor_x[1][1], actor_y[1][1], 0xAF, 0, oam_id);
+        oam_id = oam_spr(actor_x[1][1], actor_y[1][1], 0xAF, 0, oam_id);*/
           
         if (input_delay_PAD_LEFT[0] > 0)
           --input_delay_PAD_LEFT[0];
@@ -3218,7 +3244,7 @@ void main(void)
           }*/
           
           if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
-            current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? (2+(fall_speed&1)) : 0));
+            current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? ((speed) ? 3:(2+(fall_speed&1))) : 0));
           
            //refresh sprites display
           sprite_addr[current_player][i] = current_displayed_pairs[i] + blind_offset;
