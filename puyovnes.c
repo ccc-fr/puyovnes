@@ -3554,6 +3554,7 @@ void main(void)
               p_puyo_list_index[0] = 0;
               p_puyo_list_index[1] = 0;//peut-être supprimer cet init de init_round du coup
               current_player = 1;
+              current_displayed_pairs = &displayed_pairs[current_player][0];
               update_next();
               current_player = 0;
               current_displayed_pairs = &displayed_pairs[current_player][0];
