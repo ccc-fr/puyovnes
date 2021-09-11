@@ -164,6 +164,7 @@ byte * current_column_height;
 byte * current_displayed_pairs;
 byte * base_address; // for update_boards
 byte * current_current_damage_tiles; // for refresh_ojama_display
+byte * gp_address; //general purpose address for random access to table value for instance.
 
 
 // buffers that hold vertical slices of nametable data
@@ -505,9 +506,12 @@ void play_hit()
   //PULSE_CH0 is used by music, the sweep can be an issue
   //as it won't be deactivated automatically
   //so we use PULSE_CH1 for the moment
-  if (nb_hit[current_player] < 8)
+  gp_address = &nb_hit[current_player];
+  if ((*gp_address) < 8)
   {
-    APU_PULSE_DECAY(PULSE_CH1, 2250-(nb_hit[current_player]*250), 192, 8, 1);
+    //multiply by 250 is costly so let's bitshift by 8 which equals to 256, should sound close enough
+    //APU_PULSE_DECAY(PULSE_CH1, 2250-(nb_hit[current_player]*250), 192, 8, 1);
+    APU_PULSE_DECAY(PULSE_CH1, 2250-((*gp_address)<<8), 192, 8, 1);
     //APU_PULSE_DECAY(PULSE_CH1, /*1121*/750+((hit-1)<<7), 192, 8, 1);
     APU_PULSE_SWEEP(PULSE_CH1,4,2,1);
     APU_NOISE_DECAY(0,8,3);
@@ -1454,12 +1458,22 @@ void fall_board()
     {
       if (step_p[current_player] == FALL)
       {
-        if (boards[current_player][0][12] == EMPTY &&
+        gp_address = &boards[current_player][0][12];
+        if (/*boards[current_player][0][12] == EMPTY &&
             boards[current_player][1][12] == EMPTY &&
             boards[current_player][2][12] == EMPTY &&
             boards[current_player][3][12] == EMPTY &&
             boards[current_player][4][12] == EMPTY &&
-            boards[current_player][5][12] == EMPTY )
+            boards[current_player][5][12] == EMPTY*/
+          //changing from 3 dimensions to 1 saves 45 bytes and I hope some cycles.
+          //we point at [0][12], the bottom of the first column, so next bottom puyo is 13 further cells 
+          gp_address[0] == EMPTY &&
+          gp_address[13] == EMPTY &&
+          gp_address[26] == EMPTY &&
+          gp_address[52] == EMPTY &&
+          gp_address[65] == EMPTY &&
+          gp_address[78] == EMPTY        
+        )
         { 
           //all clear !
           score[current_player] += 2100;
