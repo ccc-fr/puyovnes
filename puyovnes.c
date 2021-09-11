@@ -1144,17 +1144,69 @@ byte check_board(void)
     mask_color_destroyed |= (1 << shift[current_player]) << current_color;  
     nb_group[current_player] += (tmp_counter_2 + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
     
-    cell_address = current_board_address + 12;
-    tmp_cell_address = current_tmp_board_address + 12;
+    //cell_address = current_board_address + 12;
+    //tmp_cell_address = current_tmp_board_address + 12;
     tmp_counter_3 = 0;
     //copy flag to boards
+    //instead of doing 2 loops, one for column and inside it one for rows
+    //we will do only once and parse each cell by only increment by one each time
+    gp_j = 1;
+    cell_address = current_board_address + 1;
+    tmp_cell_address = current_tmp_board_address + 1;
+    //tmp_board has column size of 15 ! we when gp_i will change we must move of 2 step further.
+    //we parse every cell, but must not check that are hidden (wherey y=0)
+    //this will be checked with gp_j, but we can start from  1 as the first is not to be checked
+    for (gp_i = 1; gp_i < 78; ++gp_i)
+    { 
+      if (*tmp_cell_address == FLAG)
+      {
+        //boards[current_player][gp_i][gp_j] |= FLAG;
+        *cell_address |= FLAG;
+        ++tmp_counter_3;
+        //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
+        //note : it will probably slow down things a lot do do that :-s
+        //look left
+        /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
+            boards[current_player][gp_i-1][gp_j] |= FLAG;*/
+        if (gp_i>13 && *(cell_address - 0xD) == OJAMA)
+          *(cell_address - 0xD) |= FLAG;
+        //look right
+        /*if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
+            boards[current_player][gp_i+1][gp_j] |= FLAG*/
+        if (gp_i<65 && *(cell_address + 0xD) == OJAMA)
+          *(cell_address + 0xD) |= FLAG;
+        //look up
+        /*if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
+            boards[current_player][gp_i][gp_j-1] |= FLAG;*/
+        if (gp_j>1 && *(cell_address - 1) == OJAMA)
+          *(cell_address - 1) |= FLAG;
+        //look down
+        /*if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
+            boards[current_player][gp_i][gp_j+1] |= FLAG;*/
+        if (gp_j<12 && *(cell_address + 1) == OJAMA)
+          *(cell_address + 1) |= FLAG;
+      } 
+      
+      //++gp_i;done in the for loop !
+      ++cell_address;
+      ++gp_j;
+      ++tmp_cell_address;
+      if (gp_j == 13) // 13 ? we must go to the next column and avoid row 0, and row 13 and 14 too for tmp_board
+      {
+        ++gp_i;
+        gp_j = 1;
+        ++cell_address;
+        tmp_cell_address += 3;
+      }
+    }
+    /*
     for (gp_i = 0; gp_i < 6; ++gp_i)
     {
       current_board_address = cell_address;
       current_tmp_board_address = tmp_cell_address;
       for (gp_j = 12 ; gp_j <= 12 ; --gp_j)
       {
-        if ( /*tmp_boards[gp_i][gp_j]*/ *tmp_cell_address == FLAG)
+        if (*tmp_cell_address == FLAG)
         {
           //boards[current_player][gp_i][gp_j] |= FLAG;
           *cell_address |= FLAG;
@@ -1162,23 +1214,16 @@ byte check_board(void)
           //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
           //note : it will probably slow down things a lot do do that :-s
           //look left
-          /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
-            boards[current_player][gp_i-1][gp_j] |= FLAG;*/
+
           if (gp_i>0 && *(cell_address - 0xD) == OJAMA)
             *(cell_address - 0xD) |= FLAG;
-          //look right
-          /*if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
-            boards[current_player][gp_i+1][gp_j] |= FLAG*/
+          //look right         
           if (gp_i<5 && *(cell_address + 0xD) == OJAMA)
             *(cell_address + 0xD) |= FLAG;
           //look up
-          /*if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
-            boards[current_player][gp_i][gp_j-1] |= FLAG;*/
           if (gp_j>0 && *(cell_address - 1) == OJAMA)
             *(cell_address - 1) |= FLAG;
           //look down
-          /*if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
-            boards[current_player][gp_i][gp_j+1] |= FLAG;*/
           if (gp_j<12 && *(cell_address + 1) == OJAMA)
             *(cell_address + 1) |= FLAG;
         }
@@ -1187,7 +1232,7 @@ byte check_board(void)
       }
       cell_address = current_board_address + 0xD;
       tmp_cell_address = current_tmp_board_address + 0xF;
-    }
+    }*/
   }
   return tmp_counter_3;
 }
