@@ -302,7 +302,7 @@ const int note_table_tri[64] = {
 
 
 #define NOTE_TABLE note_table_49
-#define BASS_NOTE /*36*/ 12
+//#define BASS_NOTE /*36*/ 12*/
 
 byte music_index = 0;
 byte cur_duration = 0;
@@ -444,24 +444,35 @@ void play_music() {
       // fetch next byte in score
       byte note = next_music_byte();
       // is this a note?
-      if ((note & 0x80) == 0) {
+      if ((note & 0x80) == 0) 
+      {
+        //we can simplify that as we only use the PULSE for music, not the bass
+        //the bass sound good though, may change my mind later...
         // pulse plays higher notes, triangle for lower if it's free
-        if (note >= BASS_NOTE || (chs & 4)) {
+        //if (/*note >= BASS_NOTE ||*/ (chs & 4)) 
+        //{
           int period = NOTE_TABLE[note & 63];
           // see which pulse generator is free
-          if (!(chs & 1)) {
+          if (!(chs & 1))
+          {
             APU_PULSE_DECAY(0, period, DUTY_25, 2, 10);
             chs |= 1;
-          } else if (!(chs & 2)) {
+          } 
+          else if (!(chs & 2))
+          {
             APU_PULSE_DECAY(1, period, DUTY_25, 2, 10);
             chs |= 2;
           }
-        } else {
+        //}
+        /*else
+        {
           int period = note_table_tri[note & 63];
           APU_TRIANGLE_LENGTH(period, 15);
           chs |= 4;
-        }
-      } else {
+        }*/
+      }
+      else
+      {
         // end of score marker
         if (note == 0xff)
           music_ptr = NULL;
@@ -3429,11 +3440,26 @@ void main(void)
               step_p_counter[0] = 1;
               break;
             case 1:
-              //reset the graphics
-              ppu_off();
-              build_field();
-              ppu_on_all();
-              step_p_counter[0] = 2;
+              //reset the graphics => with a nice fade
+              /*if (step_p_counter[1] < 5)
+              {
+                pal_bright(4-step_p_counter[1]);
+              }
+              else if (step_p_counter[1] == 5)
+              {*/
+                ppu_off();
+              	build_field();
+              	ppu_on_all();
+              /*}
+              else if(step_p_counter[1] < 10)
+              {
+                pal_bright(step_p_counter[1]-5);
+              }
+              else //from 6 to
+              {*/
+                step_p_counter[0] = 2;
+              /*}
+              ++step_p_counter[1];*/
               break;
             case 2:
                //randomize new pairs
