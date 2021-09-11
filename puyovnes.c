@@ -2089,9 +2089,13 @@ void update_next()
   displayed_pairs[current_player][1] = displayed_pairs[current_player][3];
   displayed_pairs[current_player][2] = displayed_pairs[current_player][4];
   displayed_pairs[current_player][3] = displayed_pairs[current_player][5];*/
- 
-  gp_i = ((p_puyo_list_index[current_player]>>1)) & 0x3f; //3f == %64
-  gp_j = ((p_puyo_list_index[current_player]>>1) + 1) & 0x3f; //3f == %64
+  //sadly not, it is mindblowing but doing the computation here for each pair is faster than doing copy from array to array !
+  //using memmove(&current_displayed_pairs[0],&current_displayed_pairs[2],4); is slower too (but faster than manual copy)
+  
+
+  gp_k = p_puyo_list_index[current_player];
+  gp_i = ((gp_k>>1)) & 0x3f; //3f == %64
+  gp_j = ((gp_k>>1) + 1) & 0x3f; //3f == %64
   /* example because this is a bit tough
   256 puyos, 128 pairs, 64 bytes in puyo_list
   if puyo list[0] = 0xDA, puyo list[1] = 0x8D
@@ -2100,14 +2104,14 @@ void update_next()
   for index=1 we will display 1010 1000 1101
   so the third pair is always retrieved from on the (index>>1) + 1 position
   and either from the leftmost puyos if index is even, rightmost is odd.
-  the first one always takes index>>1 index and the second depends on parity
-  */
-  if (p_puyo_list_index[current_player] & 1)
+  the first one always takes index>>1 index and the second depends on parity*/
+ 
+  if (gp_k & 1)
   {
     current_displayed_pairs[0] = (puyo_list[gp_i] & 0xc) >> 2;
     current_displayed_pairs[1] = puyo_list[gp_i] & 0x3;
     current_displayed_pairs[2] = puyo_list[gp_j] >> 6;
-    current_displayed_pairs[3] = (puyo_list[gp_j] >> 4) & 0x3;
+    current_displayed_pairs[3] = (puyo_list[gp_j] >> 4) & 0x3; 
     //impair, we must take the 4 rightmost bits of p_puyo_list_index[current_player]+1
     current_displayed_pairs[4] = (puyo_list[gp_j] & 0xc) >> 2;
     current_displayed_pairs[5] = puyo_list[gp_j] & 0x3;
@@ -3550,7 +3554,6 @@ void main(void)
               p_puyo_list_index[0] = 0;
               p_puyo_list_index[1] = 0;//peut-être supprimer cet init de init_round du coup
               current_player = 1;
-              current_displayed_pairs = &displayed_pairs[current_player][0];
               update_next();
               current_player = 0;
               current_displayed_pairs = &displayed_pairs[current_player][0];
