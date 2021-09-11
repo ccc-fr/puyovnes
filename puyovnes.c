@@ -110,8 +110,8 @@ byte ia;
 
 /*byte seg_height;	// segment height in metatiles
 byte seg_width;		// segment width in metatiles*/
-byte seg_char;		// character to draw
-byte seg_palette;	// attribute table value
+//byte seg_char;		// character to draw
+//byte seg_palette;	// attribute table value
 
 byte current_player; // takes 0 or 1
 
@@ -2388,8 +2388,8 @@ void setup_graphics() {
    // clear vram buffer
   vrambuf_clear();
   set_vram_update(updbuf);
-  seg_palette = rand8() & 3;
-  seg_char = 0xe0;
+  //seg_palette = rand8() & 3;
+  //seg_char = 0xe0;
 }
 
 void handle_controler_and_sprites()
