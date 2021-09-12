@@ -70,6 +70,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 byte debug;
 byte ia;
 byte speed;
+byte enable_ac;
 //note on CellType: PUYO_RED is first and not EMPTY for 0, because it's matching the attribute table
 //(I think I will regret that decision later...)
 //enum replaced by #define as enum are int, 16 bits and slower
@@ -251,7 +252,7 @@ byte counter_falling_back_up[2];
 byte bg_tile;//address of top left, bottom left+1, top right+2, bottom right+4
 byte bg_pal;//0 color palette 0, 85 color palette 1 (4 couleur par octets, 0b01010101), 170 color palette 2 0b10101010, 255 color palette 3 0b11111111
 byte menu_pos_x;
-byte menu_pos_y[5];
+byte menu_pos_y[6];
 char str[32];
 byte current_damage_tiles[2][6];
 byte current_damage_tiles_index[2]; //the table indicate the player, the index is pointing at which current_damage_tiles we will fill.
@@ -301,8 +302,8 @@ const int note_table_49[64] = {
 */
 // Namespace(bias=-1.0, freq=55930.4, length=64, maxbits=12, upper=53)
 // 443.7 8.47550713772 53
-const int note_table_tri[64] = {
-2138, 2018, 1905, 1798, 1697, 1602, 1512, 1427, 1347, 1272, 1200, 1133, 1069, 1009, 953, 899, 849, 801, 756, 714, 674, 636, 601, 567, 535, 505, 477, 450, 425, 401, 379, 358, 338, 319, 301, 284, 268, 253, 239, 226, 213, 201, 190, 179, 169, 160, 151, 142, 135, 127, 120, 113, 107, 101, 95, 90, 85, 80, 76, 72, 68, 64, 60, 57, };
+//const int note_table_tri[64] = {
+//2138, 2018, 1905, 1798, 1697, 1602, 1512, 1427, 1347, 1272, 1200, 1133, 1069, 1009, 953, 899, 849, 801, 756, 714, 674, 636, 601, 567, 535, 505, 477, 450, 425, 401, 379, 358, 338, 319, 301, 284, 268, 253, 239, 226, 213, 201, 190, 179, 169, 160, 151, 142, 135, 127, 120, 113, 107, 101, 95, 90, 85, 80, 76, 72, 68, 64, 60, 57, };
 
 
 #define NOTE_TABLE note_table_49
@@ -372,6 +373,9 @@ const byte const shift[2] = {0,4};
 const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
 const byte const floor_y = /*190*/192;
 const byte next_columns_y[5] = {4,6,8,10,12};
+const byte const menu_y_step[6] = {40,40,40,40,24,24};
+const byte menu_y_step_nb[6] = {2,1,1,3,3,3};
+
 
 //menu logo
 //white points
@@ -414,6 +418,7 @@ byte destroy_board(void);
 void fall_board(void);
 void manage_point(void);
 void build_menu(void);
+void handle_menu_settings(void);
 void build_field(void);
 void setup_graphics(void);
 void handle_controler_and_sprites(void);
@@ -1514,13 +1519,14 @@ void fall_board()
             boards[current_player][4][12] == EMPTY &&
             boards[current_player][5][12] == EMPTY*/
           //changing from 3 dimensions to 1 saves 45 bytes and I hope some cycles.
-          //we point at [0][12], the bottom of the first column, so next bottom puyo is 13 further cells 
+          //we point at [0][12], the bottom of the first column, so next bottom puyo is 13 further cells
+          enable_ac &&
           gp_address[0] == EMPTY &&
           gp_address[13] == EMPTY &&
           gp_address[26] == EMPTY &&
+          gp_address[39] == EMPTY &&
           gp_address[52] == EMPTY &&
-          gp_address[65] == EMPTY &&
-          gp_address[78] == EMPTY        
+          gp_address[65] == EMPTY        
         )
         { 
           //all clear !
@@ -2214,14 +2220,14 @@ void build_menu()
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
   
-  put_str(NTADR_C(11,13), "Puyo VNES");
-  put_str(NTADR_C(4,15), "Border style  1  2  3  4");
-  put_str(NTADR_C(4,17), "Border color  1  2  3  4");
-  put_str(NTADR_C(4,19), "Music         O  1      ");
-  put_str(NTADR_C(4,21), "Color Blind Mode  0  1");
-  put_str(NTADR_C(4,23), "Speed         0  1");
-  put_str(NTADR_C(6,25), "Press start to begin!");
-  put_str(NTADR_C(9,26), "Alpha v20210830");
+  put_str(NTADR_C(3,13), "Puyo VNES Beta 12/09/2021");
+  put_str(NTADR_C(4,15), "Game Mode     1P   2P   Tr");
+  put_str(NTADR_C(4,17), "Music         0ff  On    ");
+  put_str(NTADR_C(4,19), "Speed         60Hz 50Hz");
+  put_str(NTADR_C(4,21), "Color Blind Mode  0ff  On");
+  put_str(NTADR_C(4,23), "Border style  1  2  3  4");
+  put_str(NTADR_C(4,25), "Border color  1  2  3  4");
+  put_str(NTADR_C(6,27), "Press start to begin!");
   
   //logo white points
   for (i = 2; i < 12; ++i)
@@ -2290,9 +2296,9 @@ void build_menu()
   }
   
   sprintf(str,"ccc 2021");
-  vram_adr(NTADR_C(11,27));
+  vram_adr(NTADR_C(11,28));
   vram_put(0x10);
-  vrambuf_put(NTADR_C(12,27),str,10);
+  vrambuf_put(NTADR_C(12,28),str,10);
  
 }
 
@@ -2389,7 +2395,7 @@ void build_field()
     // copy attribute table from PRG ROM to VRAM
     vram_write(attribute_table, sizeof(attribute_table));
     ppu_on_all();
-  }
+ }
   else if(step_p_counter[1] < 10)
   {
     pal_bright(step_p_counter[1]-5);
@@ -2920,6 +2926,42 @@ void handle_controler_and_sprites()
   previous_pad[current_player] = pad;
 }
 
+void handle_menu_settings()
+{
+  switch (menu_pos_x)
+  {
+    case 0: //Game mode
+      switch (menu_pos_y[menu_pos_x])
+      {
+        case 0: ia = 1; debug = 0;
+        case 1: ia = 0; debug = 0;
+        case 2: ia = 0; debug = 1;
+      }
+      break;
+    case 1: //music
+      music_selected_ptr = (menu_pos_y[menu_pos_x] & 0x1) ? music1:  NULL;
+      music_ptr = music_selected_ptr;
+      cur_duration = 0;
+      break;
+    case 2:  //game speed
+      speed = menu_pos_y[menu_pos_x];
+      break;
+    case 3: //color blind
+      blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
+      if (menu_pos_y[menu_pos_x] <= 1)
+        enable_ac = 1;
+      else
+        enable_ac = 0;
+      break;
+    case 4: //style
+      bg_tile = bg_tile_addr[menu_pos_y[menu_pos_x]];
+      break;
+    case 5: //bg color
+      bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
+      break;          
+  }
+}
+
 //check for the lowest column_height and put the pair there
 void ia_move()
 {
@@ -2964,28 +3006,27 @@ void main(void)
   //only for menu navigation
   menu_pos_x = 0;
   memset(menu_pos_y,0,sizeof(menu_pos_y));
-  /*menu_pos_y[0] = 0;
-  menu_pos_y[1] = 0;
-  menu_pos_y[2] = 0;
-  menu_pos_y[3] = 0;*/
-  actor_x[0][0] = 135;
-  actor_x[0][1] = 135;
-  actor_x[1][0] = 135;
-  actor_x[1][1] = 165;
-  actor_x[2][0] = 135;
+  actor_x[0][0] = 136;
+  actor_x[0][1] = 136;
+  actor_x[1][0] = 136;
+  actor_x[1][1] = 166;
+  actor_x[2][0] = 136;
+  actor_x[2][1] = 136;
   actor_y[0][0] = 119;
   actor_y[0][1] = 135;
   actor_y[1][0] = 151;
   actor_y[1][1] = 167;
   actor_y[2][0] = 183;
+  actor_y[2][1] = 199;
   check_all_column_list[0] = 0;
   check_all_column_list[1] = 0;
   input_delay_PAD_LEFT[0] = 0; //to prevent multiple inputs
   bg_tile = bg_tile_addr[0];
   bg_pal = 0;
   blind_offset = 0;
-  ia = 0;
+  ia = 1;
   speed = 0;
+  enable_ac = 1;
   //pointers
   //the address of the boards, will be usefull in fall_board()
   board_address = &boards[0][0][0];
@@ -3082,7 +3123,7 @@ void main(void)
           }
           continue;
         }
-        if ((pad&PAD_DOWN) && menu_pos_x < 4 && input_delay_PAD_LEFT[0] == 0)
+        if ((pad&PAD_DOWN) && menu_pos_x < 5 && input_delay_PAD_LEFT[0] == 0)
         {  
            ++menu_pos_x;
            input_delay_PAD_LEFT[0] = 8;
@@ -3092,81 +3133,21 @@ void main(void)
           --menu_pos_x;
           input_delay_PAD_LEFT[0] = 8;
         }
-        if ((pad&PAD_RIGHT) && menu_pos_y[menu_pos_x] < 3 && input_delay_PAD_LEFT[0] == 0)
+        if ((pad&PAD_RIGHT) && menu_pos_y[menu_pos_x] < menu_y_step_nb[menu_pos_x] && input_delay_PAD_LEFT[0] == 0)
         {
           ++menu_pos_y[menu_pos_x];
           //actor_x[menu_pos_x/2][menu_pos_x%2] += 24;
-          gp_address[menu_pos_x] +=24;
+          gp_address[menu_pos_x] += menu_y_step[menu_pos_x];
           input_delay_PAD_LEFT[0] = 8;
-          switch (menu_pos_x)
-          {
-            case 0: //style
-              bg_tile = bg_tile_addr[menu_pos_y[menu_pos_x]];
-              break;
-            case 1: //palette
-              bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
-              break;
-            case 2: //music
-              music_selected_ptr = (menu_pos_y[menu_pos_x] & 0x1) ? music1:  NULL;
-              music_ptr = music_selected_ptr;
-              cur_duration = 0;
-              if (menu_pos_y[menu_pos_x] & 0x2)
-                debug = 1;
-              else
-                debug = 0;
-              break;
-            case 3: //color blind
-              blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
-              if (menu_pos_y[menu_pos_x] & 0x2)
-                ia = 1;
-              else
-                ia = 0;
-              break;
-            case 4:
-              if (menu_pos_y[menu_pos_x] & 0x1)
-                speed = 1;
-              else
-                speed = 0;
-              break;          
-          }
+          handle_menu_settings();
         }
         if (pad& PAD_LEFT && menu_pos_y[menu_pos_x] > 0 && input_delay_PAD_LEFT[0] == 0)
         {
           --menu_pos_y[menu_pos_x];
           //actor_x[menu_pos_x/2][menu_pos_x%2] -= 24;
-          gp_address[menu_pos_x] -=24;
+          gp_address[menu_pos_x] -=menu_y_step[menu_pos_x];
           input_delay_PAD_LEFT[0] = 8;
-          switch (menu_pos_x)
-          {
-            case 0: //style
-              bg_tile = bg_tile_addr[menu_pos_y[menu_pos_x]];
-              break;
-            case 1: //palette
-              bg_pal = menu_pos_y[menu_pos_x] + (menu_pos_y[menu_pos_x]<<2) + (menu_pos_y[menu_pos_x]<<4) + (menu_pos_y[menu_pos_x]<<6);
-              break;
-            case 2: //music
-              music_selected_ptr = (menu_pos_y[menu_pos_x]& 0x1) ? music1:  NULL;
-              music_ptr = music_selected_ptr;
-              cur_duration = 0;
-              if (menu_pos_y[menu_pos_x] & 0x2)
-                debug = 1;
-              else
-                debug = 0;
-              break;
-            case 3: //color blind
-              blind_offset = (menu_pos_y[menu_pos_x]%2) << 2;
-              if (menu_pos_y[menu_pos_x] & 0x2)
-                ia = 1;
-              else
-                ia = 0;
-              break;
-            case 4:
-              if (menu_pos_y[menu_pos_x] & 0x1)
-                speed = 1;
-              else
-                speed = 0;
-              break;
-          }
+          handle_menu_settings();
         }
         // menu's sprites
         //  set sprite in OAM buffer, chrnum is tile, attr is attribute, sprid is offset in OAM in bytes
@@ -3175,7 +3156,7 @@ void main(void)
 					unsigned char chrnum, unsigned char attr,
 					unsigned char sprid);*/
         oam_id = oam_spr(16, actor_y[0][0]+16*menu_pos_x, 0xAE, 0, oam_id );
-        for ( i = 0; i < 5; ++i)
+        for ( i = 0; i < 6; ++i)
           oam_id = oam_spr(gp_address[i], gp_address_2[i], 0xAF, 0, oam_id);
         /*oam_id = oam_spr(actor_x[0][0], actor_y[0][0], 0xAF, 0, oam_id);
         oam_id = oam_spr(actor_x[0][1], actor_y[0][1], 0xAF, 0, oam_id);
