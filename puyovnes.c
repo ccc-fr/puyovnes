@@ -2933,9 +2933,18 @@ void handle_menu_settings()
     case 0: //Game mode
       switch (menu_pos_y[menu_pos_x])
       {
-        case 0: ia = 1; debug = 0;
-        case 1: ia = 0; debug = 0;
-        case 2: ia = 0; debug = 1;
+        case 0: 
+          ia = 1;
+          debug = 0;
+          break;
+        case 1: 
+          ia = 0;
+          debug = 0;
+          break;
+        case 2:
+          ia = 0;
+          debug = 1;
+          break;
       }
       break;
     case 1: //music
