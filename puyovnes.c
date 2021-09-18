@@ -2690,12 +2690,12 @@ void handle_controler_and_sprites()
       tmp_counter = current_column_height[gp_k]; // column height below the puyo
       
       if (gp_k == 0) //we are at the leftmost column, so the wall is nearby
-        tmp_counter_2 = 0xF0; // 0xFO is our test to "max height" => wall height
+        tmp_counter_2 = 0xE0; // 0xFO is our test to "max height" => wall height
       else
         tmp_counter_2 = current_column_height[gp_k-1]; //column height left to the puyo
       
       if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
-        tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
+        tmp_counter_3 = 0xE0; // 0xFO is our test to "max height"=> wall height
       else
         tmp_counter_3 = current_column_height[gp_k+1]; 
       
@@ -2750,7 +2750,7 @@ void handle_controler_and_sprites()
         }
       }
       //else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
-      else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY)  )
+      else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY) )
       {
         if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
         {
@@ -2917,11 +2917,11 @@ void handle_controler_and_sprites()
     step_p_counter[0] = 255;
     actor_dx[1][0] = -1;
   }
-  if (pad&PAD_SELECT)
+  /*if (pad&PAD_SELECT)
   {
     play_bayoen();
     ojamas[0] = 210;
-  }
+  }*/
   
   previous_pad[current_player] = pad;
 }
