@@ -262,6 +262,9 @@ char i,j;	// actor index
 //global indexes and variable to avoid declaring them each time
 //gp=>general purpose, sorry I am bad at naming things
 byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y, tmp_color;
+//the height in number of ojama
+byte column_height_in_ojama, puyo_height_in_ojama;
+
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
 unsigned long int tmp_score[2], tmp_score2[2];
@@ -280,6 +283,7 @@ const byte mod_6_lookup[]; //used in fall_board
 //const byte div_12_look_up[]; no need for this one now, it's /6 and the result should be divided by >>1
 const byte mod_12_lookup[];
 const byte div_13_lookup[];
+const byte px_2_puyos[];
 
 //
 // MUSIC ROUTINES
@@ -3258,17 +3262,28 @@ void main(void)
           //ie when puyos are on the same X but different y, and only when the puyo considered is on top of the other
           //it will give us an offset that we can apply later in our test
           
+          // gérer les pixels c'est pénible !
+          //convertir la hauteur de la colonne de px à nombre de puyo pour simplifier toute la suite.
+          //byte column_height_in_ojama, puyo_height_in_ojama;
+          //F0 => 13, 00 => 12,  10 =>11, 20 => 10, 30 =>9, 40 => 8, 50 =>7, 60=>6, 70=>5, 80=>4, 90=>3, A0=>2, B0=>1, C0=>0
+          //à mettre dans un tableau ? si on divise pas 16 (0x10) C0=> C et CF =>C...
+          if (i == 0)
+            column_height_in_ojama = px_2_puyos[gp_i>>4];
+          else
+            column_height_in_ojama = px_2_puyos[gp_j>>4];
+          
+          
           column_height_offset = 0;
           if (current_actor_x[0] == current_actor_x[1])
           {
             if (i == 0)
             {
-              if (current_actor_y[i] < current_actor_y[1])
+              if (current_actor_y[0] < current_actor_y[1])
                 column_height_offset = 16;
             } 
             else
             {
-              if (current_actor_y[i] < current_actor_y[0])
+              if (current_actor_y[1] < current_actor_y[0])
                 column_height_offset = 16;
             }    
           }
@@ -3957,3 +3972,6 @@ const byte div_13_lookup[]={0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,
                             2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,
                             4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,
                             6,6,6,6,6};
+// The px must be divided by 16 (0x10) to give the index as C0/0x10 == C  and CF/10 == C too 
+//F0 => 13, 00 => 12,  10 =>11, 20 => 10, 30 =>9, 40 => 8, 50 =>7, 60=>6, 70=>5, 80=>4, 90=>3, A0=>2, B0=>1, C0=>0
+const byte px_2_puyos[]={12,11,10,9,8,7,6,5,4,3,2,1,0,0,13,13};
