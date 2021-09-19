@@ -263,7 +263,7 @@ char i,j;	// actor index
 //gp=>general purpose, sorry I am bad at naming things
 byte gp_i, gp_j, gp_k, tmp_counter, tmp_counter_2, tmp_counter_3, tmp_mask, tmp_attr, tmp_index, attr_x, attr_y, tmp_color;
 //the height in number of ojama
-byte column_height_in_ojama, puyo_height_in_ojama;
+byte column_height_in_ojama[2], puyo_height_in_ojama[2];
 
 /*register*/ word addr; //the compiler don't want to put that into register, will I lose some speed ?
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
@@ -3221,6 +3221,10 @@ void main(void)
         gp_i = current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player]];
         //column_height of actor_x[current_player][1]
         gp_j = current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player]];
+        column_height_in_ojama[0] = px_2_puyos[gp_i>>4];
+        column_height_in_ojama[1] = px_2_puyos[gp_j>>4];
+        puyo_height_in_ojama[0] = px_2_puyos[current_actor_y[0]>>4];
+        puyo_height_in_ojama[1] = px_2_puyos[current_actor_y[1]>>4];
         
         for (i = 0 ; i < 2 ; ++i)
         {
@@ -3267,46 +3271,28 @@ void main(void)
           //byte column_height_in_ojama, puyo_height_in_ojama;
           //F0 => 13, 00 => 12,  10 =>11, 20 => 10, 30 =>9, 40 => 8, 50 =>7, 60=>6, 70=>5, 80=>4, 90=>3, A0=>2, B0=>1, C0=>0
           //à mettre dans un tableau ? si on divise pas 16 (0x10) C0=> C et CF =>C...
-          if (i == 0)
-            column_height_in_ojama = px_2_puyos[gp_i>>4];
-          else
-            column_height_in_ojama = px_2_puyos[gp_j>>4];
-          
-          
+
           column_height_offset = 0;
           if (current_actor_x[0] == current_actor_x[1])
           {
             if (i == 0)
             {
-              if (current_actor_y[0] < current_actor_y[1])
-                column_height_offset = 16;
+              if (puyo_height_in_ojama[0] > puyo_height_in_ojama[1]) // lowest puyo is 1, so column height artificially raised by 1
+                column_height_offset = 1;
             } 
             else
             {
-              if (current_actor_y[1] < current_actor_y[0])
-                column_height_offset = 16;
+              if (puyo_height_in_ojama[1] > puyo_height_in_ojama[0]) // lowest puyo is 0, so column height artificially raised by 1
+                column_height_offset = 1;
             }    
           }
           
-          if (/*actor_dy[current_player][i] != 0 &&*/
-              (((current_column_height[(current_actor_x[i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < current_actor_y[i]))
+          if (
+              //(((current_column_height[(current_actor_x[i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < current_actor_y[i]))
+              (column_height_in_ojama[i] + column_height_offset) >= puyo_height_in_ojama[i]
              )
           {
-            //if one puyo is blocked then both must be as we will start the grace_period
-            //actor_dy[current_player][i] = 0; 
-            /*actor_dy[current_player][0] = 0; 
-            actor_dy[current_player][1] = 0; */
             tmp_counter += 1 << i; //power of two to know if something is below or not, usefull for fall animation
-            //pas la peine de réinit la hauteur, on le fera après
-            //actor_y[current_player][i] = column_height[current_player][(actor_x[current_player][i] >> 4) - pos_x_offset[current_player]] + column_height_offset;
-            
-            //on ne changera la hauteur de la colonne qu'une fois les puyos fixés !
-            /*
-            column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] -= 16;
-            //Ne fonctionne bizarrement pas ! 
-            if ((column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] > floor_y)  ||  ((column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]])  <= 0) )
-              column_height[current_player][(actor_x[current_player][i]>>4) - pos_x_offset[current_player]] = 0;
-            */
           }
           else
           {
