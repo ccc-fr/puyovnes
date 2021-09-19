@@ -2502,30 +2502,34 @@ void handle_controler_and_sprites()
   
   //with puyo side to each other, we need only the height of the column below [1]
   gp_k = (current_actor_x[1] >> 4) - pos_x_offset[current_player]; //column_index
-  tmp_counter = current_column_height[gp_k]; // column height below the puyo
+  //tmp_counter = current_column_height[gp_k]; // column height below the puyo
+  tmp_counter = px_2_puyos[current_column_height[gp_k] >> 4]; // column height below the puyo expressed in puyo
   
-  gp_i = current_actor_y[1];
+  //gp_i = current_actor_y[1];
+  gp_i = px_2_puyos[current_actor_y[1] >> 4]; // puyo height expressed in puyo
   
   if (current_actor_x[0] < current_actor_x[1])
   {
     //[0] is left to [1]
     //tmp_counter_2, indicating the height of the column to the left of [0] is then in gp_k-2, so column 0 or above only accessible for gp_k>=2, otherwise wall height
     if (gp_k >= 2)
-      tmp_counter_2 = current_column_height[gp_k-2];
+      //tmp_counter_2 = current_column_height[gp_k-2];
+      tmp_counter_2 = px_2_puyos[current_column_height[gp_k-2] >> 4];
     else
-      tmp_counter_2 = 0xF0;
+      tmp_counter_2 = 20;//20 is above anything, the value itself doesn't really matter
     //same thinking behind the right column, only got one if gp_k != 5
     if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
-      tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
+      //tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
+      tmp_counter_3 = 20; 
     else
-      tmp_counter_3 = current_column_height[gp_k+1];
+      //tmp_counter_3 = current_column_height[gp_k+1];
+      tmp_counter_3 = px_2_puyos[current_column_height[gp_k+1] >> 4]; //  we should store the column_height as puyos number to avoid conversion
     
     //left/right, shift by 128px, <<7, for p2
     if ( pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY))
     {
-      //add a bit of delay before going again to left
-      //if ((current_actor_x[0] > (16+(current_player<<7))) && (current_actor_y[0] <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]))
-      if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+      //if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+      if (gp_i > tmp_counter_2)
       {
         current_actor_x[0] -= 16;
         current_actor_x[1] -= 16;
@@ -2537,13 +2541,13 @@ void handle_controler_and_sprites()
           tmp_counter_2 = 0xF0;
         tmp_counter_3 = tmp_counter;*/
        //tmp_counter_2 et tmp_counter_3 ne sont pas utilisés dans la suite
-        tmp_counter = current_column_height[gp_k];
+        tmp_counter = px_2_puyos[current_column_height[gp_k] >> 4];
       }
     }
     else if ( pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY))
     {
-      //if ((current_actor_x[1] < (96+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player] + 1]))
-      if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+      //if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+      if (gp_i > tmp_counter_3)
       {
         current_actor_x[0] += 16;
         current_actor_x[1] += 16;
@@ -2555,7 +2559,8 @@ void handle_controler_and_sprites()
           tmp_counter_3 = current_column_height[gp_k+1];
         tmp_counter_2 = current_column_height[gp_k-2];*/
         //tmp_counter_2 et tmp_counter_3 ne sont pas utilisés dans la suite
-        tmp_counter = current_column_height[gp_k]; // devrait être égal à tmp_counter_3 si on veut sauver des cycles.
+        //tmp_counter = current_column_height[gp_k]; // devrait être égal à tmp_counter_3 si on veut sauver des cycles.
+        tmp_counter = px_2_puyos[current_column_height[gp_k] >> 4];
       }
     }
 
@@ -2563,7 +2568,7 @@ void handle_controler_and_sprites()
     //so with index at 0 (0 p1, 2 p2)
     if (pad&PAD_B && input_delay_PAD_B[current_player] == 0)
     { 
-      //here as puyo[0] < puyo[1] we are at the left, if we press
+      //here as puyo_x[0] < puyo_x[1] we are at the left, if we press
       //B the puyo will go under the 2nd puyo
       //the delay has to be at 0, because we don't want it to turn automatically
       //you have to press each time        
@@ -2576,6 +2581,7 @@ void handle_controler_and_sprites()
       //kind of "ground kick" or "floor" kick
       //seriously not optimized :-/
       //if ((current_actor_y[0] > current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
+      /*
       if ((current_actor_y[0] > 0xD0 && tmp_counter <= 0xC0) || (current_actor_y[0] < 0xD0 && tmp_counter > 0xD0) )
       {// the puyo and height are split between 0 and F0, which makes the bigger above and not below
         // if the column height is above 0xC0 then it is above we don't need to kick
@@ -2592,6 +2598,12 @@ void handle_controler_and_sprites()
           current_actor_y[0] = tmp_counter;
           current_actor_y[1] = current_actor_y[0] - 16;
         }
+      }*/
+      
+      if (px_2_puyos[current_actor_y[0] >> 4] <= tmp_counter)
+      {
+        current_actor_y[0] -= 16;
+        current_actor_y[1] = current_actor_y[0] - 16;
       }
       
     }
@@ -2599,49 +2611,48 @@ void handle_controler_and_sprites()
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
-      /*actor_dx[current_player][0] = actor_x[current_player][0];*/
       current_actor_y[0] -= 16;
       current_actor_x[0] += 16;
     }   
   }
   else
   {
-
     if (current_actor_x[0] != current_actor_x[1])
     {
       //[0] is right to [1]
       //tmp_counter_3, indicating the height of the column to the right of [0] is then in gp_k+2, so column 5 or lower only accessible for gp_k<=3, otherwise wall height
       if (gp_k <= 3)
-        tmp_counter_3 = current_column_height[gp_k+2];
+        tmp_counter_3 = px_2_puyos[current_column_height[gp_k+2] >> 4];
       else
-        tmp_counter_3 = 0xF0;
+        tmp_counter_3 = 20;
       //same thinking behind the left column, only got one if gp_k != 0
       if (gp_k == 0) //we are at the rightmost column, so the wall is nearby
-        tmp_counter_2 = 0xF0; // 0xFO is our test to "max height"=> wall height
+        tmp_counter_2 = 20; // 20 is not reachable so perfect for wall height
       else
-        tmp_counter_2 = current_column_height[gp_k-1];
+        tmp_counter_2 = px_2_puyos[current_column_height[gp_k-1] >> 4];
       
       //actor_x i is more to the right than actor_x i+1
       //going left or right
       if (pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY))
       {
-        //if ((actor_x[current_player][1] > (16+(current_player<<7))) && (current_actor_y[1] <= current_column_height[(actor_x[current_player][1] >> 4) - pos_x_offset[current_player] - 1]))
-        if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+        // if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+        if (gp_i > tmp_counter_2)
         {
           current_actor_x[0] -= 16;
           current_actor_x[1] -= 16;
           --gp_k;
-          tmp_counter = current_column_height[gp_k]; //techniquement c'est tmp_counter_2 si on veut sauver des cycles...
+          tmp_counter = px_2_puyos[current_column_height[gp_k] >> 4]; //techniquement c'est tmp_counter_2 si on veut sauver des cycles...
         }
       }
       else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY))
       {
-        if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+        //if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+        if (gp_i > tmp_counter_3)
         {
           current_actor_x[0] += 16;
           current_actor_x[1] += 16;
           ++gp_k;
-          tmp_counter = current_column_height[gp_k];
+          tmp_counter = px_2_puyos[current_column_height[gp_k] >>4 ];
         }
       }
 
@@ -2665,7 +2676,7 @@ void handle_controler_and_sprites()
         //we need to raise both puyo above the topmost puyo of the column (or the ground)
         //kind of "ground kick" or "floor" kick
         //seriously not optimized :-/
-        if ((current_actor_y[0] > 0xD0 && tmp_counter <= 0xC0) || (current_actor_y[0] < 0xD0 && tmp_counter > 0xD0) )
+        /*if ((current_actor_y[0] > 0xD0 && tmp_counter <= 0xC0) || (current_actor_y[0] < 0xD0 && tmp_counter > 0xD0) )
         {  // the puyo and height are split between 0 and F0, which makes the bigger above and not below
           // if the column height is above 0xC0 then it is above we don't need to kick
           if ((tmp_counter <= 0xC0) && ((current_actor_y[0]+16) >= (tmp_counter + 1)))
@@ -2682,6 +2693,11 @@ void handle_controler_and_sprites()
             current_actor_y[0] = tmp_counter;
             current_actor_y[1] = current_actor_y[0] - 16;
           }
+        }*/
+        if (px_2_puyos[current_actor_y[0] >> 4] <= tmp_counter)
+        {
+          current_actor_y[0] -= 16;
+          current_actor_y[1] = current_actor_y[0] - 16;
         }
       }   
     }
@@ -2690,19 +2706,19 @@ void handle_controler_and_sprites()
       //left or right movement with both actor on the same x
       //need to determine which one is the lowest/highest
       //and the column_height of current x, x before and x after
-      gp_k = (current_actor_x[0] >> 4) - pos_x_offset[current_player];
-      tmp_counter = current_column_height[gp_k]; // column height below the puyo
+      gp_k = (current_actor_x[0] >> 4) - pos_x_offset[current_player]; //column_index
+      tmp_counter = px_2_puyos[current_column_height[gp_k] >> 4]; // column height below the puyo
       
       if (gp_k == 0) //we are at the leftmost column, so the wall is nearby
-        tmp_counter_2 = 0xE0; // 0xFO is our test to "max height" => wall height
+        tmp_counter_2 = 20; // 20 is our test to "max height" => wall height
       else
-        tmp_counter_2 = current_column_height[gp_k-1]; //column height left to the puyo
+        tmp_counter_2 = px_2_puyos[current_column_height[gp_k-1] >> 4]; //column height left to the puyo
       
       if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
-        tmp_counter_3 = 0xE0; // 0xFO is our test to "max height"=> wall height
+        tmp_counter_3 = 20; // 20 is our test to "max height"=> wall height
       else
-        tmp_counter_3 = current_column_height[gp_k+1]; 
-      
+        tmp_counter_3 = px_2_puyos[current_column_height[gp_k+1] >> 4]; 
+      // TODO !!!!!!!!!!!!!!!!!!!!!!
       // ne pas oublier que la valeur la plus petite est en fait la plus haute.
       // donc si [0] < [1] alors [0] est plus haut que [1]  
       // not enough !
