@@ -66,6 +66,7 @@ la liste qui en résulte est la suite de paires qu'on aura : les deux premiers f
 //So we need an array length of 64 bytes/char to stock everything, amazing !
 #define PUYOLISTLENGTH 64
 #define DEBUG 0 // Currently P2 game is broken, need to check why.
+#define WALL_HEIGHT 20 //for test during the handle_controller stage
 /// GLOBAL VARIABLES
 byte debug;
 byte ia;
@@ -2516,11 +2517,11 @@ void handle_controler_and_sprites()
       //tmp_counter_2 = current_column_height[gp_k-2];
       tmp_counter_2 = px_2_puyos[current_column_height[gp_k-2] >> 4];
     else
-      tmp_counter_2 = 20;//20 is above anything, the value itself doesn't really matter
+      tmp_counter_2 = WALL_HEIGHT;//20 is above anything, the value itself doesn't really matter
     //same thinking behind the right column, only got one if gp_k != 5
     if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
       //tmp_counter_3 = 0xF0; // 0xFO is our test to "max height"=> wall height
-      tmp_counter_3 = 20; 
+      tmp_counter_3 = WALL_HEIGHT; 
     else
       //tmp_counter_3 = current_column_height[gp_k+1];
       tmp_counter_3 = px_2_puyos[current_column_height[gp_k+1] >> 4]; //  we should store the column_height as puyos number to avoid conversion
@@ -2624,10 +2625,10 @@ void handle_controler_and_sprites()
       if (gp_k <= 3)
         tmp_counter_3 = px_2_puyos[current_column_height[gp_k+2] >> 4];
       else
-        tmp_counter_3 = 20;
+        tmp_counter_3 = WALL_HEIGHT;
       //same thinking behind the left column, only got one if gp_k != 0
       if (gp_k == 0) //we are at the rightmost column, so the wall is nearby
-        tmp_counter_2 = 20; // 20 is not reachable so perfect for wall height
+        tmp_counter_2 = WALL_HEIGHT; // 20 is not reachable so perfect for wall height
       else
         tmp_counter_2 = px_2_puyos[current_column_height[gp_k-1] >> 4];
       
@@ -2710,21 +2711,33 @@ void handle_controler_and_sprites()
       tmp_counter = px_2_puyos[current_column_height[gp_k] >> 4]; // column height below the puyo
       
       if (gp_k == 0) //we are at the leftmost column, so the wall is nearby
-        tmp_counter_2 = 20; // 20 is our test to "max height" => wall height
+        tmp_counter_2 = WALL_HEIGHT; // 20 is our test to "max height" => wall height
       else
         tmp_counter_2 = px_2_puyos[current_column_height[gp_k-1] >> 4]; //column height left to the puyo
       
       if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
-        tmp_counter_3 = 20; // 20 is our test to "max height"=> wall height
+        tmp_counter_3 = WALL_HEIGHT; // 20 is our test to "max height"=> wall height
       else
         tmp_counter_3 = px_2_puyos[current_column_height[gp_k+1] >> 4]; 
-      // TODO !!!!!!!!!!!!!!!!!!!!!!
       // ne pas oublier que la valeur la plus petite est en fait la plus haute.
       // donc si [0] < [1] alors [0] est plus haut que [1]  
       // not enough !
+      // the lower is the one to check/keep
+      if (px_2_puyos[current_actor_y[0] >> 4] < px_2_puyos[current_actor_y[1] >> 4])
+      {
+        gp_i = px_2_puyos[current_actor_y[0] >> 4]; //1 is above 0
+        gp_j = 0;// boolean to indicate that 1 is above 0
+      }
+      else
+      {
+        gp_i = px_2_puyos[current_actor_y[1] >> 4];  //1 is below 0
+        gp_j = 1;// boolean to indicate that 1 is below 0
+      }
+      
+      /*
       if ((current_actor_y[0] < 0xD0 && current_actor_y[1] <0xD0) || (current_actor_y[0] > 0xD0 && current_actor_y[1] > 0xD0))
       {
-        if (current_actor_y[0] < current_actor_y[1] /*&& (current_actor_y[0] - current_actor_y[1] == 16)*/ )
+        if (current_actor_y[0] < current_actor_y[1] *//*&& (current_actor_y[0] - current_actor_y[1] == 16)*//* )
         {  
           gp_i = current_actor_y[1]; //1 is below 0
           gp_j = 1;// boolean to indicate that 0 is inferior to one
@@ -2748,13 +2761,14 @@ void handle_controler_and_sprites()
           gp_i = current_actor_y[0]; //0 is below 1
           gp_j = 0;// boolean to inidicate than 1 is inferior to 0
         }
-      }
+      }*/
       
       //as the height as been computed before we don't need to check for wall anymore
       //if (pad&PAD_LEFT && (current_actor_x[0] > (16+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] - 1]) )
       if (pad&PAD_LEFT && (input_delay_PAD_LEFT[current_player] == 0 || input_delay_PAD_LEFT[current_player] > INPUT_DIRECTION_DELAY) )
       {
-        if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0 ) || (gp_i > 0xD0))) // the + 1 is to compensate the test being value < floor somewhere else, maybe to adjust later
+        //if ((gp_i <= (tmp_counter_2 + 1)) && ((tmp_counter_2 < 0xD0 && gp_i < 0xD0 ) || (gp_i > 0xD0)))
+        if (gp_i > tmp_counter_2)// the + 1 is to compensate the test being value < floor somewhere else, maybe to adjust later
         {
           current_actor_x[0] -= 16;
           current_actor_x[1] -= 16;
@@ -2764,15 +2778,15 @@ void handle_controler_and_sprites()
           tmp_counter = tmp_counter_2;
           --gp_k;
           if (gp_k == 0) //we are at the leftmost column, so the wall is nearby
-            tmp_counter_2 = 0xF0; // 0xFO is our test to "max height" => wall height
+            tmp_counter_2 = WALL_HEIGHT;
           else
-            tmp_counter_2 = current_column_height[gp_k-1]; //column height left to the puyo
+            tmp_counter_2 = px_2_puyos[current_column_height[gp_k-1] >> 4]; //column height left to the puyo
         }
       }
       //else if (pad&PAD_RIGHT && (current_actor_x[0] < (96+(current_player<<7))) && (gp_i <= current_column_height[(current_actor_x[0] >> 4) - pos_x_offset[current_player] + 1]) )
       else if (pad&PAD_RIGHT && (input_delay_PAD_RIGHT[current_player] == 0 || input_delay_PAD_RIGHT[current_player] > INPUT_DIRECTION_DELAY) )
       {
-        if ((gp_i <= (tmp_counter_3 + 1)) && ((tmp_counter_3 < 0xD0 && gp_i < 0xD0) || (gp_i > 0xD0)))
+        if (gp_i > tmp_counter_3)
         {
           current_actor_x[0] += 16;
           current_actor_x[1] += 16;
@@ -2782,9 +2796,9 @@ void handle_controler_and_sprites()
           tmp_counter = tmp_counter_3;
           ++gp_k;
           if (gp_k == 5) //we are at the rightmost column, so the wall is nearby
-            tmp_counter_3 = 0xF0; // 0xFO is our test to "max height" => wall height
+            tmp_counter_3 = WALL_HEIGHT;
           else
-            tmp_counter_3 = current_column_height[gp_k+1]; //column height left to the puyo
+            tmp_counter_3 = px_2_puyos[current_column_height[gp_k+1] >> 4]; //column height left to the puyo
         }
       }
       
@@ -2793,8 +2807,7 @@ void handle_controler_and_sprites()
       if (pad&PAD_B && input_delay_PAD_B[current_player] == 0)
       { 
         //we need to know if puyo[0] is above or below puyo[1]
-        // the lowest value is higher on the screen !
-        if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/)
+        if (gp_j)
         {
           //going from up to left
           ///are we on the side left side?
@@ -2811,7 +2824,7 @@ void handle_controler_and_sprites()
            here gp_i is that lowest
           */
           //if (current_actor_x[0] == (16+(current_player<<7)))
-          if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0))) ///!!!!!!!!!!ce test serait pas bon ?
+          if (gp_i > tmp_counter_2)
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] += 16;         
@@ -2819,7 +2832,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+            if (gp_i > tmp_counter_3)
             {
               current_actor_x[1] += 16;
               current_actor_y[0] += 16;
@@ -2828,15 +2841,16 @@ void handle_controler_and_sprites()
             {
               //Can't wall kick ! So we are just inverting colors
               current_actor_y[1] = current_actor_y[0];
-              current_actor_y[0] = gp_i; //gp_i was equal to current_actor_y[1] in that scenario 
+              current_actor_y[0] += 16; // 0 was above and need to go lower so we add 16 
             }
           }
         }
         else
         {  //going down to right, the test is different, basically if the column is front of the above puyo is free then we can go, otherwise wk
           //so we have to increment gp_i to match with the above puyo, not the lowest
-          gp_i -= 16;
-          if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+          //gp_i -= 16;
+          ++gp_i;// raising the puyo height from below
+          if (gp_i > tmp_counter_3)
           {
             current_actor_x[0] += 16;
             current_actor_y[0] -= 16;   
@@ -2844,29 +2858,29 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the left !
-            if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+            if (gp_i > tmp_counter_2)
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] -= 16;
             }
-            else
+            else //inverting colors
             {
               current_actor_y[1] = current_actor_y[0];
-              current_actor_y[0] -= 16/*gp_i*/; //gp_i was equal to current_actor_y[1] in that scenario 
+              current_actor_y[0] -= 16; // 0 is going above 1, so pixel value is reduced
             }
           }
         }
       }
       if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
-        if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/)
+        if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/) //1 is below ?
         {
           // going from up to right
           /*
            you can only go right if the lowest puyo is above the "free space" on right column, otherwise it will wall kick
            here gp_i is that lowest
           */
-          if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+          if (gp_i > tmp_counter_3)
           {
             current_actor_x[0] += 16;
             current_actor_y[0] += 16;         
@@ -2874,7 +2888,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+            if (gp_i > tmp_counter_2)
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] += 16;
@@ -2883,7 +2897,7 @@ void handle_controler_and_sprites()
             {
               //Can't wall kick ! So we are just inverting colors
               current_actor_y[1] = current_actor_y[0];
-              current_actor_y[0] = gp_i; //gp_i was equal to current_actor_y[1] in that scenario 
+              current_actor_y[0] += 16; //from up to down
             }
           }
         }
@@ -2891,8 +2905,9 @@ void handle_controler_and_sprites()
         {
           //going down to left, the test is different, basically if the column is front of the above puyo is free then we can go, otherwise wk
           //so we have to increment gp_i to match with the above puyo, not the lowest
-          gp_i -= 16;
-          if ((gp_i <= tmp_counter_2 + 1) && ((tmp_counter_2 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+          //gp_i -= 16;
+          ++gp_i;
+          if (gp_i > tmp_counter_2)
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] -= 16;   
@@ -2900,7 +2915,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if ((gp_i <= tmp_counter_3 + 1) && ((tmp_counter_3 < 0xD0 && gp_i< 0xD0) || (gp_i> 0xD0)))
+            if (gp_i > tmp_counter_3)
             {
               current_actor_x[1] += 16;
               current_actor_y[0] -= 16;
@@ -2908,7 +2923,7 @@ void handle_controler_and_sprites()
             else
             {
               current_actor_y[1] = current_actor_y[0];
-              current_actor_y[0] -= 16/*gp_i*/; //gp_i was equal to current_actor_y[1] in that scenario 
+              current_actor_y[0] -= 16;// 0 move up so it's value is reduced
             }
           }
         }   
