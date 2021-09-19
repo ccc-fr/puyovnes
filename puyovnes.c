@@ -2824,7 +2824,7 @@ void handle_controler_and_sprites()
            here gp_i is that lowest
           */
           //if (current_actor_x[0] == (16+(current_player<<7)))
-          if (gp_i > tmp_counter_2)
+          if (gp_i >= tmp_counter_2)
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] += 16;         
@@ -2832,7 +2832,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (gp_i > tmp_counter_3)
+            if (gp_i >= tmp_counter_3)
             {
               current_actor_x[1] += 16;
               current_actor_y[0] += 16;
@@ -2850,7 +2850,7 @@ void handle_controler_and_sprites()
           //so we have to increment gp_i to match with the above puyo, not the lowest
           //gp_i -= 16;
           ++gp_i;// raising the puyo height from below
-          if (gp_i > tmp_counter_3)
+          if (gp_i >= tmp_counter_3)
           {
             current_actor_x[0] += 16;
             current_actor_y[0] -= 16;   
@@ -2858,7 +2858,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the left !
-            if (gp_i > tmp_counter_2)
+            if (gp_i >= tmp_counter_2)
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] -= 16;
@@ -2880,7 +2880,7 @@ void handle_controler_and_sprites()
            you can only go right if the lowest puyo is above the "free space" on right column, otherwise it will wall kick
            here gp_i is that lowest
           */
-          if (gp_i > tmp_counter_3)
+          if (gp_i >= tmp_counter_3)
           {
             current_actor_x[0] += 16;
             current_actor_y[0] += 16;         
@@ -2888,7 +2888,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (gp_i > tmp_counter_2)
+            if (gp_i >= tmp_counter_2)
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] += 16;
@@ -2907,7 +2907,7 @@ void handle_controler_and_sprites()
           //so we have to increment gp_i to match with the above puyo, not the lowest
           //gp_i -= 16;
           ++gp_i;
-          if (gp_i > tmp_counter_2)
+          if (gp_i >= tmp_counter_2)
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] -= 16;   
@@ -2915,7 +2915,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (gp_i > tmp_counter_3)
+            if (gp_i >= tmp_counter_3)
             {
               current_actor_x[1] += 16;
               current_actor_y[0] -= 16;
@@ -3320,7 +3320,8 @@ void main(void)
           
           if (
               //(((current_column_height[(current_actor_x[i] >> 4) - pos_x_offset[current_player]] - column_height_offset) < current_actor_y[i]))
-              (column_height_in_ojama[i] + column_height_offset) >= puyo_height_in_ojama[i]
+              (column_height_in_ojama[i] + column_height_offset) >= puyo_height_in_ojama[i] ||
+              ((column_height_in_ojama[i] + column_height_offset) == (puyo_height_in_ojama[i]-1) && ((current_actor_y[i] & 0x0F) == 0xF)) //test to be able to move after grace_period as started
              )
           {
             tmp_counter += 1 << i; //power of two to know if something is below or not, usefull for fall animation
@@ -3345,10 +3346,10 @@ void main(void)
             if (timer_grace_period[current_player] != 0)
             {
               actor_dy[current_player][0] = 0; 
-              actor_dy[current_player][1] = 0; 
+              actor_dy[current_player][1] = 0;
+
               if (previous_pad[current_player]&PAD_DOWN)
               {
-                timer_grace_period[current_player] = 0;
                 //we need to adjust in case the down button is pressed
                 //wip fix ! I hate it ! too much code redundant with above !
                 if (current_actor_x[0] == current_actor_x[1])
@@ -3377,6 +3378,7 @@ void main(void)
                     current_actor_y[0] = current_actor_y[1];
                   }
                 }
+                timer_grace_period[current_player] = 0;
               }
               else
                 --timer_grace_period[current_player];
