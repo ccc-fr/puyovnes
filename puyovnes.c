@@ -3254,6 +3254,18 @@ void main(void)
         gp_j = current_column_height[(current_actor_x[1] >> 4) - pos_x_offset[current_player]];
         column_height_in_ojama[0] = px_2_puyos[gp_i>>4];
         column_height_in_ojama[1] = px_2_puyos[gp_j>>4];
+        
+        //we need to update the current_actor_y before entering the loop
+        //otherwise the test for the offset will fail.
+        for (i = 0; i <2; ++i)
+        {
+          if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
+          {
+            current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? ((speed) ? 3:(2+(fall_speed&1))) : 0));
+            //need to recompute the puyo_height
+            //puyo_height_in_ojama[i] = px_2_puyos[current_actor_y[i]>>4];
+          }
+        }
         puyo_height_in_ojama[0] = px_2_puyos[current_actor_y[0]>>4];
         puyo_height_in_ojama[1] = px_2_puyos[current_actor_y[1]>>4];
         
@@ -3272,9 +3284,12 @@ void main(void)
             current_actor_y[i] = current_actor_y[i];
           }*/
           
-          if (actor_dy[current_player][i] != 0 /*&&  timer_grace_period[current_player] == GRACE_PERIOD*/) 
+          /*if (actor_dy[current_player][i] != 0) 
+          {
             current_actor_y[i] += (actor_dy[current_player][i] + ((timer_grace_period[current_player]!=0 && previous_pad[current_player]&PAD_DOWN)? ((speed) ? 3:(2+(fall_speed&1))) : 0));
-          
+            //need to recompute the puyo_height
+            puyo_height_in_ojama[i] = px_2_puyos[current_actor_y[i]>>4];
+          }*/
            //refresh sprites display
           sprite_addr[current_player][i] = current_displayed_pairs[i] + blind_offset;
           oam_id = oam_meta_spr(current_actor_x[i], current_actor_y[i], oam_id, puyoSeq[sprite_addr[current_player][i]]);
