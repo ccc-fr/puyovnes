@@ -2824,7 +2824,7 @@ void handle_controler_and_sprites()
            here gp_i is that lowest
           */
           //if (current_actor_x[0] == (16+(current_player<<7)))
-          if (gp_i >= tmp_counter_2)
+          if (gp_i > tmp_counter_2)
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] += 16;         
@@ -2832,7 +2832,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (gp_i >= tmp_counter_3)
+            if (gp_i > tmp_counter_3)
             {
               current_actor_x[1] += 16;
               current_actor_y[0] += 16;
@@ -2850,7 +2850,7 @@ void handle_controler_and_sprites()
           //so we have to increment gp_i to match with the above puyo, not the lowest
           //gp_i -= 16;
           ++gp_i;// raising the puyo height from below
-          if (gp_i >= tmp_counter_3)
+          if (gp_i > tmp_counter_3)
           {
             current_actor_x[0] += 16;
             current_actor_y[0] -= 16;   
@@ -2858,7 +2858,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the left !
-            if (gp_i >= tmp_counter_2)
+            if (gp_i > tmp_counter_2)
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] -= 16;
@@ -2880,7 +2880,7 @@ void handle_controler_and_sprites()
            you can only go right if the lowest puyo is above the "free space" on right column, otherwise it will wall kick
            here gp_i is that lowest
           */
-          if (gp_i >= tmp_counter_3)
+          if (gp_i > tmp_counter_3)
           {
             current_actor_x[0] += 16;
             current_actor_y[0] += 16;         
@@ -2888,7 +2888,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (gp_i >= tmp_counter_2)
+            if (gp_i > tmp_counter_2)
             {
               current_actor_x[1] -= 16;
               current_actor_y[0] += 16;
@@ -2907,7 +2907,7 @@ void handle_controler_and_sprites()
           //so we have to increment gp_i to match with the above puyo, not the lowest
           //gp_i -= 16;
           ++gp_i;
-          if (gp_i >= tmp_counter_2)
+          if (gp_i > tmp_counter_2)
           {
             current_actor_x[0] -= 16;
             current_actor_y[0] -= 16;   
@@ -2915,7 +2915,7 @@ void handle_controler_and_sprites()
           else
           {
             //wall kick, but only if there is space on the right !
-            if (gp_i >= tmp_counter_3)
+            if (gp_i > tmp_counter_3)
             {
               current_actor_x[1] += 16;
               current_actor_y[0] -= 16;
