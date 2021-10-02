@@ -510,8 +510,10 @@ void start_music(const byte* music) {
 void play_rotation_sound()
 {
   //APU_ENABLE(ENABLE_NOISE);
-  APU_NOISE_SUSTAIN(15,2);
-  APU_NOISE_DECAY(3,8,2);
+  /*APU_NOISE_SUSTAIN(15,2);
+  APU_NOISE_DECAY(3,8,2);*/
+  APU_NOISE_DECAY(1,8,2);
+  //APU_NOISE_SUSTAIN(0,0);
 }
 
 void play_hit()
@@ -528,7 +530,7 @@ void play_hit()
     APU_PULSE_DECAY(PULSE_CH1, 2250-((*gp_address)<<8), 192, 8, 1);
     //APU_PULSE_DECAY(PULSE_CH1, /*1121*/750+((hit-1)<<7), 192, 8, 1);
     APU_PULSE_SWEEP(PULSE_CH1,4,2,1);
-    APU_NOISE_DECAY(0,8,3);
+    //APU_NOISE_DECAY(0,8,3);
     //APU_PULSE_SWEEP_DISABLE(PULSE_CH0);
   }
   else
@@ -2960,7 +2962,7 @@ void handle_controler_and_sprites()
     }
   }
   //play rotation sound if button pressed
-  if (pad&PAD_A || pad&PAD_B)
+  if ((pad&PAD_A || pad&PAD_B) && (previous_pad[current_player] != PAD_A && previous_pad[current_player] != PAD_B))
     play_rotation_sound();
   
   //test play bayoen_sample
@@ -3201,6 +3203,7 @@ void main(void)
         {
           oam_clear();
           scroll(255,0);
+          play_rotation_sound();
         }
         if ((pad&PAD_DOWN) && menu_pos_x < 5 && input_delay_PAD_LEFT[0] == 0)
         {  
