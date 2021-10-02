@@ -3243,7 +3243,8 @@ void main(void)
 
       if (step_p[current_player] == PLAY && timer_grace_period[current_player] != 255)
       {
-        handle_controler_and_sprites();
+        if (timer_grace_period[current_player] != 0)
+          handle_controler_and_sprites();
         //we will registrer the number of puyo without something below them
         tmp_counter = 0 ;
         //let's save some compute time and rom space by saving the current column_height of the two pairs in gp_i and gp_j
@@ -3934,7 +3935,7 @@ void main(void)
         continue;
       }
 
-      if ( step_p[current_player] == PLAY /*&& actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0 && actor_dx[current_player][0] == 0 && actor_dx[current_player][1] == 0 */&& timer_grace_period[current_player] == 255 )
+      if ( step_p[current_player] == PLAY && timer_grace_period[current_player] == 255 )
       {
         //vrambuf_clear();
         memset(ntbuf1, 0, sizeof(ntbuf1));
