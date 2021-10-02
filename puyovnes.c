@@ -376,7 +376,7 @@ const byte const nt_x_offset[2] = {2,18};
 //shift for color table
 const byte const shift[2] = {0,4};
 const byte const bg_tile_addr[4] = {0xc4,0x14,0xb0,0xb4};
-const byte const floor_y = /*190*/192;
+const byte const floor_y = 192;
 const byte next_columns_y[5] = {4,6,8,10,12};
 const byte const menu_y_step[6] = {40,40,40,40,24,24};
 const byte menu_y_step_nb[6] = {2,1,1,3,3,3};
@@ -423,6 +423,7 @@ byte destroy_board(void);
 void fall_board(void);
 void manage_point(void);
 void build_menu(void);
+void build_credits(void);
 void handle_menu_settings(void);
 void build_field(void);
 void setup_graphics(void);
@@ -2225,7 +2226,7 @@ void build_menu()
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
   
-  put_str(NTADR_C(3,13), "Puyo VNES Beta 21/09/2021");
+  put_str(NTADR_C(3,13), "Puyo VNES Beta 02/10/2021");
   put_str(NTADR_C(4,15), "Game Mode     1P   2P   Tr");
   put_str(NTADR_C(4,17), "Music         0ff  On    ");
   put_str(NTADR_C(4,19), "Speed         60Hz 50Hz");
@@ -2301,10 +2302,38 @@ void build_menu()
   }
   
   sprintf(str,"ccc 2021");
-  vram_adr(NTADR_C(11,28));
+  vram_adr(NTADR_A(11,25));
   vram_put(0x10);
-  vrambuf_put(NTADR_C(12,28),str,10);
+  vrambuf_put(NTADR_A(12,25),str,10);
  
+}
+
+//add the credits info in the screen next to menu
+void build_credits()
+{
+  put_str(NTADR_A(7,3), "Puyo VNES credits");
+  
+  put_str(NTADR_A(3,5), "Created and programmed by");
+  put_str(NTADR_A(14,6), "ccc");
+  
+  put_str(NTADR_A(11,8), "Made with ");
+  put_str(NTADR_A(3,9), "https://8bitworkshop.com/");
+  put_str(NTADR_A(11,11), "Music by");
+  put_str(NTADR_A(6,12), "J.S.BACH - BWV 1007");
+  put_str(NTADR_A(3,14), "Thanks to family, friends");
+  put_str(NTADR_A(5,15), "and the Puyo community");
+  put_str(NTADR_A(7,16), "that supported me");
+  put_str(NTADR_A(6,17), "during this project");
+
+  put_str(NTADR_A(5,19), "Special Thanks to our");
+  put_str(NTADR_A(9,20), "Beta testers");
+  put_str(NTADR_A(7,21), "Aurel509   BrouH");
+  put_str(NTADR_A(7,22), "Hiku       LIWYC");
+  put_str(NTADR_A(7,23), "Toti       Sirix");
+  /*sprintf(str,"ccc 2021");
+  vram_adr(NTADR_C(11,23));
+  vram_put(0x10);
+  vrambuf_put(NTADR_C(12,23),str,10);*/
 }
 
 //the build_field will take several steps
@@ -3036,6 +3065,7 @@ void main(void)
   vram_write("HELLO BAYOEN", 12);*/
   build_menu();
   //build_field(); //à remplacer par build_credits ?
+  build_credits();
   generate_rng();
   debug = DEBUG;
   //we start by waiting each player to be ready
@@ -3167,6 +3197,11 @@ void main(void)
           }
           continue;
         }
+        else if ((pad&PAD_SELECT) && step_p_counter[1] == 255)
+        {
+          oam_clear();
+          scroll(255,0);
+        }
         if ((pad&PAD_DOWN) && menu_pos_x < 5 && input_delay_PAD_LEFT[0] == 0)
         {  
            ++menu_pos_x;
@@ -3199,9 +3234,12 @@ void main(void)
         /*unsigned char __fastcall__ oam_spr(unsigned char x, unsigned char y,
 					unsigned char chrnum, unsigned char attr,
 					unsigned char sprid);*/
-        oam_id = oam_spr(16, actor_y[0][0]+16*menu_pos_x, 0xAE, 0, oam_id );
-        for ( i = 0; i < 6; ++i)
-          oam_id = oam_spr(gp_address[i], gp_address_2[i], 0xAF, 0, oam_id);
+        if (!(pad&PAD_SELECT))
+        {
+          oam_id = oam_spr(16, actor_y[0][0]+16*menu_pos_x, 0xAE, 0, oam_id );
+          for ( i = 0; i < 6; ++i)
+            oam_id = oam_spr(gp_address[i], gp_address_2[i], 0xAF, 0, oam_id);
+        }
         /*oam_id = oam_spr(actor_x[0][0], actor_y[0][0], 0xAF, 0, oam_id);
         oam_id = oam_spr(actor_x[0][1], actor_y[0][1], 0xAF, 0, oam_id);
         oam_id = oam_spr(actor_x[1][0], actor_y[1][0], 0xAF, 0, oam_id);
@@ -3223,7 +3261,7 @@ void main(void)
       else
       {
         scroll(0,step_p_counter[0]);
-        --step_p_counter[0];               
+	--step_p_counter[0];               
       }
       
       continue;
