@@ -2608,7 +2608,7 @@ void handle_controler_and_sprites()
       }
       
     }
-    if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
+    else if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
     { 
       //here as puyo[0] < puyo[1] we are at the left, if we press
       //A the puyo will go over the 2nd puyo
@@ -2666,7 +2666,7 @@ void handle_controler_and_sprites()
         current_actor_y[0] -= 16;
         current_actor_x[0] -= 16;
       }
-      if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
+      else if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
         //here as puyo[0] > puyo[1] we are at the right, if we press
         //A the puyo will go under the 2nd puyo
@@ -2871,7 +2871,7 @@ void handle_controler_and_sprites()
           }
         }
       }
-      if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
+      else if (pad&PAD_A && input_delay_PAD_A[current_player] == 0)
       { 
         if (gp_j/*actor_y[current_player][0] < actor_y[current_player][1]*/) //1 is below ?
         {
