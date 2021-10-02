@@ -366,8 +366,8 @@ const byte const start_pos_x[2] =
 
 const byte const start_pos_y[2][2] =
 {
- {0,16},
- {0,16}
+ {254,14},
+ {254,14}
 };
 //When translating x position (from 0 to ~256) into column index we >>4 and remove the below offset 
 const byte const pos_x_offset[2] = {1,9};
