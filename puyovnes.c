@@ -3203,7 +3203,7 @@ void main(void)
         {
           oam_clear();
           scroll(255,0);
-          play_rotation_sound();
+          //play_rotation_sound();
         }
         if ((pad&PAD_DOWN) && menu_pos_x < 5 && input_delay_PAD_LEFT[0] == 0)
         {  
