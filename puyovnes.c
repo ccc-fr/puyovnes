@@ -337,6 +337,10 @@ const unsigned char* const puyoSeq[9] = {
 //360:  0xec   star
 //720:  0xf0   crown
 //1440: 0xf4   comet
+
+//indexes of preview for blind mode
+const unsigned char const puyo_preview_blind_index[4] = {0x90,0x94,0x98,0xC8};
+
 const unsigned int const damageList[7] = 
 { 
   1440,720,360,180,30,6,1
@@ -2202,7 +2206,8 @@ void update_next()
     if (gp_i != 2)
     {
       tmp_color = current_displayed_pairs[gp_j];
-      set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
+      //set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
+      set_metatile(gp_i,blind_offset ? puyo_preview_blind_index[tmp_color] : 0xc8);//for not blind gamer the tile is different from standard puyos
     }
     else
     {
