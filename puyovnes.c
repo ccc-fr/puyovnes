@@ -1219,40 +1219,6 @@ byte check_board(void)
         tmp_cell_address += 3;
       }
     }
-    /*
-    for (gp_i = 0; gp_i < 6; ++gp_i)
-    {
-      current_board_address = cell_address;
-      current_tmp_board_address = tmp_cell_address;
-      for (gp_j = 12 ; gp_j <= 12 ; --gp_j)
-      {
-        if (*tmp_cell_address == FLAG)
-        {
-          //boards[current_player][gp_i][gp_j] |= FLAG;
-          *cell_address |= FLAG;
-          ++tmp_counter_3;
-          //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
-          //note : it will probably slow down things a lot do do that :-s
-          //look left
-
-          if (gp_i>0 && *(cell_address - 0xD) == OJAMA)
-            *(cell_address - 0xD) |= FLAG;
-          //look right         
-          if (gp_i<5 && *(cell_address + 0xD) == OJAMA)
-            *(cell_address + 0xD) |= FLAG;
-          //look up
-          if (gp_j>0 && *(cell_address - 1) == OJAMA)
-            *(cell_address - 1) |= FLAG;
-          //look down
-          if (gp_j<12 && *(cell_address + 1) == OJAMA)
-            *(cell_address + 1) |= FLAG;
-        }
-        --cell_address;
-        --tmp_cell_address;
-      }
-      cell_address = current_board_address + 0xD;
-      tmp_cell_address = current_tmp_board_address + 0xF;
-    }*/
   }
   return tmp_counter_3;
 }
@@ -1363,7 +1329,6 @@ void fall_board()
     {
       can_fall = 1;
     }
-    //if (((boards[current_player][tmp_counter][gp_j] & /*smask*/7)) != EMPTY)
     else
     {
       puyo_found = gp_j; // on est obligé de continuer à checker si empty à cause de ça, il nous faut la hauteur du puyo le plus haut
@@ -1371,7 +1336,7 @@ void fall_board()
       //c'est pour ça que l'ancienne version, avec la double boucle, était en fait plus rapide, elle ne retestait pas après
       //avoir trouvé le premier puyo qui était forcément le plus haut.
       if (!fall && can_fall)
-        fall=1;
+        fall = 1;
     }
       
     if (can_fall)
@@ -1385,57 +1350,7 @@ void fall_board()
        *cell_address = EMPTY;
     }
       
-    //problème, même si ça ne tombe pas on modifie les valeurs
-    //et ça affiche n'importe quoi !
-    /*switch ((boards[current_player][tmp_counter][gp_j]))
-    {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
-      case EMPTY:
-        clear_metatile(12-gp_j);
-        attrbuf[(12-gp_j)>>1] = return_tile_attribute_color(2,tmp_counter_2,(12-gp_j)*2);
-        break;
-      case OJAMA:
-        set_metatile(12-gp_j,0xdc);
-        attrbuf[(12-gp_j)>>1] = return_tile_attribute_color(0,tmp_counter_2,(12-gp_j)*2);
-        break;//          
-      default:
-        set_metatile(12-gp_j,*(puyoSeq[boards[current_player][tmp_counter][gp_j]+blind_offset]+0x2));
-        attrbuf[(12-gp_j)>>1] = return_tile_attribute_color(boards[current_player][tmp_counter][gp_j],tmp_counter_2,(12-gp_j)*2);
-        break;
-    }*/
   }
-  //ce for prend 10000 cycles !?!?
-  // il y a peut-être une solution pour remplir le ntbuf et attribuf en même temps
-  //tout en évitant la deuxième boucle du can_fall
-  /*for (gp_j = 0 ; gp_j < 13 ; ++gp_j)
-  {
-    if (can_fall != 1 && ( (boards[current_player][tmp_counter][gp_j] & 7)) != EMPTY)
-    {
-      puyo_found = gp_j;// if no puyo are found then the column is empty=> need to reset height
-      //as long as no puyo is found, there is nothing to get down
-      can_fall = 1;
-      if (gp_j < 12)
-        ++gp_j;  
-    }
-
-    if (can_fall == 1 && ( (boards[current_player][tmp_counter][gp_j] & 7)) == EMPTY)
-    {
-      //this is where things get interesting, lets move everything down.
-      //we start from j and get up to avoid overwriting values
-      for (gp_i = gp_j ; gp_i >= previous_empty && gp_i < 255 ; --gp_i)
-      {
-        if ( gp_i == previous_empty) 
-          boards[current_player][tmp_counter][gp_i] = EMPTY; 
-        else
-          boards[current_player][tmp_counter][gp_i] = boards[current_player][tmp_counter][gp_i-1]; 
-      }
-      fall = 1;
-
-      //careful we wan't to only fall of 1 puyo height per cycle !
-      //So we keep the position of the last element that has falled so top there
-      previous_empty = gp_j+1;
-      can_fall = 0;
-    }
-  }*/
  
   if (fall == 1) //22.5k cycles à lui seul, donc a priori ça rame...//en mode adressage [][][] il prenait...28k environ
   {
@@ -1451,8 +1366,8 @@ void fall_board()
     
    if (current_player != 0)
     {
-      tmp_counter_2 = (tmp_counter + 9) << 1;
-      tmp_counter_3 = tmp_counter + 8;
+      tmp_counter_2 = (tmp_counter + 9) << 1; //x for name or attribute table ?
+      tmp_counter_3 = tmp_counter + 8;        //x for name or attribute table ? 
     }
     else
     {
@@ -1480,8 +1395,8 @@ void fall_board()
           attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j<<1);
           break;//          
         default:
-          set_metatile(gp_j-1,*(puyoSeq[/*boards[current_player][tmp_counter][gp_j]*/gp_i+blind_offset]+0x2));
-          attrbuf[gp_j>>1] = return_tile_attribute_color(/*boards[current_player][tmp_counter][gp_j]*/gp_i,tmp_counter_2,gp_j<<1);
+          set_metatile(gp_j-1,*(puyoSeq[gp_i+blind_offset]+0x2));
+          attrbuf[gp_j>>1] = return_tile_attribute_color(gp_i,tmp_counter_2,gp_j<<1);
           break;
       }
     } 
@@ -1495,14 +1410,6 @@ void fall_board()
   }
   else
   {
-    /*if (current_player != 0)
-    {
-      tmp_counter_2 = tmp_counter + 6;
-    }
-    else
-    {
-      tmp_counter_2 = tmp_counter;
-    }*/
     //if something "fall" the counter is always reset to its 0 to 5 equivalent
     //so if nothing fall and we reach 11 (5th column) then a full "loop" as been done and we can continue
     if (puyo_found == 0)
@@ -3414,7 +3321,7 @@ void main(void)
               {
                 //we need to adjust in case the down button is pressed
                 //wip fix ! I hate it ! too much code redundant with above !
-                if (current_actor_x[0] == current_actor_x[1])
+                /*if (current_actor_x[0] == current_actor_x[1])
                 {
                   if (current_actor_y[0] < current_actor_y[1])
                   {
@@ -3439,7 +3346,7 @@ void main(void)
                     current_actor_y[1] = gp_j + 1;
                     current_actor_y[0] = current_actor_y[1];
                   }
-                }
+                }*/
                 timer_grace_period[current_player] = 0;
               }
               else
