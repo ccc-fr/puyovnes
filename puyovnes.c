@@ -221,6 +221,7 @@ byte nb_hit[2];// hit combo counter
 byte mask_color_destroyed; // LSB p1, MSB p2, bit mask at 1 for each color present in the hit. bit 0 red, bit 1 blue, bit 2 green, 3 yellow 
 byte nb_group[2];//if the group is over 4 puyos add the part over in this variable.
 unsigned long int score[2]; //current score of the round
+byte has_ac[2];
 byte wins[2]; // number of round won by each player. 
 byte ready[2]; //indicates if a player is ok to play the next round
 unsigned long int ojamas[4];// 2 pockets of ojama per player, but what is displayed is always the sum of both. Warikomi rule.
@@ -1449,25 +1450,11 @@ void fall_board()
         )
         { 
           //all clear !
+          //change: let's do all the computation in the manage_point
+          //As in theory the point should only be update on the next chain
+          has_ac[current_player] = 1;
+          /*
           score[current_player] += 2100;
-
-          //WIP add the opponent ojama removal from current player stack !
-          /*if (current_player == 0)
-          {
-            ojamas[2] += 2100;
-            if (ojamas[0] > 0)
-            {  
-              ojamas[0] = (ojamas[0] - 2100 > ojamas[0] ) ? 0 : ojamas[0] - 2100 ;
-            }
-          }
-          else
-          {
-            ojamas[0] += 2100;
-            if (ojamas[2] > 0)
-            {  
-              ojamas[2] = (ojamas[2] - 2100 > ojamas[2] ) ? 0 : ojamas[2] - 2100 ;
-            }
-          }*/
           
           gp_i = current_player << 1; //index for ojama[] of current_player 0=>0 1=>2
           gp_j = ((current_player + 1) << 1) & 2; //index for ojama[] for opponent 0=>2; 1=>0
@@ -1480,15 +1467,17 @@ void fall_board()
           {
             ojamas[gp_j] += (2100 - ojamas[gp_i]);
             ojamas[gp_i] = 0;
-          }
+          }*/
 
           //TODO warikomi not handled yet
           sprintf(str,"Hit:AC");
           addr = NTADR_A(nt_x_offset[current_player],26);
           vrambuf_put(addr,str,6);
+          //the score will be updated later by manage_point
+          /*
           sprintf(str,"%6lu", score[current_player]);
           addr = NTADR_A(6 + nt_x_offset[current_player],27);
-          vrambuf_put(addr,str,6);
+          vrambuf_put(addr,str,6);*/
 
           //play hit sound
           play_bayoen();
@@ -1563,6 +1552,14 @@ void manage_point()
 
       //Now the disappearing puyos
       tmp_score[current_player] = tmp_score[current_player] * ((unsigned long) nb_puyos_destroyed[current_player] * 10);
+      
+      //let's finish with the all clear
+        //all clear ?
+      if (has_ac[current_player])
+      {
+        tmp_score[current_player] += 2100;
+        has_ac[current_player] = 0;
+      }
 
       score[current_player] += tmp_score[current_player];
 
@@ -2384,8 +2381,10 @@ void init_round()
     current_player = gp_i;
     nb_puyos_destroyed[gp_i] = 0;
     nb_group[gp_i] = 0;
-    should_destroy[0] = 0;
-    should_destroy[1] = 0;
+    /*should_destroy[0] = 0;
+    should_destroy[1] = 0;*/
+    should_destroy[gp_i] = 0;
+    has_ac[gp_i] = 0;
     //update_next();
   }
 
@@ -3024,6 +3023,7 @@ void main(void)
   memset(score,0,sizeof(score));
   memset(wins,0,sizeof(wins));
   memset(ready,0,sizeof(ready));
+  memset(ojamas,0,sizeof(ojamas));
 
   //init sound & music
   apu_init();
