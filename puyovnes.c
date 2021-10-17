@@ -279,6 +279,15 @@ byte soft_reset;
 // value incremented by 1 every frame, then & 1 to know if when the player press down is should go down by 2 or 3 px (it alternates every frame)
 byte fall_speed;
 
+//global variables for metatiles update
+byte metatile_y, metatile_ch;
+//for return_sprite_color
+byte spr_index;
+//for put_attr_entries
+byte attr_length;
+//for return_tile_attribute_color
+byte rta_color, spr_x, spr_y;
+
 // Lookup tables to speed up the / and %  operation, there are filled at the end of the file
 const byte div_6_lookup[];
 const byte mod_6_lookup[]; //used in fall_board
@@ -414,14 +423,14 @@ const byte logo_reds[8]={
   0x7E};
 
 //declaration des fonctions, il parait que ça aide
-word nt2attraddr(word a);
-void set_metatile(byte y, byte ch);
-void clear_metatile(byte y);
+word nt2attraddr(/*word a*/void);
+void set_metatile(/*byte y, byte ch*/void);
+void clear_metatile(/*byte y*/void);
 //void set_attr_entry(byte x, byte y, byte pal);
-void put_attr_entries(word addr, byte length);
+void put_attr_entries(/*word addr, byte length*/ void);
 void generate_rng(void);
-byte return_sprite_color(byte spr_index);
-byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y);
+byte return_sprite_color(/*byte spr_index*/void);
+byte return_tile_attribute_color(/*byte color, byte spr_x, byte spr_y*/void);
 void update_boards(void); //return if a puyo has been placed on x = 2 and y = 1, then flush
 byte check_board(void);
 byte destroy_board(void);
@@ -437,7 +446,7 @@ void update_next(void);
 //music and sfx related
 byte next_music_byte(void);
 void play_music(void);
-void start_music(const byte* music);
+void start_music(const byte* music); //used only outside of gameplay, no need to optimize
 void play_rotation_sound(void);
 void play_hit(void); //pitch get higher with byte until reaching "bayoen !"
 void play_puyo_fix(void); //when puyo is hitting ground, to be changed a bit tamed currently
@@ -446,7 +455,7 @@ void play_flush(void); // flush sound when a player lose
 byte fall_ojama(void); //fall ojama damage on the player field
 void flush(void); // flush loser screen into under the play field
 void init_round(void); //set actors, column_height and other things before a round
-void put_str(unsigned int adr, const char *str);
+void put_str(unsigned int adr, const char *str);// utilisé seulement en dehors du gameplay, pas la peine d'optimiser en retirant les arguments.
 void refresh_ojama_display(void); // refresh the ojama display above players playfield
 void ia_move(void);// "IA" to avoid having the P2 lose too quickly
 void main(void);
@@ -571,27 +580,29 @@ void play_flush()
 //end of music bloc
 
 // convert from nametable address to attribute table address
-word nt2attraddr(word a) {
-  return (a & 0x2c00) | 0x3c0 |
-    ((a >> 4) & 0x38) | ((a >> 2) & 0x07);
+word nt2attraddr(/*word a*/) {
+ /* return (a & 0x2c00) | 0x3c0 |
+    ((a >> 4) & 0x38) | ((a >> 2) & 0x07);*/
+   return (addr & 0x2c00) | 0x3c0 |
+    ((addr >> 4) & 0x38) | ((addr >> 2) & 0x07);
 }
 
 // draw metatile into nametable buffers
 // y is the metatile coordinate (row * 2)
 // ch is the starting tile index in the pattern table
-void set_metatile(byte y, byte ch) {
-  ntbuf1[y*2] = ch;
-  ntbuf1[y*2+1] = ch+1;
-  ntbuf2[y*2] = ch+2;
-  ntbuf2[y*2+1] = ch+3;
+void set_metatile(/*byte y, byte ch*/) {
+  ntbuf1[metatile_y*2] = metatile_ch;
+  ntbuf1[metatile_y*2+1] = metatile_ch+1;
+  ntbuf2[metatile_y*2] = metatile_ch+2;
+  ntbuf2[metatile_y*2+1] = metatile_ch+3;
 }
 
-void clear_metatile(byte y)
+void clear_metatile(/*byte y*/)
 {
-  ntbuf1[y*2] = 0;
-  ntbuf1[y*2+1] = 0;
-  ntbuf2[y*2] = 0;
-  ntbuf2[y*2+1] = 0;
+  ntbuf1[metatile_y*2] = 0;
+  ntbuf1[metatile_y*2+1] = 0;
+  ntbuf2[metatile_y*2] = 0;
+  ntbuf2[metatile_y*2+1] = 0;
 }
 
 // set attribute table entry in attrbuf
@@ -604,8 +615,8 @@ void clear_metatile(byte y)
   attrbuf[y/2] |= pal;
 }*/
 
-void put_attr_entries(word addr, byte length) {
-  for (gp_k=0; gp_k<length; ++gp_k) {
+void put_attr_entries(/*word addr, byte length*/) {
+  for (gp_k = 0; gp_k < attr_length; ++gp_k) {
     VRAMBUF_PUT(addr, attrbuf[gp_k], 0);
     addr += 8;
   }
@@ -675,7 +686,7 @@ void generate_rng()
 //So metasprite 0 is at $200, 1 at $210,3 at $220 etc
 //The attributes also contains the flip info, so mask it to 0x3 to only have color
 //see https://wiki.nesdev.com/w/index.php/PPU_OAM, byte 0 Y, byte 1 tile index, byte 2 attributes, byte 4 X
-byte return_sprite_color(byte spr_index)
+byte return_sprite_color(/*byte spr_index*/)
 {
   /*OAMSprite  *
   = (OAMSprite*)(0x200+16*spr_index);
@@ -686,7 +697,7 @@ byte return_sprite_color(byte spr_index)
 
 //based on sprite x/y position look for the bg attributes related to it
 //then update the attributes with the color passes in parameter
-byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
+byte return_tile_attribute_color(/*byte color, byte spr_x, byte spr_y*/)
 {
   //byte attr; // now tmp_attr
   //byte index; // now tmp_index
@@ -702,12 +713,12 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
   if (attr_y < spr_y)
   {
     tmp_mask <<= 4;
-    color <<= 4;
+    rta_color <<= 4;
   }
   if (attr_x < spr_x) 
   {
     tmp_mask <<= 2;
-    color <<= 2;
+    rta_color <<= 2;
   }
   // attribute position is y/2 + x/4 where y 2 LSB are 0
   tmp_index = (attr_y<<1) + (spr_x>>2);
@@ -715,7 +726,7 @@ byte return_tile_attribute_color(byte color, byte spr_x, byte spr_y)
   tmp_attr = attribute_table[tmp_index];
   //let's erase the previous attributes for the intended position
   tmp_attr &= ~tmp_mask; //~ bitwise not, so we keep only bit outside of mask from attr
-  tmp_attr += color;
+  tmp_attr += rta_color;
   attribute_table[tmp_index] = tmp_attr;
   return tmp_attr;
 }
@@ -747,7 +758,8 @@ void update_boards()
   {
     //boards[current_player][((actor_x[current_player][0]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][0]>>3)+1)>>1] = return_sprite_color(current_player<<1);
     cell_address = base_address + ((((current_actor_x[0]>>3) - gp_j) >> 1) * 0xD) + gp_i;
-    *cell_address = return_sprite_color(current_player<<1);
+    spr_index = current_player<<1;
+    *cell_address = return_sprite_color(/*current_player<<1*/);
   }
 
   gp_i = (((current_actor_y[1]>>3)+1)>>1);
@@ -757,7 +769,8 @@ void update_boards()
   {
     //boards[current_player][((actor_x[current_player][1]>>3) - nt_x_offset[current_player]) >> 1][((actor_y[current_player][1]>>3)+1)>>1] = return_sprite_color((current_player<<1)+1);
     cell_address = base_address + ((((current_actor_x[1]>>3) - gp_j) >> 1) * 0xD) + gp_i;
-    *cell_address = return_sprite_color((current_player<<1)+1);
+    spr_index = (current_player<<1)+1;
+    *cell_address = return_sprite_color(/*(current_player<<1)+1*/);
   }
   return;
 }
@@ -1236,14 +1249,17 @@ byte destroy_board()
     //memset(attrbuf, 0, sizeof(attrbuf)); // no need to reset the attributes, they are not changed !
     if (tmp_counter < 6)
     {
-      set_metatile(0,0xe0); //0xe0 == puyo_pop   //step 0 we change the puyo to puyo_pop => e0
+      metatile_y = 0;
+      metatile_ch = 0xe0;
+      set_metatile(/*0,0xe0*/); //0xe0 == puyo_pop   //step 0 we change the puyo to puyo_pop => e0
       // boards[current_player][tmp_counter][gp_j] = PUYO_POP + FLAG; // we don't want to lose the flag!
       //gp_k used to temporarily store the new board status
       gp_k = PUYO_POP + FLAG;
     }
     else
     {
-      clear_metatile(0);   //step 1 we change the puyo_pop to nothing
+      metatile_y = 0;
+      clear_metatile(/*0*/);   //step 1 we change the puyo_pop to nothing
       //boards[current_player][gp_i][gp_j] = EMPTY;
       gp_k = EMPTY;
     }
@@ -1385,19 +1401,27 @@ void fall_board()
     {
       cell_address = (offset_address + gp_j); //player index missing there !
       gp_i = *cell_address;
+      metatile_y = gp_j - 1;
+      spr_x = tmp_counter_2;
+      spr_y = gp_j<<1;
       switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
       {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
         case EMPTY:
-          clear_metatile(gp_j-1);
-          attrbuf[gp_j>>1] = return_tile_attribute_color(2,tmp_counter_2,gp_j<<1);
+          clear_metatile(/*gp_j-1*/);
+          rta_color = 2;         
+          attrbuf[gp_j>>1] = return_tile_attribute_color(/*2,tmp_counter_2,gp_j<<1*/);
           break;
         case OJAMA:
-          set_metatile(gp_j-1,0xdc);
-          attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j<<1);
+          metatile_ch = 0xdc;
+          set_metatile(/*gp_j-1,0xdc*/);
+          rta_color = 0;
+          attrbuf[gp_j>>1] = return_tile_attribute_color(/*0,tmp_counter_2,gp_j<<1*/);
           break;//          
         default:
-          set_metatile(gp_j-1,*(puyoSeq[gp_i+blind_offset]+0x2));
-          attrbuf[gp_j>>1] = return_tile_attribute_color(gp_i,tmp_counter_2,gp_j<<1);
+          metatile_ch = *(puyoSeq[gp_i+blind_offset]+0x2);
+          set_metatile(/*gp_j-1,*(puyoSeq[gp_i+blind_offset]+0x2)*/);
+          rta_color = gp_i;
+          attrbuf[gp_j>>1] = return_tile_attribute_color(/*gp_i,tmp_counter_2,gp_j<<1*/);
           break;
       }
     } 
@@ -1406,7 +1430,9 @@ void fall_board()
     addr = NTADR_A(((tmp_counter_3)<<1)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
     vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
     vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
-    put_attr_entries((nt2attraddr(addr)), 7);
+    addr = nt2attraddr(/*addr*/);
+    attr_length = 7;
+    put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
     
   }
   else
@@ -1993,15 +2019,21 @@ void flush()
   //we start at 1 as we don't want to modify the ceiling
   for (gp_j = 1; gp_j < 15 ; ++gp_j)
   {
+    metatile_y = gp_j - 1;
+    spr_x = tmp_counter_2;
+    spr_y = gp_j << 1;
     switch (/*tmp_boards[tmp_counter][gp_j]*/ tmp_cell_address[gp_j])
     {
       case EMPTY:
-        clear_metatile(gp_j-1);
-        attrbuf[gp_j>>1] = return_tile_attribute_color(2,tmp_counter_2,gp_j*2);
+        clear_metatile(/*gp_j-1*/);
+        rta_color = 2;
+        attrbuf[gp_j>>1] = return_tile_attribute_color(/*2,tmp_counter_2,gp_j*2*/);
         break;
       case OJAMA:
-        set_metatile(gp_j-1,0xdc);
-        attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j*2);
+        metatile_ch = 0xdc;
+        set_metatile(/*gp_j-1,0xdc*/);
+        rta_color = 0;
+        attrbuf[gp_j>>1] = return_tile_attribute_color(/*0,tmp_counter_2,gp_j*2*/);
         break;
       /*case PUYO_RED:
         set_metatile(j-1,0xd8);
@@ -2020,14 +2052,18 @@ void flush()
         attrbuf[j>>1] = return_tile_attribute_color(3,tmp_counter_2,j*2);
         break;*/
       case 255: //the wall tile
-        set_metatile(gp_j-1, bg_tile);
-        attrbuf[gp_j>>1] = return_tile_attribute_color(0,tmp_counter_2,gp_j*2);
+        metatile_ch = bg_tile;
+        set_metatile(/*gp_j-1, bg_tile*/);
+        rta_color = 0;
+        attrbuf[gp_j>>1] = return_tile_attribute_color(/*0,tmp_counter_2,gp_j*2*/);
         break;
       default:
         //set_metatile(gp_j-1,*(puyoSeq[tmp_boards[tmp_counter][gp_j]+blind_offset]+0x2));
         //attrbuf[gp_j>>1] = return_tile_attribute_color(tmp_boards[tmp_counter][gp_j],tmp_counter_2,gp_j*2);
-        set_metatile(gp_j-1,*(puyoSeq[tmp_cell_address[gp_j]+blind_offset]+0x2));
-        attrbuf[gp_j>>1] = return_tile_attribute_color(tmp_cell_address[gp_j],tmp_counter_2,gp_j*2);
+        metatile_ch = *(puyoSeq[tmp_cell_address[gp_j]+blind_offset]+0x2);
+        set_metatile(/*gp_j-1,*(puyoSeq[tmp_cell_address[gp_j]+blind_offset]+0x2)*/);
+        rta_color = tmp_cell_address[gp_j];
+        attrbuf[gp_j>>1] = return_tile_attribute_color(/*tmp_cell_address[gp_j],tmp_counter_2,gp_j*2*/);
         break;
     }
   } 
@@ -2036,7 +2072,9 @@ void flush()
   addr = NTADR_A(((tmp_counter_3)*2)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
   vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 28);
   vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 28);
-  put_attr_entries((nt2attraddr(addr)), 7);
+  addr = nt2attraddr(/*addr*/);
+  attr_length = 7;
+  put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
   
   return;
 }
@@ -2106,18 +2144,25 @@ void update_next()
     else
       gp_j = gp_i + 2;
     
+    metatile_y = gp_i;
+    
     if (gp_i != 2)
     {
       tmp_color = current_displayed_pairs[gp_j];
       //set_metatile(gp_i,blind_offset ? *(puyoSeq[tmp_color+blind_offset]+0x2) : 0xc8);//for not blind gamer the tile is different from standard puyos
-      set_metatile(gp_i,blind_offset ? puyo_preview_blind_index[tmp_color] : 0xc8);//for not blind gamer the tile is different from standard puyos
+      metatile_ch = blind_offset ? puyo_preview_blind_index[tmp_color] : 0xc8;
+      set_metatile(/*gp_i,blind_offset ? puyo_preview_blind_index[tmp_color] : 0xc8*/);//for not blind gamer the tile is different from standard puyos
     }
     else
     {
+      metatile_ch = bg_tile;
       tmp_color = bg_pal & 3; // bg_pal is for 4 tiles, we just need the color, so &3 will keep the 2 LSB having the color
-      set_metatile(gp_i,bg_tile);//for not blind gamer the tile is different from standard puyos
+      set_metatile(/*gp_i,bg_tile*/);//for not blind gamer the tile is different from standard puyos
     }
-    attrbuf[gp_i>>1] = return_tile_attribute_color(tmp_color,14+(current_player<<1),next_columns_y[gp_i]); 
+    rta_color = tmp_color;
+    spr_x = 14+(current_player<<1);
+    spr_y = next_columns_y[gp_i];
+    attrbuf[gp_i>>1] = return_tile_attribute_color(/*tmp_color,14+(current_player<<1),next_columns_y[gp_i]*/); 
   }
  
   //without loop ? prg size issue ? TEst to do=> apaprently not enough space...
@@ -2125,7 +2170,9 @@ void update_next()
   addr = NTADR_A(14+(current_player<<1), next_columns_y[0]);
   vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 10);
   vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 10);
-  put_attr_entries((nt2attraddr(addr)), 3); // need to check that 3 at some point...
+  addr = nt2attraddr(/*addr*/);
+  attr_length = 3;
+  put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 3*/); // need to check that 3 at some point...
   
   return;
 }
@@ -2136,7 +2183,7 @@ void build_menu()
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
   
-  put_str(NTADR_C(3,13), "Puyo VNES Beta 02/10/2021");
+  put_str(NTADR_C(3,13), "Puyo VNES Beta 17/10/2021");
   put_str(NTADR_C(4,15), "Game Mode     1P   2P   Tr");
   put_str(NTADR_C(4,17), "Music         0ff  On    ");
   put_str(NTADR_C(4,19), "Speed         60Hz 50Hz");
@@ -3056,15 +3103,16 @@ void main(void)
 }*/
   
        //set sound
-    if (!music_ptr && music_selected_ptr != NULL) start_music(music_selected_ptr);//=> ne boucle pas si on l'active pas !
-    {
+    if (!music_ptr && music_selected_ptr != NULL) 
+      start_music(music_selected_ptr);//=> ne boucle pas si on l'active pas !
+    //{
       //read next 8 bytes from music to fill music2[]
       /*vram_adr(0x1000);
       vram_read(&music2[0],8);
       vram_adr(0);*/
       //next music 
        play_music();
-    }
+    //}
     
     //get input
     oam_id = 0;
@@ -3401,33 +3449,6 @@ void main(void)
           default: 
             break;
         }
-        
-        /*if (tmp_counter != 0)
-        {
-          //qu'on ait un ou deux puyo de bloqué on bloque les deux.
-          actor_dy[current_player][0] = 0; 
-          actor_dy[current_player][1] = 0; 
-          if (previous_pad[current_player]&PAD_DOWN)
-            timer_grace_period[current_player] = 0;
-          else
-            --timer_grace_period[current_player];
-        }
-        else
-        {
-          
-          timer_grace_period[current_player] = GRACE_PERIOD;
-        }*/
-
-        /*if (timer_grace_period[current_player] < GRACE_PERIOD || (actor_dy[current_player][0] == 0 && actor_dy[current_player][1] == 0))
-        {
-          if (previous_pad[current_player]&PAD_DOWN)
-            timer_grace_period[current_player] = 0;
-          else
-            --timer_grace_period[current_player];
-         //commenté pas sûr que ce soit utile....
-         // if (actor_x[current_player][1] == 0 && timer_grace_period[current_player] == 0)
-           // column_height[current_player][(actor_x[current_player][1]>>4) - pos_x_offset[current_player]] = actor_y[current_player][1];
-        }*/
 
       }
       else
@@ -3914,21 +3935,27 @@ void main(void)
         memset(attrbuf, 0, sizeof(attrbuf));
         current_actor_y[0] +=2;
         current_actor_y[1] +=2;
+        metatile_y = 0;
         
         if (current_actor_y[0] >= 0x10 && current_actor_y[0] < 0xD0)
         {
           //set_metatile(0,0xd8);
           //test !
           //puyoSeq contient l'adresse des data du sprite, et l'adresse de la tile est à cette adresse +2
-          set_metatile(0,*(puyoSeq[sprite_addr[current_player][0]]+0x2));
+          metatile_ch = *(puyoSeq[sprite_addr[current_player][0]]+0x2);
+          set_metatile(/*0,*(puyoSeq[sprite_addr[current_player][0]]+0x2)*/);
           //set_attr_entry((((actor_x[0]/8)+32) & 63)/2,0,return_sprite_color(0));
           //attrbuf should take the color for 4 tiles !
-          attrbuf[0] = return_tile_attribute_color(return_sprite_color(current_player << 1), current_actor_x[0]>>3,(current_actor_y[0]>>3) /*+1*/);
+          spr_index = (current_player<<1);
+          rta_color = return_sprite_color(/*current_player << 1*/);
+          spr_x = current_actor_x[0]>>3;
+          spr_y = (current_actor_y[0]>>3);
+          attrbuf[0] = return_tile_attribute_color(/*return_sprite_color(*//*current_player << 1*//*), current_actor_x[0]>>3,(current_actor_y[0]>>3) */);
 
           addr = NTADR_A((current_actor_x[0]>>3), (current_actor_y[0]>>3) /*+1*/);
           vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
           vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-          vrambuf_put(nt2attraddr(addr), &attrbuf[0], 1);
+          vrambuf_put(nt2attraddr(/*addr*/), &attrbuf[0], 1);
         }
         //HACK for unknown reason attribute_table is not correctly updated if function return_attribute_color is called twice
         //like here
@@ -3936,14 +3963,18 @@ void main(void)
         //set_metatile(1,0xd8);
         if (current_actor_y[1] >= 0x10 && current_actor_y[1] < 0xD0)
         {
-          set_metatile(0,*(puyoSeq[sprite_addr[current_player][1]]+0x2));
-
-          attrbuf[1] = return_tile_attribute_color(return_sprite_color((current_player<<1) + 1), current_actor_x[1]>>3, (current_actor_y[1]>>3) /*+1*/);/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
+          metatile_ch = *(puyoSeq[sprite_addr[current_player][1]]+0x2);
+          set_metatile(/*0,*(puyoSeq[sprite_addr[current_player][1]]+0x2)*/);
+          spr_index = (current_player<<1) + 1;
+          rta_color = return_sprite_color(/*current_player << 1*/);
+          spr_x = current_actor_x[1]>>3;
+          spr_y = (current_actor_y[1]>>3);
+          attrbuf[1] = return_tile_attribute_color(/*return_sprite_color(*//*(current_player<<1) + 1*//*), current_actor_x[1]>>3, (current_actor_y[1]>>3)*/ );/*return_sprite_color(1) + return_sprite_color(1)<<2 + return_sprite_color(1) << 4 + return_sprite_color(1) << 6*/;
 
           addr = NTADR_A((current_actor_x[1]>>3), (current_actor_y[1]>>3) /*+1*/);
           vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 2);
           vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 2);
-          vrambuf_put(nt2attraddr(addr), &attrbuf[1], 1);
+          vrambuf_put(nt2attraddr(/*addr*/), &attrbuf[1], 1);
         }
         //updating the board, if things are done correctly attrbuf contains the color to be used
         //Still need to convert coordinates ! And not overwrite the value for the opponent board !
