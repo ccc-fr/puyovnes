@@ -1563,41 +1563,31 @@ void manage_point()
 
       score[current_player] += tmp_score[current_player];
 
-      //WIP add the opponent ojama removal from current player stack !
+      //add the opponent ojama removal from current player stack !
       //we need to first remove the tmp_score from ojama to reduce the number of ojama above our head
       //then the rest can be sent to the opponent
-      /*if (current_player == 0)
-      {
-        ojamas[2] += tmp_score[current_player];
-        if (ojamas[0] > 0)
-        {  
-          ojamas[0] = (ojamas[0] - tmp_score[current_player] > ojamas[0] ) ? 0 : ojamas[0] - tmp_score[current_player] ;
-        }
-      }
-      else
-      {
-        ojamas[0] += tmp_score[current_player];
-        if (ojamas[2] > 0)
-        {  
-          ojamas[2] = (ojamas[2] - tmp_score[current_player] > ojamas[2] ) ? 0 : ojamas[2] - tmp_score[current_player] ;
-        }
-      }*/
+  
       gp_i = current_player << 1; //index for ojama[] of current_player 0=>0 1=>2
-      gp_j = ((current_player + 1) << 1) & 2; //index for ojama[] for opponent 0=>2; 1=>0
-      
-      if (ojamas[gp_i] > 0)
+      gp_j = (((current_player + 1) << 1) & 2) + 1; //index for ojama[] for opponent 0=>3; 1=>1
+      //we remove from ojama[a] and then ojama[a+1]
+      for (i = 0 ; i < 2; ++i)
       {
-        if (tmp_score[current_player] >= ojamas[gp_i])
+        if (ojamas[gp_i+i] > 0)
         {
-          tmp_score[current_player] -= ojamas[gp_i];
-          ojamas[gp_i] = 0;
-        }
-        else
-        {
-          ojamas[gp_i] -= tmp_score[current_player];
-          tmp_score[current_player] = 0;
+          if (tmp_score[current_player] >= ojamas[gp_i+i])
+          {
+            tmp_score[current_player] -= ojamas[gp_i+i];
+            ojamas[gp_i+i] = 0;
+          }
+          else
+          {
+            ojamas[gp_i+i] -= tmp_score[current_player];
+            tmp_score[current_player] = 0;
+          }
         }
       }
+      //we put the new ojama in the a+1 slot
+      //they will be added to the a slot when the player in again in PLAY state.
       ojamas[gp_j] += tmp_score[current_player];
       
      
@@ -1647,7 +1637,11 @@ void refresh_ojama_display()
       //1440: 0xf4   comet
 
       //first let's get our score divided by 70
-      tmp_score[tmp_index] = ojamas[(tmp_index == 0 ? 2 : 0)] / 70;
+      if (tmp_index == 0)
+        //ojamas[(tmp_index == 0 ? 2 : 0)]
+        tmp_score[tmp_index] = (ojamas[2] + ojamas[3]) / 70;
+      else
+        tmp_score[tmp_index] = (ojamas[0] + ojamas[1]) / 70;
       //tmp_score = (ojamas[(current_player == 0 ? 2 : 0)] * 936) >> 16; //
       //36 => 512 + 256 + 128 + 32 +8
       //tmp_score = ojamas[(current_player == 0 ? 2 : 0)];
@@ -1817,7 +1811,10 @@ void refresh_ojama_display()
 byte fall_ojama()
 {
   /* Conditions :
-  The other player must be in "PLAY" step when the step_counter of fall_ojama is at 0
+  The other player must be in "PLAY" step when the step_counter of fall_ojama is at 0 => CHANGED !
+  We look at ojamas[0] or ojamas[2] as the ojamas that are not ready to fall yet
+  Are added to ojamas[1] or ojamas[3] and added juste before the FALL_OJAMA step of the other player
+  
   We can only fall 5 rows at a time, then it goes to SHOW_NEXT and player continue to play
   The cell [2][1] must be free, if not game over
   The ojama score should be superior to 0
@@ -1831,6 +1828,8 @@ byte fall_ojama()
 
   tmp_counter = 0; // top_line_space
   tmp_counter_2 = step_p[~current_player & 1]; //to save some cycles
+  //unecessary because of the new ojama double slot system ?
+  /*
   if ((step_ojama_fall[current_player] == 0 && tmp_counter_2 != PLAY && tmp_counter_2 != FALL_OJAMA) )
   {
     //inutile de continuer on passe à SHOW_NEXT
@@ -1843,7 +1842,7 @@ byte fall_ojama()
     step_p[current_player] = UPDATE_HEIGHT;
     step_p_counter[current_player] = 0;
     return 0; //as we return 0 the ojama won't fall
-  }
+  }*/
   
   //we need to let the fall_board function fall every column,
   //something it will do in 6 frames
@@ -2894,11 +2893,6 @@ void handle_controler_and_sprites()
     step_p_counter[0] = 255;
     actor_dx[1][0] = -1;
   }
-  /*if (pad&PAD_SELECT)
-  {
-    play_bayoen();
-    ojamas[0] = 210;
-  }*/
   
   previous_pad[current_player] = pad;
 }
@@ -3763,12 +3757,23 @@ void main(void)
           actor_dy[current_player][0] = 1;
           actor_dy[current_player][1] = 1;
           ++p_puyo_list_index[current_player];
-          /*
-          step_p1 = SHOW_NEXT;*/
+
           step_p[current_player] = FALL_OJAMA;
           step_p_counter[current_player] = 0;
-          // step_p1 = DESTROY;
-          // Need to reset the boards flag to 0 after destroy!
+          
+          //add ojama accumulated to the ojama that can fall on opponent board
+          /*index for ojama[] for opponent 0=>2; 1=>0*/
+          if (current_player == 0)
+          {
+            ojamas[2] += ojamas[3];
+            ojamas[3] = 0;
+          }
+          else
+          {
+            ojamas[0] += ojamas[1];
+            ojamas[1] = 0;
+          }
+
         }
         continue;
       } else if (step_p[current_player] == CHECK && step_p_counter[current_player] != 0)
@@ -3881,6 +3886,19 @@ void main(void)
             step_p[current_player] = FALL_OJAMA;
             step_p_counter[current_player] = 0;
             nb_hit[current_player] = 0;// hit combo counter
+            //add ojama accumulated to the ojama that can fall on opponent board
+            /*index for ojama[] for opponent 0=>2; 1=>0*/
+            if (current_player == 0)
+            {
+              ojamas[2] += ojamas[3];
+              ojamas[3] = 0;
+            }
+            else
+            {
+              ojamas[0] += ojamas[1];
+              ojamas[1] = 0;
+            }
+
           }
           //reinit the column marked to be checked
           check_all_column_list[current_player] = 0;
