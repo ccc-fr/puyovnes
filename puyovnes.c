@@ -616,8 +616,14 @@ void clear_metatile(/*byte y*/)
 }*/
 
 void put_attr_entries(/*word addr, byte length*/) {
+   // if bytes won't fit, wait for vsync and flush buffer
+  //-4 ? but 3 bytes are copied by length unit
+  if (VBUFSIZE-4-(3*attr_length) < updptr) {
+    vrambuf_flush();
+  }
+  
   for (gp_k = 0; gp_k < attr_length; ++gp_k) {
-    VRAMBUF_PUT(addr, attrbuf[gp_k], 0);
+    VRAMBUF_PUT_SHORT(addr, attrbuf[gp_k]);
     addr += 8;
   }
   vrambuf_end();

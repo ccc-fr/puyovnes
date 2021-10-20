@@ -5,7 +5,9 @@
 #include "neslib.h"
 
 // VBUFSIZE = maximum update buffer bytes
-#define VBUFSIZE 128
+#define VBUFSIZE  96//64 works but it generates slow downs, 
+//96 works only with limiter and generates slow downs, on ojamas fall mostly
+//128 even with limiter creates glitches
 
 // update buffer starts at $100 (stack page)
 #define updbuf ((byte*)0x100)
@@ -18,8 +20,14 @@ extern byte updptr;
 #define VRAMBUF_ADD(b) VRAMBUF_SET(b); ++updptr
 
 // macro to add a raw header (useful for single bytes)
-#define VRAMBUF_PUT(addr,len,flags)\
+/*#define VRAMBUF_PUT(addr,len,flags)\
   VRAMBUF_ADD(((addr) >> 8) | (flags));\
+  VRAMBUF_ADD(addr);\
+  VRAMBUF_ADD(len);*/
+
+//Macro to add a raw header (useful for single bytes) without flag !
+#define VRAMBUF_PUT_SHORT(addr,len)\
+  VRAMBUF_ADD(((addr) >> 8));\
   VRAMBUF_ADD(addr);\
   VRAMBUF_ADD(len);
 
