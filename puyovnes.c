@@ -1401,45 +1401,91 @@ void fall_board()
     //redraw the column through buffer
     memset(ntbuf1, 0, sizeof(ntbuf1));
     memset(ntbuf2, 0, sizeof(ntbuf2));
-    memset(attrbuf, 0, sizeof(attrbuf));
-    //we start at 1 as we don't want to modify the ceiling
-    for (gp_j = 1; gp_j < 13 ; ++gp_j)
+    if (step_p[current_player] != FALL_OJAMA)
+    {  
+      memset(attrbuf, 0, sizeof(attrbuf));
+      //we start at 1 as we don't want to modify the ceiling
+      for (gp_j = 1; gp_j < 13 ; ++gp_j)
+      {
+        cell_address = (offset_address + gp_j); //player index missing there !
+        gp_i = *cell_address;
+        metatile_y = gp_j - 1;
+        spr_x = tmp_counter_2;
+        spr_y = gp_j<<1;
+        switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
+        {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
+          case EMPTY:
+            clear_metatile(/*gp_j-1*/);
+            rta_color = 2;         
+            attrbuf[gp_j>>1] = return_tile_attribute_color(/*2,tmp_counter_2,gp_j<<1*/);
+            break;
+          case OJAMA:
+            metatile_ch = 0xdc;
+            set_metatile(/*gp_j-1,0xdc*/);
+            rta_color = 0;
+            attrbuf[gp_j>>1] = return_tile_attribute_color(/*0,tmp_counter_2,gp_j<<1*/);
+            break;//          
+          default:
+            metatile_ch = *(puyoSeq[gp_i+blind_offset]+0x2);
+            set_metatile(/*gp_j-1,*(puyoSeq[gp_i+blind_offset]+0x2)*/);
+            rta_color = gp_i;
+            attrbuf[gp_j>>1] = return_tile_attribute_color(/*gp_i,tmp_counter_2,gp_j<<1*/);
+            break;
+        }
+      } 
+
+      //remplir les buffers nt et attr et ensuite faire le put !
+      addr = NTADR_A(((tmp_counter_3)<<1)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
+      addr = nt2attraddr(/*addr*/);
+      attr_length = 7;
+      put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
+    }
+    else
     {
-      cell_address = (offset_address + gp_j); //player index missing there !
-      gp_i = *cell_address;
-      metatile_y = gp_j - 1;
-      spr_x = tmp_counter_2;
-      spr_y = gp_j<<1;
-      switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
-      {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
-        case EMPTY:
-          clear_metatile(/*gp_j-1*/);
-          rta_color = 2;         
-          attrbuf[gp_j>>1] = return_tile_attribute_color(/*2,tmp_counter_2,gp_j<<1*/);
-          break;
-        case OJAMA:
-          metatile_ch = 0xdc;
-          set_metatile(/*gp_j-1,0xdc*/);
-          rta_color = 0;
-          attrbuf[gp_j>>1] = return_tile_attribute_color(/*0,tmp_counter_2,gp_j<<1*/);
-          break;//          
-        default:
-          metatile_ch = *(puyoSeq[gp_i+blind_offset]+0x2);
-          set_metatile(/*gp_j-1,*(puyoSeq[gp_i+blind_offset]+0x2)*/);
-          rta_color = gp_i;
-          attrbuf[gp_j>>1] = return_tile_attribute_color(/*gp_i,tmp_counter_2,gp_j<<1*/);
-          break;
-      }
-    } 
-   
-    //remplir les buffers nt et attr et ensuite faire le put !
-    addr = NTADR_A(((tmp_counter_3)<<1)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
-    vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
-    vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
-    addr = nt2attraddr(/*addr*/);
-    attr_length = 7;
-    put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
-    
+      //In FALL_OJAMA we don't need to update the attribute table
+      //as all ojama have the same color whatever the palette is
+      //memset(ntbuf1, 0, sizeof(ntbuf1));
+      //memset(ntbuf2, 0, sizeof(ntbuf2));
+      //memset(attrbuf, 0, sizeof(attrbuf));
+      //we start at 1 as we don't want to modify the ceiling
+      for (gp_j = 1; gp_j < 13 ; ++gp_j)
+      {
+        cell_address = (offset_address + gp_j); //player index missing there !
+        gp_i = *cell_address;
+        metatile_y = gp_j - 1;
+        //spr_x = tmp_counter_2;
+        //spr_y = gp_j<<1;
+        switch (/*(boards[current_player][tmp_counter][gp_j])*/ gp_i)
+        {// HERE !!!!!!! tmp_counter ? manque + 6 pour p2
+          case EMPTY:
+            clear_metatile(/*gp_j-1*/);
+            //rta_color = 2;         
+            //attrbuf[gp_j>>1] = return_tile_attribute_color(/*2,tmp_counter_2,gp_j<<1*/);
+            break;
+          case OJAMA:
+            metatile_ch = 0xdc;
+            set_metatile(/*gp_j-1,0xdc*/);
+            //rta_color = 0;
+            //attrbuf[gp_j>>1] = return_tile_attribute_color(/*0,tmp_counter_2,gp_j<<1*/);
+            break;//          
+          default:
+            metatile_ch = *(puyoSeq[gp_i+blind_offset]+0x2);
+            set_metatile(/*gp_j-1,*(puyoSeq[gp_i+blind_offset]+0x2)*/);
+            //rta_color = gp_i;
+            //attrbuf[gp_j>>1] = return_tile_attribute_color(/*gp_i,tmp_counter_2,gp_j<<1*/);
+            break;
+        }
+      } 
+      //remplir les buffers nt et attr et ensuite faire le put !
+      addr = NTADR_A(((tmp_counter_3)<<1)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
+      //addr = nt2attraddr(/*addr*/);
+      //attr_length = 7;
+      //put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
+    }
   }
   else
   {
