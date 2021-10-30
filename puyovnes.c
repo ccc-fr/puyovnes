@@ -165,7 +165,6 @@ byte * cell_address_2;
 byte * tmp_cell_address;
 byte * tmp_cell_address_2;
 byte * current_board_address;
-byte * current_tmp_board_address;
 byte * offset_address;
 byte * current_actor_x;
 byte * current_actor_y;
@@ -795,7 +794,6 @@ void update_boards()
 byte check_board()
 {
   current_board_address = board_address + (current_player?0x4E:0);
-  current_tmp_board_address = tmp_boards_address;
   tmp_counter = 0;
   tmp_counter_2 = 0; // counter
   tmp_counter_3 = 0; //destruction
@@ -1260,14 +1258,14 @@ byte check_board()
     nb_group[current_player] += (tmp_counter_2 + 1) - 4;//if the group is over 4 puyos add the part over in this variable.
     
     //cell_address = current_board_address + 12;
-    //tmp_cell_address = current_tmp_board_address + 12;
+    //tmp_cell_address = tmp_boards_address + 12;
     tmp_counter_3 = 0;
     //copy flag to boards
     //instead of doing 2 loops, one for column and inside it one for rows
     //we will do only once and parse each cell by only increment by one each time
     gp_j = 1;
     cell_address = current_board_address + 1;
-    tmp_cell_address = current_tmp_board_address + 1;
+    tmp_cell_address = tmp_boards_address + 1;
     //tmp_board has column size of 15 ! we when gp_i will change we must move of 2 step further.
     //we parse every cell, but must not check that are hidden (wherey y=0)
     //this will be checked with gp_j, but we can start from  1 as the first is not to be checked
