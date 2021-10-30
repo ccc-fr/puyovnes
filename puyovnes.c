@@ -802,14 +802,14 @@ byte check_board()
   
   //Note : sizeof boards won't change, we could use a define here instead of computing it each time the function is called
   memset(tmp_boards,0,sizeof(tmp_boards));
-  cell_address = current_board_address + (x*0xD) + y;
+  cell_address = current_board_address + (x * 0xD) + y;
   //current_color = ((boards[current_player][x][y]));
   current_color = *cell_address;
   
   if (current_color == OJAMA || y < 1 || y > 12)
     return 0;
   
-  tmp_cell_address = tmp_boards_address + (gp_i * 0xF) + gp_j;
+  tmp_cell_address = tmp_boards_address + (x * 0xF) + y;
   *tmp_cell_address = FLAG; // the currently checked puyo always is always flagged
 
   //NEW METHOD THAT I HOPED FASTER AND MORE STRAIGHTFORWARD
@@ -841,7 +841,7 @@ byte check_board()
       if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
-        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        puyos_to_check[tmp_counter_2] = gp_i + ((gp_j - 1) << 4);
         *tmp_cell_address_2 = FLAG;
       }
     }
@@ -850,11 +850,11 @@ byte check_board()
     if (gp_j < 12) 
     {
       cell_address_2 = cell_address + 1;
-      tmp_cell_address_2 = tmp_boards_address + 1;
+      tmp_cell_address_2 = tmp_cell_address + 1;
       if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
-        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        puyos_to_check[tmp_counter_2] = gp_i + ((gp_j + 1) << 4);
         *tmp_cell_address_2 = FLAG;
       }
     }
@@ -863,11 +863,11 @@ byte check_board()
     if (gp_i > 0) 
     {
       cell_address_2 = cell_address - 0xD;
-      tmp_cell_address_2 = tmp_boards_address - 0xF;
+      tmp_cell_address_2 = tmp_cell_address - 0xF;
       if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
-        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        puyos_to_check[tmp_counter_2] = (gp_i - 1) + (gp_j << 4);
         *tmp_cell_address_2 = FLAG;
       }
     }
@@ -876,11 +876,11 @@ byte check_board()
     if (gp_i < 6) 
     {
       cell_address_2 = cell_address + 0xD;
-      tmp_cell_address_2 = tmp_boards_address + 0xF;
+      tmp_cell_address_2 = tmp_cell_address + 0xF;
       if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
-        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        puyos_to_check[tmp_counter_2] = (gp_i + 1)  + (gp_j << 4);
         *tmp_cell_address_2 = FLAG;
       }
     }
