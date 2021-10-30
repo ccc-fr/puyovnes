@@ -153,6 +153,10 @@ byte boards[2][6][13];
 //we bump tmp_boards to 15 for the flush step, will contain what was the floor before
 byte tmp_boards[6][15];
 
+// array of xy coordinates in yyyyxxxx form used in check_board
+// size of 72 because we have 6*12 visible puyos, and not visible puyos are not checked
+byte puyos_to_check[72];
+
 //Pointers to addresses to speed-up access time
 byte * board_address;
 byte * tmp_boards_address;
@@ -789,28 +793,11 @@ void update_boards()
 //hypothèse : les *(machin +0xF) prennent plus de temps que prévu, comme indiqué là https://www.cc65.org/doc/coding.html
 byte check_board()
 {
-  //static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
-  /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
-  /*byte mask = 15, flag = 8, shift = 0;*/ 
-  //byte destruction = 0;//tmp_coutner_3 !
   current_board_address = board_address + (current_player?0x4E:0);
   current_tmp_board_address = tmp_boards_address;
   tmp_counter = 0;
   tmp_counter_2 = 0; // counter
   tmp_counter_3 = 0; //destruction
-  //to gain time we start from position of the last placed puyos
-  //actor_x[board_index], actor_y[board_index],actor_x[board_index+1], actor_y[board_index+1],
-  //x,y for each last puyo should be save somehere to gain time
-  /*x = ((actor_x[board_index]>>3) - 2) >> 1;
-  y = ((actor_y[board_index]>>3)+1)>>1;*/
-  // First find puyo of the same color up, down, left, right to the current one.=, if no found exit
-  // then move to the line above and below and check for a puyo of same color nearby
-  // raise counter
-  // until no more puyo left.
-  // redo for next puyo
-  // that way contrary to previous method we should not miss some boom.
-  // Note : how to do when after destruction ?
-  //k == current line above, k == current line below
   
   //Note : sizeof boards won't change, we could use a define here instead of computing it each time the function is called
   memset(tmp_boards,0,sizeof(tmp_boards));
@@ -818,6 +805,83 @@ byte check_board()
   //current_color = ((boards[current_player][x][y]));
   current_color = *cell_address;
 
+  //NEW METHOD THAT I HOPED FASTER AND MORE STRAIGHTFORWARD
+  //starting from the current puyo we look up, down, left, right if another puyo has the same color
+  //if yes that puyo x,y coordinates are added in a list in a byte, yyyyxxxx (so yyyy>>4 gives y and x & f gives x
+  //we have a counter to increment the position in that list
+  //once we have finished with the current puyo we looked at the list, if it's size has up we go to the next element
+  //and test again and so on until the pointer in the list is above it's size which means no more puyo has been found.
+  //Obviously we flag in tmp_boards the puyo of the same color found.
+  
+  //gp_i => current x
+  //gp_j => current_y
+  //tmp_counter is the current element checked in the list
+  //tmp_counter_2 is the number of element listed (size of the list) and so the number of puyo to potentially destroy
+  puyos_to_check[0] = x + (y << 4);
+  do 
+  {
+    gp_k = puyos_to_check[tmp_counter];
+    gp_i = gp_k & 0xf; //X
+    gp_j = (gp_k >> 4); //y
+    
+    //check above
+    if (gp_j > 1) 
+    {
+      cell_address_2 = cell_address - 1;
+      if (*cell_address_2 == current_color)
+      {
+        ++tmp_counter_2;
+        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
+        *tmp_cell_address = FLAG;
+      }
+    }
+    
+    //check below
+    if (gp_j < 12) 
+    {
+      cell_address_2 = cell_address + 1;
+      if (*cell_address_2 == current_color)
+      {
+        ++tmp_counter_2;
+        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
+        *tmp_cell_address = FLAG;
+      }
+    }
+    
+    //check left
+    if (gp_i > 0) 
+    {
+      cell_address_2 = cell_address - 0xD;
+      if (*cell_address_2 == current_color)
+      {
+        ++tmp_counter_2;
+        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
+        *tmp_cell_address = FLAG;
+      }
+    }
+    
+    //check right
+    if (gp_i < 6) 
+    {
+      cell_address_2 = cell_address + 0xD;
+      if (*cell_address_2 == current_color)
+      {
+        ++tmp_counter_2;
+        puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
+        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
+        *tmp_cell_address = FLAG;
+      }
+    }
+    
+    ++tmp_counter;
+  } while (tmp_counter <= tmp_counter_2);
+ 
+  
+  //FORMER METHOD BELOW
+  /*
   //OJAMA are not destroyed by being linked by 4 !
   //also if y == 0 then the puyo is hidden in the upper row and should not be checked !
   //0xc0 is the floor max, so anything above 0xD0 should not be considered too
@@ -836,7 +900,7 @@ byte check_board()
   
   while ( gp_i < 6 )
   {
-    if ( /*tmp_boards[gp_i][y]*/*tmp_cell_address != FLAG)
+    if (*tmp_cell_address != FLAG)  //tmp_boards[gp_i][y]
     {
       //if (current_color == ((boards[current_player][gp_i][y]) ))
       if (current_color == (*cell_address))
@@ -847,8 +911,8 @@ byte check_board()
       }
       else
       {  
-       /* i = 7; //no need to continue if not found
-        continue;*/
+        // i = 7; //no need to continue if not found
+        //continue;
         break; //sort du while
       }
     }
@@ -863,7 +927,7 @@ byte check_board()
   
   while ( gp_i < 6 )
   {
-    if ( /*tmp_boards[gp_i][y]*/ *tmp_cell_address != FLAG)
+    if (*tmp_cell_address != FLAG)  //tmp_boards[gp_i][y]
     {
       //if (current_color == ((boards[current_player][gp_i][y]) ))
       if (current_color == (*cell_address))
@@ -874,8 +938,8 @@ byte check_board()
       }
       else
       {
-        /*i = 7; //no need to continue if not found
-        continue;*/
+        //i = 7; //no need to continue if not found
+        //continue;
         break;
       }
     }
@@ -889,7 +953,7 @@ byte check_board()
   tmp_cell_address = tmp_boards_address + (x*0xF) + gp_i;
   while ( gp_i > 0 )
   {
-    if ( /*tmp_boards[x][gp_i]*/ *tmp_cell_address != FLAG)
+    if (*tmp_cell_address != FLAG)  //tmp_boards[x][gp_i]
     {
       //if (current_color == ((boards[current_player][x][gp_i]) ))
       if (current_color == (*cell_address))
@@ -915,7 +979,7 @@ byte check_board()
 
   while ( gp_i < 13 )
   {
-    if ( /*tmp_boards[x][gp_i]*/ *tmp_cell_address != FLAG)
+    if (*tmp_cell_address != FLAG) //tmp_boards[x][gp_i]
     {
       //if (current_color == ((boards[current_player][x][gp_i]) ))
       if (current_color == (*cell_address))
@@ -1175,6 +1239,7 @@ byte check_board()
       break;
     }
   }
+  */
   
   //we started from 0, so at 3 we have 4 to erase
   if (tmp_counter_2 >= 3)
