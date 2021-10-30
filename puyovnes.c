@@ -873,7 +873,7 @@ byte check_board()
     }
     
     //check right
-    if (gp_i < 6) 
+    if (gp_i < 5) 
     {
       cell_address_2 = cell_address + 0xD;
       tmp_cell_address_2 = tmp_cell_address + 0xF;
