@@ -1620,9 +1620,9 @@ void fall_board()
           }*/
 
           //TODO warikomi not handled yet
-          sprintf(str,"Hit:AC");
-          addr = NTADR_A(nt_x_offset[current_player],26);
-          vrambuf_put(addr,str,6);
+          sprintf(str,/*"Hit:AC"*/"AC");
+          addr = NTADR_A(nt_x_offset[current_player] + 4,26);
+          vrambuf_put(addr,str,2);
           //the score will be updated later by manage_point
           /*
           sprintf(str,"%6lu", score[current_player]);
@@ -1744,9 +1744,9 @@ void manage_point()
       break;
     case 1: // refresh display of hit and score, play sound
       //TODO warikomi not handled yet
-      sprintf(str,"Hit:%2d", nb_hit[current_player]);
-      addr = NTADR_A(nt_x_offset[current_player],26);
-      vrambuf_put(addr,str,6);
+      sprintf(str,/*"Hit:%2d"*/"%2d", nb_hit[current_player]);
+      addr = NTADR_A(nt_x_offset[current_player] + 4,26);
+      vrambuf_put(addr,str,2);
       sprintf(str,"%6lu", score[current_player]);
       addr = NTADR_A(6 + nt_x_offset[current_player],27);
       vrambuf_put(addr,str,6);
@@ -2306,7 +2306,7 @@ void build_menu()
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
   
-  put_str(NTADR_C(3,13), "Puyo VNES Beta 17/10/2021");
+  put_str(NTADR_C(3,13), "Puyo VNES Beta 30/10/2021");
   put_str(NTADR_C(4,15), "Game Mode     1P   2P   Tr");
   put_str(NTADR_C(4,17), "Music         0ff  On    ");
   put_str(NTADR_C(4,19), "Speed         60Hz 50Hz");
