@@ -157,6 +157,7 @@ byte tmp_boards[6][15];
 byte * board_address;
 byte * tmp_boards_address;
 byte * cell_address;
+byte * cell_address_2;
 byte * tmp_cell_address;
 byte * current_board_address;
 byte * current_tmp_board_address;
@@ -380,8 +381,8 @@ const byte const start_pos_x[2] =
 
 const byte const start_pos_y[2][2] =
 {
- {253,13},
- {253,13}
+ {249,9},
+ {249,9}
 };
 //When translating x position (from 0 to ~256) into column index we >>4 and remove the below offset 
 const byte const pos_x_offset[2] = {1,9};
@@ -786,7 +787,7 @@ void update_boards()
 //apparemment y'a certaines fois où c'est plus lent...
 //le temps mini est plus court, mais le temps moyen est plus faible (de 2000 cycles)
 //hypothèse : les *(machin +0xF) prennent plus de temps que prévu, comme indiqué là https://www.cc65.org/doc/coding.html
-byte check_board(void)
+byte check_board()
 {
   //static byte /*i, j, k,*/ current_color; //static are faster, but they are keeping there value outside of context
   /*byte counter = 0, tmp_counter = 0;*/ //counter => tmp_counter2, tmp_counter is a global variable now
@@ -820,7 +821,7 @@ byte check_board(void)
   //OJAMA are not destroyed by being linked by 4 !
   //also if y == 0 then the puyo is hidden in the upper row and should not be checked !
   //0xc0 is the floor max, so anything above 0xD0 should not be considered too
-  //in fact x and y indicates position in the table, so for y between 0 to 12, with 0 taht must not be checked
+  //in fact x and y indicates position in the table, so for y between 0 to 12, with 0 that must not be checked
   if (current_color == OJAMA || y < 1 || y > 12)
     return 0;
 
@@ -1121,7 +1122,7 @@ byte check_board(void)
     }
     else
     {
-      gp_k = gp_i+1;
+      gp_k = gp_i + 1;
       //++cell_address;
     }
         
@@ -1206,25 +1207,21 @@ byte check_board(void)
         //quick hack for ojamas: we look around the current element, up done left right, if one is ojama, it's flagged too be destroyed too
         //note : it will probably slow down things a lot do do that :-s
         //look left
-        /*if (gp_i>0 && boards[current_player][gp_i-1][gp_j] == OJAMA)
-            boards[current_player][gp_i-1][gp_j] |= FLAG;*/
-        if (gp_i>13 && *(cell_address - 0xD) == OJAMA)
-          *(cell_address - 0xD) |= FLAG;
+        cell_address_2 = cell_address - 0xD;
+        if (gp_i>13 && *(cell_address_2) == OJAMA)
+          *(cell_address_2) |= FLAG;
         //look right
-        /*if (gp_i<5 && boards[current_player][gp_i+1][gp_j] == OJAMA)
-            boards[current_player][gp_i+1][gp_j] |= FLAG*/
-        if (gp_i<65 && *(cell_address + 0xD) == OJAMA)
-          *(cell_address + 0xD) |= FLAG;
+        cell_address_2 = cell_address + 0xD;
+        if (gp_i<65 && *(cell_address_2) == OJAMA)
+          *(cell_address_2) |= FLAG;
         //look up
-        /*if (gp_j>0 && boards[current_player][gp_i][gp_j-1] == OJAMA)
-            boards[current_player][gp_i][gp_j-1] |= FLAG;*/
-        if (gp_j>1 && *(cell_address - 1) == OJAMA)
-          *(cell_address - 1) |= FLAG;
+        cell_address_2 = cell_address - 1;
+        if (gp_j>1 && *(cell_address_2) == OJAMA)
+          *(cell_address_2) |= FLAG;
         //look down
-        /*if (gp_j<12 && boards[current_player][gp_i][gp_j+1] == OJAMA)
-            boards[current_player][gp_i][gp_j+1] |= FLAG;*/
-        if (gp_j<12 && *(cell_address + 1) == OJAMA)
-          *(cell_address + 1) |= FLAG;
+        cell_address_2 = cell_address + 1;
+        if (gp_j<12 && *(cell_address_2) == OJAMA)
+          *(cell_address_2) |= FLAG;
       } 
       
       //++gp_i;done in the for loop !
@@ -1327,7 +1324,8 @@ void fall_board()
   //byte tmp_counter = 0, tmp_counter_2 = 0, tmp_counter_3 = 0;
  
   //tmp_counter = step_p_counter[current_player]%6; /*step_p1_counter%6;*/ //prend 500cycles environ ! un if > 6 else serait-il mieux ?
-  tmp_counter = mod_6_lookup[step_p_counter[current_player]];
+  tmp_counter = step_p_counter[current_player];
+  tmp_counter = mod_6_lookup[tmp_counter];
   //on remplace par la techique A%B = A - B * (A/B) ? comme on ne fait pas la div c'est peut-être moins interessant
   //une méthode est indiquée là : http://homepage.cs.uiowa.edu/~jones/bcd/mod.shtml mais pas sûr de l'intéret
   offset_address = board_address + (current_player*0x4E) + tmp_counter*0xD;
@@ -2134,7 +2132,6 @@ void flush()
 //update the color of the next pair to come between fields
 void update_next()
 {
- 
   memset(attrbuf, 0, sizeof(attrbuf));
   //init the displayed_pairs table
   //0x3f is for %64 the cheap way, 
