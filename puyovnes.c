@@ -163,6 +163,7 @@ byte * tmp_boards_address;
 byte * cell_address;
 byte * cell_address_2;
 byte * tmp_cell_address;
+byte * tmp_cell_address_2;
 byte * current_board_address;
 byte * current_tmp_board_address;
 byte * offset_address;
@@ -804,6 +805,12 @@ byte check_board()
   cell_address = current_board_address + (x*0xD) + y;
   //current_color = ((boards[current_player][x][y]));
   current_color = *cell_address;
+  
+  if (current_color == OJAMA || y < 1 || y > 12)
+    return 0;
+  
+  tmp_cell_address = tmp_boards_address + (gp_i * 0xF) + gp_j;
+  *tmp_cell_address = FLAG; // the currently checked puyo always is always flagged
 
   //NEW METHOD THAT I HOPED FASTER AND MORE STRAIGHTFORWARD
   //starting from the current puyo we look up, down, left, right if another puyo has the same color
@@ -823,17 +830,19 @@ byte check_board()
     gp_k = puyos_to_check[tmp_counter];
     gp_i = gp_k & 0xf; //X
     gp_j = (gp_k >> 4); //y
+    cell_address = current_board_address + (gp_i * 0xD) + gp_j;
+    tmp_cell_address = tmp_boards_address + (gp_i * 0xF) + gp_j;
     
     //check above
     if (gp_j > 1) 
     {
       cell_address_2 = cell_address - 1;
-      if (*cell_address_2 == current_color)
+      tmp_cell_address_2 = tmp_cell_address - 1;
+      if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
         puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
-        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
-        *tmp_cell_address = FLAG;
+        *tmp_cell_address_2 = FLAG;
       }
     }
     
@@ -841,12 +850,12 @@ byte check_board()
     if (gp_j < 12) 
     {
       cell_address_2 = cell_address + 1;
-      if (*cell_address_2 == current_color)
+      tmp_cell_address_2 = tmp_boards_address + 1;
+      if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
         puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
-        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
-        *tmp_cell_address = FLAG;
+        *tmp_cell_address_2 = FLAG;
       }
     }
     
@@ -854,12 +863,12 @@ byte check_board()
     if (gp_i > 0) 
     {
       cell_address_2 = cell_address - 0xD;
-      if (*cell_address_2 == current_color)
+      tmp_cell_address_2 = tmp_boards_address - 0xF;
+      if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
         puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
-        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
-        *tmp_cell_address = FLAG;
+        *tmp_cell_address_2 = FLAG;
       }
     }
     
@@ -867,12 +876,12 @@ byte check_board()
     if (gp_i < 6) 
     {
       cell_address_2 = cell_address + 0xD;
-      if (*cell_address_2 == current_color)
+      tmp_cell_address_2 = tmp_boards_address + 0xF;
+      if (*cell_address_2 == current_color && (*tmp_cell_address_2 != FLAG))
       {
         ++tmp_counter_2;
         puyos_to_check[tmp_counter_2] = gp_i + (gp_j << 4);
-        tmp_cell_address = tmp_boards_address + (gp_i*0xF) + gp_j;
-        *tmp_cell_address = FLAG;
+        *tmp_cell_address_2 = FLAG;
       }
     }
     
