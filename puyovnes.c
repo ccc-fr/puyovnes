@@ -2315,7 +2315,7 @@ void build_menu()
   // copy attribute table from PRG ROM to VRAM
   vram_write(attribute_table, sizeof(attribute_table));
   
-  put_str(NTADR_C(3,13), "Puyo VNES Beta 30/10/2021");
+  put_str(NTADR_C(5,13), "Puyo VNES RC 31/10/2021");
   put_str(NTADR_C(4,15), "Game Mode     1P   2P   Tr");
   put_str(NTADR_C(4,17), "Music         0ff  A    B");
   put_str(NTADR_C(4,19), "Speed         60Hz 50Hz");
