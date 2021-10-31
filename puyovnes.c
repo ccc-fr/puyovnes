@@ -2564,6 +2564,14 @@ void init_round()
     should_destroy[1] = 0;*/
     should_destroy[gp_i] = 0;
     has_ac[gp_i] = 0;
+    //reinit everything point/score/ojama related
+    nb_hit[gp_i] = 0;
+    score[gp_i] = 0;
+    ojamas[gp_i<<1] = 0;
+    ojamas[(gp_i<<1) + 1] = 0;
+    check_all_column_list[gp_i] = 0;
+    tmp_score[gp_i] = 0;
+    tmp_score2[gp_i] = 0;
     //update_next();
   }
 
