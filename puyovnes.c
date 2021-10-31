@@ -276,7 +276,7 @@ byte column_height_in_ojama[2], puyo_height_in_ojama[2];
   //const byte tile_offset = (current_player == 0 ? 0 : 16);
 unsigned long int tmp_score[2], tmp_score2[2];
 //variable for fall_board
-byte fall, can_fall, previous_empty, puyo_found;
+byte fall, can_fall, first_puyo_found, puyo_found;
 // indicates if the damage board needs o be refreshed. 0 = no refresh, 1 and above refresh needed or in progress
 byte step_refresh_ojama_display;
 // indicates if a soft_reset must be performed
@@ -1389,7 +1389,7 @@ void fall_board()
   //byte fall = 0;
   //byte * cell_address;
   can_fall = 0;
-  previous_empty = 0;
+  first_puyo_found = 0;
   puyo_found = 0;
   fall= 0;
   gp_k = 0; // the actual number of puyo found
@@ -1421,6 +1421,9 @@ void fall_board()
     if ((gp_i & 7) == EMPTY) 
     {
       can_fall = 1;
+      //register the position of the first empty area, as it will be the first to be modified
+      if (first_puyo_found == 0)
+        first_puyo_found = gp_j;
     }
     else
     {
@@ -1475,7 +1478,7 @@ void fall_board()
     {  
       memset(attrbuf, 0, sizeof(attrbuf));
       //we start at 1 as we don't want to modify the ceiling
-      for (gp_j = 1; gp_j < 13 ; ++gp_j)
+      for (gp_j = 1; gp_j <= /*13*/first_puyo_found; ++gp_j)
       {
         cell_address = (offset_address + gp_j); //player index missing there !
         gp_i = *cell_address;
@@ -1506,10 +1509,16 @@ void fall_board()
 
       //remplir les buffers nt et attr et ensuite faire le put !
       addr = NTADR_A(((tmp_counter_3)<<1)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
+      //we reuse tmp_counter for the number of tiles to be updated
+      tmp_counter = first_puyo_found << 1;
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, /*24*/ tmp_counter);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, /*24*/tmp_counter);
       addr = nt2attraddr(/*addr*/);
-      attr_length = 7;
+      //the number of attributes is tricky to set.
+      //for a full column we have 7, which is 13+1/2
+      //1 for row 0 and 1, 2 for 2 and 3 etc 6 for 10 and 11 and 7 for 12
+      //so magic formula is (first_puyo_found / 2) + 1
+      attr_length = /*7*/ (first_puyo_found >>1) + 1;
       put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
     }
     else
@@ -1520,7 +1529,7 @@ void fall_board()
       //memset(ntbuf2, 0, sizeof(ntbuf2));
       //memset(attrbuf, 0, sizeof(attrbuf));
       //we start at 1 as we don't want to modify the ceiling
-      for (gp_j = 1; gp_j < 13 ; ++gp_j)
+      for (gp_j = 1; gp_j <= /*13*/first_puyo_found; ++gp_j)
       {
         cell_address = (offset_address + gp_j); //player index missing there !
         gp_i = *cell_address;
@@ -1550,8 +1559,9 @@ void fall_board()
       } 
       //remplir les buffers nt et attr et ensuite faire le put !
       addr = NTADR_A(((tmp_counter_3)<<1)+2, 2 );// le buffer contient toute la hauteur de notre tableau ! on commence en haut, donc 2
-      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, 24);
-      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, 24);
+      first_puyo_found <<= 1;
+      vrambuf_put(addr|VRAMBUF_VERT, ntbuf1, /*24*/first_puyo_found);
+      vrambuf_put(addr+1|VRAMBUF_VERT, ntbuf2, /*24*/first_puyo_found);
       //addr = nt2attraddr(/*addr*/);
       //attr_length = 7;
       //put_attr_entries(/*(nt2attraddr(*//*addr*//*)), 7*/);
