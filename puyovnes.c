@@ -3063,7 +3063,7 @@ void handle_controler_and_sprites()
   if ((pad&PAD_A || pad&PAD_B) && (previous_pad[current_player] != PAD_A && previous_pad[current_player] != PAD_B))
     play_rotation_sound();
   
-  //test play bayoen_sample
+  //give up the round
   if (pad&PAD_START)
   {
     if (pad&PAD_SELECT && pad&PAD_B && pad&PAD_A)
@@ -3077,9 +3077,10 @@ void handle_controler_and_sprites()
     step_p_counter[1] = 0;*/
     //debug
     play_flush();
-    step_p[0] = FLUSH;
-    step_p_counter[0] = 255;
-    actor_dx[1][0] = -1;
+    step_p[current_player] = FLUSH;
+    step_p_counter[current_player] = 255;
+    actor_dx[current_player ? 0 : 1][0] = -1;
+    ++wins[current_player ? 0 : 1];
   }
   
   previous_pad[current_player] = pad;
