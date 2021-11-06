@@ -2414,6 +2414,7 @@ void main(void)
   //init sound & music
   apu_init();
   music_ptr = 0;
+  music_selected_ptr = NULL;
   play_bayoen();//play only to initialize dmc as on first play the sample doesn't play...
   
   // enable rendering
