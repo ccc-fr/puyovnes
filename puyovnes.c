@@ -1698,17 +1698,19 @@ void build_menu()
     vram_adr(NTADR_C(24,i));
     vram_put(0x8C);vram_put(0x8C);
   }
-  
-  sprintf(str,"ccc 2021");
-  vram_adr(NTADR_A(11,26));
-  vram_put(0x10);
-  vrambuf_put(NTADR_A(12,26),str,10);
  
 }
 
 //add the credits info in the screen next to menu
 void build_credits()
 {
+  //clear the background
+  vram_adr(NAMETABLE_A);
+  vram_fill(0x00,32*30);
+  //clear the attribute table
+  vram_adr(NAMETABLE_A+0x3c0);
+  vram_fill(0x00,0x40);
+  
   put_str(NTADR_A(7,3), "Puyo VNES credits");
   
   put_str(NTADR_A(3,5), "Created and programmed by");
@@ -1729,6 +1731,10 @@ void build_credits()
   put_str(NTADR_A(7,22), "Aurel509   BrouH");
   put_str(NTADR_A(7,23), "Hiku       LIWYC");
   put_str(NTADR_A(7,24), "Toti       Sirix");
+  sprintf(str,"ccc 2021");
+  vram_adr(NTADR_A(11,26));
+  vram_put(0x10);
+  vrambuf_put(NTADR_A(12,26),str,10);
 }
 
 //the build_field will take several steps
